@@ -1076,7 +1076,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                                             .padding(4.dp)
                                     ) {
                                         Image(
-                                            bitmap = app.icon.toBitmap().asImageBitmap(),
+                                            bitmap = app.icon.toCachedImageBitmap(),
                                             contentDescription = app.name,
                                             modifier = Modifier.size(40.dp)
                                         )
@@ -1425,7 +1425,7 @@ fun AppDrawer(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Image(
-                            bitmap = app.icon.toBitmap().asImageBitmap(),
+                            bitmap = app.icon.toCachedImageBitmap(),
                             contentDescription = app.name,
                             modifier = Modifier.size(36.dp * state.iconScale)
                         )
@@ -3071,7 +3071,7 @@ fun NotificationsView(
                                     .padding(4.dp)
                             ) {
                                 Image(
-                                    bitmap = app.icon.toBitmap().asImageBitmap(),
+                                    bitmap = app.icon.toCachedImageBitmap(),
                                     contentDescription = app.name,
                                     modifier = Modifier.size(40.dp * state.iconScale)
                                 )
@@ -3222,10 +3222,10 @@ fun NotificationsView(
             val appIconBitmap = remember(sbn.packageName, appInfo) {
                 try {
                     if (appInfo != null) {
-                        appInfo.icon.toBitmap().asImageBitmap()
+                        appInfo.icon.toCachedImageBitmap()
                     } else {
                         val drawable = context.packageManager.getApplicationIcon(sbn.packageName)
-                        drawable.toBitmap().asImageBitmap()
+                        drawable.toCachedImageBitmap()
                     }
                 } catch (e: Exception) {
                     null
@@ -3388,13 +3388,16 @@ fun T9SearchView(
             )
         }
         
-        val t9Results = remember(effectiveMode, state.contacts, state.allApps, state.t9Query) {
+        // T9 digit strings are computed once per list, not on every key press.
+        val contactKeys = remember(state.contacts) { state.contacts.map { it to it.name.toT9() } }
+        val appKeys = remember(state.allApps) { state.allApps.map { it to it.name.toT9() } }
+        val t9Results = remember(effectiveMode, contactKeys, appKeys, state.t9Query) {
             if (effectiveMode == T9SearchMode.CONTACTS) {
-                state.contacts.filter { it.name.toT9().contains(state.t9Query) }.map { 
+                contactKeys.filter { it.second.contains(state.t9Query) }.map { it.first }.map { 
                     T9Result(it.name, it.primaryPhoneNumber, contactInfo = it) 
                 }
             } else {
-                state.allApps.filter { it.name.toT9().contains(state.t9Query) }.map { 
+                appKeys.filter { it.second.contains(state.t9Query) }.map { it.first }.map { 
                     T9Result(it.name, "", appInfo = it) 
                 }
             }
@@ -3443,7 +3446,7 @@ fun T9SearchView(
                     ) {
                         if (result.appInfo != null) {
                             Image(
-                                bitmap = result.appInfo.icon.toBitmap().asImageBitmap(),
+                                bitmap = result.appInfo.icon.toCachedImageBitmap(),
                                 contentDescription = result.name,
                                 modifier = Modifier.size(36.dp * state.iconScale)
                             )
@@ -3644,7 +3647,7 @@ fun HubView(
                 modifier = Modifier.focusRequester(focusRequester),
                 iconComponent = { 
                     if (msgAppIcon != null) {
-                        Image(bitmap = msgAppIcon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        Image(bitmap = msgAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicMessageIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }
@@ -3659,7 +3662,7 @@ fun HubView(
             onClick = { if (generalNotifs.isNotEmpty()) onNavigateToNotifications() },
             iconComponent = { 
                 if (notifAppIcon != null) {
-                    Image(bitmap = notifAppIcon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                    Image(bitmap = notifAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                 } else {
                     SkeuomorphicNotificationsIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                 }
@@ -3677,7 +3680,7 @@ fun HubView(
                 },
                 iconComponent = { 
                     if (calendarAppIcon != null) {
-                        Image(bitmap = calendarAppIcon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        Image(bitmap = calendarAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicCalendarIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }
@@ -3699,7 +3702,7 @@ fun HubView(
                 onClick = onNavigateToEmails,
                 iconComponent = { 
                     if (emailAppIcon != null) {
-                        Image(bitmap = emailAppIcon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        Image(bitmap = emailAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicEmailIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }
@@ -3715,7 +3718,7 @@ fun HubView(
                 onClick = onNavigateToApps,
                 iconComponent = { 
                     if (appsAppIcon != null) {
-                        Image(bitmap = appsAppIcon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        Image(bitmap = appsAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicAppsIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }
@@ -3728,7 +3731,7 @@ fun HubView(
                 onClick = onNavigateToContacts,
                 iconComponent = { 
                     if (contactsAppIcon != null) {
-                        Image(bitmap = contactsAppIcon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        Image(bitmap = contactsAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicContactsIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }
@@ -5291,7 +5294,7 @@ fun UsageStatsScreen(
                         if (entry.icon != null) {
                             val bitmap = remember(entry.icon) {
                                 try {
-                                    entry.icon.toBitmap().asImageBitmap()
+                                    entry.icon.toCachedImageBitmap()
                                 } catch (e: Exception) {
                                     null
                                 }
@@ -5547,7 +5550,7 @@ fun ManageAppDialogHandler(
                         ) {
                             if (drawable != null) {
                                 androidx.compose.foundation.Image(
-                                    bitmap = drawable!!.toBitmap().asImageBitmap(),
+                                    bitmap = drawable!!.toCachedImageBitmap(),
                                     contentDescription = drawableName,
                                     modifier = Modifier.size(48.dp)
                                 )
@@ -5613,7 +5616,7 @@ fun ManageAppDialogHandler(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             androidx.compose.foundation.Image(
-                                bitmap = pack.icon.toBitmap().asImageBitmap(),
+                                bitmap = pack.icon.toCachedImageBitmap(),
                                 contentDescription = null,
                                 modifier = Modifier.size(36.dp * state.iconScale)
                             )
@@ -5653,7 +5656,7 @@ fun ManageAppDialogHandler(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         androidx.compose.foundation.Image(
-                            bitmap = selectedApp.icon.toBitmap().asImageBitmap(),
+                            bitmap = selectedApp.icon.toCachedImageBitmap(),
                             contentDescription = null,
                             modifier = Modifier.size(24.dp)
                         )

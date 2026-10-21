@@ -523,7 +523,7 @@ fun SettingsPinnedApps(state: LauncherState, viewModel: LauncherViewModel, hapti
                     icon = {
                         app.icon?.let { iconDrawable ->
                             androidx.compose.foundation.Image(
-                                bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                                bitmap = iconDrawable.toCachedImageBitmap(),
                                 contentDescription = null,
                                 modifier = Modifier.size(32.dp * state.iconScale)
                             )
@@ -554,7 +554,7 @@ fun SettingsReorderPinned(state: LauncherState, viewModel: LauncherViewModel, ha
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     app.icon?.let { iconDrawable ->
                         androidx.compose.foundation.Image(
-                            bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                            bitmap = iconDrawable.toCachedImageBitmap(),
                             contentDescription = null,
                             modifier = Modifier.size(32.dp * state.iconScale)
                         )
@@ -727,7 +727,7 @@ fun SettingsMessages(
                         icon = {
                             app.icon?.let { iconDrawable ->
                                 androidx.compose.foundation.Image(
-                                    bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                                    bitmap = iconDrawable.toCachedImageBitmap(),
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp * state.iconScale)
                                 )
@@ -764,7 +764,7 @@ fun SettingsMessages(
                         icon = {
                             app.icon?.let { iconDrawable ->
                                 androidx.compose.foundation.Image(
-                                    bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                                    bitmap = iconDrawable.toCachedImageBitmap(),
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp * state.iconScale)
                                 )
@@ -818,7 +818,7 @@ fun SettingsReorderMessages(
                     ) {
                         app.icon?.let { iconDrawable ->
                             androidx.compose.foundation.Image(
-                                bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                                bitmap = iconDrawable.toCachedImageBitmap(),
                                 contentDescription = null,
                                 modifier = Modifier.size(32.dp * state.iconScale)
                             )
@@ -990,7 +990,7 @@ fun SettingsEmail(
                         icon = {
                             app.icon?.let { iconDrawable ->
                                 androidx.compose.foundation.Image(
-                                    bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                                    bitmap = iconDrawable.toCachedImageBitmap(),
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp * state.iconScale)
                                 )
@@ -1027,7 +1027,7 @@ fun SettingsEmail(
                         icon = {
                             app.icon?.let { iconDrawable ->
                                 androidx.compose.foundation.Image(
-                                    bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                                    bitmap = iconDrawable.toCachedImageBitmap(),
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp * state.iconScale)
                                 )
@@ -1081,7 +1081,7 @@ fun SettingsReorderEmail(
                     ) {
                         app.icon?.let { iconDrawable ->
                             androidx.compose.foundation.Image(
-                                bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                                bitmap = iconDrawable.toCachedImageBitmap(),
                                 contentDescription = null,
                                 modifier = Modifier.size(32.dp * state.iconScale)
                             )
@@ -1359,7 +1359,7 @@ fun SettingsIconPack(state: LauncherState, viewModel: LauncherViewModel, haptic:
                             
                             androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 androidx.compose.foundation.Image(
-                                    bitmap = previewIcon.toBitmap().asImageBitmap(),
+                                    bitmap = previewIcon.toCachedImageBitmap(),
                                     contentDescription = appInfo.name,
                                     modifier = Modifier.size(48.dp * state.iconScale)
                                 )

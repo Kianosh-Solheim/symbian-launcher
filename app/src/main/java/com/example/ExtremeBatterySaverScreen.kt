@@ -280,7 +280,7 @@ fun ExtremeBatterySaverScreen(
                             fontFamily = state.currentFont.toFontFamily(),
                             icon = {
                                 Image(
-                                    bitmap = customApp1.icon.toBitmap().asImageBitmap(),
+                                    bitmap = customApp1.icon.toCachedImageBitmap(),
                                     contentDescription = customApp1.name,
                                     modifier = Modifier.size(46.dp)
                                 )
@@ -314,7 +314,7 @@ fun ExtremeBatterySaverScreen(
                             fontFamily = state.currentFont.toFontFamily(),
                             icon = {
                                 Image(
-                                    bitmap = customApp2.icon.toBitmap().asImageBitmap(),
+                                    bitmap = customApp2.icon.toCachedImageBitmap(),
                                     contentDescription = customApp2.name,
                                     modifier = Modifier.size(46.dp)
                                 )
@@ -664,7 +664,7 @@ fun AppPickerDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Image(
-                                bitmap = app.icon.toBitmap().asImageBitmap(),
+                                bitmap = app.icon.toCachedImageBitmap(),
                                 contentDescription = app.name,
                                 modifier = Modifier.size(38.dp)
                             )
