@@ -1,0 +1,116 @@
+package com.example.ui.theme
+
+import android.app.Activity
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.example.AppTheme
+import com.example.LauncherState
+import androidx.compose.ui.graphics.Color
+
+private val DefaultScheme = lightColorScheme(
+    background = DefaultBackground,
+    surface = DefaultSurface,
+    onBackground = DefaultText,
+    onSurface = DefaultText,
+    primary = DefaultAccent,
+    secondary = DefaultHighlight
+)
+
+private val GreyScheme = lightColorScheme(
+    background = GreyBackground,
+    surface = GreySurface,
+    onBackground = GreyText,
+    onSurface = GreyText,
+    primary = GreyAccent,
+    secondary = GreyHighlight
+)
+
+private val BlueScheme = lightColorScheme(
+    background = BlueBackground,
+    surface = BlueSurface,
+    onBackground = BlueText,
+    onSurface = BlueText,
+    primary = BlueAccent,
+    secondary = BlueHighlight
+)
+
+private val RedScheme = lightColorScheme(
+    background = RedBackground,
+    surface = RedSurface,
+    onBackground = RedText,
+    onSurface = RedText,
+    primary = RedAccent,
+    secondary = RedHighlight
+)
+
+private val GreenScheme = lightColorScheme(
+    background = GreenBackground,
+    surface = GreenSurface,
+    onBackground = GreenText,
+    onSurface = GreenText,
+    primary = GreenAccent,
+    secondary = GreenHighlight
+)
+
+private val YellowScheme = lightColorScheme(
+    background = YellowBackground,
+    surface = YellowSurface,
+    onBackground = YellowText,
+    onSurface = YellowText,
+    primary = YellowAccent,
+    secondary = YellowHighlight
+)
+
+private val PinkScheme = lightColorScheme(
+    background = PinkBackground,
+    surface = PinkSurface,
+    onBackground = PinkText,
+    onSurface = PinkText,
+    primary = PinkAccent,
+    secondary = PinkHighlight
+)
+
+@Composable
+fun MyApplicationTheme(
+    state: LauncherState,
+    content: @Composable () -> Unit
+) {
+    val baseScheme = when (state.currentTheme) {
+        AppTheme.DEFAULT -> DefaultScheme
+        AppTheme.GREY -> GreyScheme
+        AppTheme.BLUE -> BlueScheme
+        AppTheme.RED -> RedScheme
+        AppTheme.GREEN -> GreenScheme
+        AppTheme.YELLOW -> YellowScheme
+        AppTheme.PINK -> PinkScheme
+        AppTheme.CUSTOM -> lightColorScheme(
+            background = state.customBgColor?.let { Color(it) } ?: DefaultBackground,
+            surface = state.customBarColor?.let { Color(it) } ?: state.customBgColor?.let { Color(it).copy(alpha=0.7f) } ?: DefaultSurface,
+            onBackground = state.customTextColor?.let { Color(it) } ?: DefaultText,
+            onSurface = state.customTextColor?.let { Color(it) } ?: DefaultText,
+            primary = state.customAccentColor?.let { Color(it) } ?: DefaultAccent,
+            secondary = state.customHighlightColor?.let { Color(it) } ?: DefaultHighlight
+        )
+    }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = if (state.showWallpaper) android.graphics.Color.TRANSPARENT else baseScheme.background.toArgb()
+            window.navigationBarColor = if (state.showWallpaper) android.graphics.Color.TRANSPARENT else baseScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+        }
+    }
+
+    MaterialTheme(
+        colorScheme = baseScheme,
+        typography = Typography,
+        content = content
+    )
+}
