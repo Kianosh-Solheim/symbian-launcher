@@ -816,14 +816,7 @@ fun SkeuomorphicCalculatorIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicClockIcon(modifier: Modifier = Modifier) {
-    var currentTimeMillis by remember { mutableStateOf(System.currentTimeMillis()) }
-
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            currentTimeMillis = System.currentTimeMillis()
-            delay(1000L)
-        }
-    }
+    val currentTimeMillis = rememberTickingTime(1_000L)
 
     val calendar = remember(currentTimeMillis) {
         Calendar.getInstance().apply { timeInMillis = currentTimeMillis }

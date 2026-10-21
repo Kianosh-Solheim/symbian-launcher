@@ -377,7 +377,7 @@ fun SettingsT9Search(state: LauncherState, viewModel: LauncherViewModel, haptic:
 @Composable
 fun SettingsCalendar(state: LauncherState, viewModel: LauncherViewModel, haptic: androidx.compose.ui.hapticfeedback.HapticFeedback) {
     LaunchedEffect(Unit) {
-        viewModel.loadCalendarData()
+        viewModel.loadCalendarData(force = true)
     }
 
     val allSelected = state.selectedCalendarIds == null
@@ -421,7 +421,7 @@ fun SettingsCalendar(state: LauncherState, viewModel: LauncherViewModel, haptic:
                         modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
                     )
                     SettingsMenuItem("Refresh Calendars", Icons.Default.Refresh, haptic) {
-                        viewModel.loadCalendarData()
+                        viewModel.loadCalendarData(force = true)
                     }
                 }
             }

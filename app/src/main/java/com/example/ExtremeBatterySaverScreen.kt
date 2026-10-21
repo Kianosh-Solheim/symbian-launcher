@@ -57,31 +57,26 @@ fun ExtremeBatterySaverScreen(
     var showExitConfirmDialog by remember { mutableStateOf(false) }
 
     // Live clock state
-    var currentTimeString by remember { mutableStateOf("") }
-    var currentDateString by remember { mutableStateOf("") }
-
-    LaunchedEffect(state.is24HourFormat, state.showSeconds, state.dateFormat, state.showWeekday, state.weekdayFormat) {
-        while (true) {
-            val secondsPattern = if (state.showSeconds) ":ss" else ""
-            val timeFmt = if (state.is24HourFormat) "HH:mm$secondsPattern" else "hh:mm$secondsPattern a"
-            currentTimeString = SimpleDateFormat(timeFmt, Locale.getDefault()).format(Date())
-
-            var dFmt = state.dateFormat.pattern
-            if (dFmt.isEmpty()) {
-                val locale = Locale.getDefault()
-                val fmt = android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMMyyyy")
-                dFmt = fmt.replace(Regex("[^dMy]"), " ").trim().replace(Regex("\\s+"), "/")
-                if (dFmt.isEmpty()) dFmt = "dd/MM/yyyy"
-            }
-            if (state.showWeekday) {
-                val wFmt = if (state.weekdayFormat == WeekdayFormat.FULL) "EEEE" else "EEE"
-                dFmt = "$wFmt, $dFmt"
-            }
-            currentDateString = SimpleDateFormat(dFmt.trim(), Locale.getDefault()).format(Date())
-
-            delay(1000)
-        }
+    val now = rememberTickingTime(if (state.showSeconds) 1_000L else 60_000L)
+    val timePattern = remember(state.is24HourFormat, state.showSeconds) {
+        val secondsPattern = if (state.showSeconds) ":ss" else ""
+        if (state.is24HourFormat) "HH:mm$secondsPattern" else "hh:mm$secondsPattern a"
     }
+    val datePattern = remember(state.dateFormat, state.showWeekday, state.weekdayFormat) {
+        var dFmt = state.dateFormat.pattern
+        if (dFmt.isEmpty()) {
+            val fmt = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "dMMMMyyyy")
+            dFmt = fmt.replace(Regex("[^dMy]"), " ").trim().replace(Regex("\\s+"), "/")
+            if (dFmt.isEmpty()) dFmt = "dd/MM/yyyy"
+        }
+        if (state.showWeekday) {
+            val wFmt = if (state.weekdayFormat == WeekdayFormat.FULL) "EEEE" else "EEE"
+            dFmt = "$wFmt, $dFmt"
+        }
+        dFmt.trim()
+    }
+    val currentTimeString = Formatters.format(timePattern, now)
+    val currentDateString = Formatters.format(datePattern, now)
 
     val batteryInfo = rememberBatteryInfo(context)
 

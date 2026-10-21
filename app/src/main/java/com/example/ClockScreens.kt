@@ -86,13 +86,7 @@ fun CombinedClockTab(
     onAddWorldClock: () -> Unit,
     onWorldClockOptions: (WorldClockItem) -> Unit
 ) {
-    var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            currentTime = System.currentTimeMillis()
-            delay(1000)
-        }
-    }
+    val currentTime = rememberTickingTime(1_000L)
     
     val localTz = remember { java.util.TimeZone.getDefault() }
     val localCityName = remember {
@@ -120,7 +114,7 @@ fun CombinedClockTab(
         val dayPattern = if (state.showWeekday) {
             if (state.weekdayFormat == WeekdayFormat.SHORT) "E, " else "EEEE, "
         } else ""
-        java.text.SimpleDateFormat(dayPattern + datePattern, java.util.Locale.getDefault()).format(java.util.Date(currentTime))
+        Formatters.format(dayPattern + datePattern, currentTime)
     }
 
     val getFormattedTime: (String) -> String = { tzId ->
@@ -569,9 +563,11 @@ fun StopwatchTab(state: LauncherState, haptic: HapticFeedback) {
     LaunchedEffect(isRunning) {
         if (isRunning) {
             val start = System.currentTimeMillis() - timeMillis
+            // Frame-synchronised: updates once per display frame and pauses when off-screen,
+            // instead of waking the CPU 100 times a second.
             while (isRunning) {
+                androidx.compose.runtime.withFrameMillis { }
                 timeMillis = System.currentTimeMillis() - start
-                delay(10)
             }
         }
     }

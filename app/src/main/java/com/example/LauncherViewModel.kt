@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 
 enum class AppTheme(val displayName: String) {
@@ -181,10 +182,24 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val state: StateFlow<LauncherState> = _state.asStateFlow()
     private var weatherJob: kotlinx.coroutines.Job? = null
 
+    private var appsReloadJob: kotlinx.coroutines.Job? = null
+    private var contactsReloadJob: kotlinx.coroutines.Job? = null
+    private var lastCalendarLoad = 0L
+
+    // Reload contacts when the address book changes (debounced: sync adapters fire in bursts).
+    private val contactsObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) { reloadContacts() }
+    }
+
     init {
         loadSettings()
-        loadApps()
+        refreshAll()
         startWeatherLoop()
+        try {
+            application.contentResolver.registerContentObserver(
+                android.provider.ContactsContract.Contacts.CONTENT_URI, true, contactsObserver
+            )
+        } catch (_: Exception) { }
         
         viewModelScope.launch {
             NotificationStore.notifications.collect { notifs ->
@@ -280,8 +295,40 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    override fun onCleared() {
+        try { getApplication<Application>().contentResolver.unregisterContentObserver(contactsObserver) } catch (_: Exception) { }
+        super.onCleared()
+    }
+
+    /** Called when apps are installed/removed/updated. Debounced, and reloads only the app list. */
     fun loadApps() {
-        viewModelScope.launch {
+        appsReloadJob?.cancel()
+        appsReloadJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(1_500)
+            val apps = repository.getInstalledApps(iconPackManager, _state.value.currentIconPack, _state.value.individualIconPacks)
+            val pinnedIds = getPinnedAppIds()
+            val pinnedApps = apps.filter { pinnedIds.contains(it.packageName) }.sortedBy { pinnedIds.indexOf(it.packageName) }
+            _state.update { it.copy(
+                allApps = apps,
+                pinnedApps = pinnedApps,
+                availableIconPacks = iconPackManager.getAvailableIconPacks()
+            ) }
+        }
+    }
+
+    private fun reloadContacts() {
+        contactsReloadJob?.cancel()
+        contactsReloadJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(2_000)
+            val fetchedContacts = repository.getContacts()
+            _state.update { it.copy(contacts = fetchedContacts) }
+        }
+    }
+
+    /** Full load: apps, contacts, calendars. Used at start-up and after permissions are granted. */
+    fun refreshAll() {
+        appsReloadJob?.cancel()
+        appsReloadJob = viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             val apps = repository.getInstalledApps(
                 iconPackManager, 
@@ -330,8 +377,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 availableIconPacks = iconPackManager.getAvailableIconPacks(),
                 isLoading = false
             ) }
-
-            loadWeather()
+            lastCalendarLoad = System.currentTimeMillis()
         }
     }
 
@@ -339,18 +385,30 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun startWeatherLoop() {
         weatherJob?.cancel()
         weatherJob = viewModelScope.launch {
+            var first = true
             while (true) {
-                if (!_state.value.weatherUpdateOnlyWhenClicked) {
-                    loadWeather()
-                }
-                kotlinx.coroutines.delay(_state.value.weatherUpdateInterval.minutes * 60 * 1000L)
+                // "Only when clicked" still loads once at start-up so the home screen isn't blank.
+                val ok = if (!_state.value.weatherUpdateOnlyWhenClicked || first) fetchWeather() else true
+                first = false
+                val interval = _state.value.weatherUpdateInterval.minutes * 60 * 1000L
+                // On failure (offline, tunnel, flight mode) retry after 5 minutes instead of a full interval.
+                kotlinx.coroutines.delay(if (ok) interval else minOf(interval, 5 * 60 * 1000L))
             }
         }
     }
 
+    private val weatherMutex = kotlinx.coroutines.sync.Mutex()
+
     fun loadWeather() {
-        viewModelScope.launch {
-            val weatherData = repository.getWeather(_state.value.tempUnit == TempUnit.FAHRENHEIT, _state.value.locationMethod == LocationMethod.GPS, null, _state.value.is24HourFormat)
+        viewModelScope.launch { fetchWeather() }
+    }
+
+    /** Fetches weather; keeps the last good forecast if the request fails. Returns success. */
+    private suspend fun fetchWeather(): Boolean = weatherMutex.withLock {
+            val weatherData = try {
+                repository.getWeather(_state.value.tempUnit == TempUnit.FAHRENHEIT, _state.value.locationMethod == LocationMethod.GPS, null, _state.value.is24HourFormat)
+            } catch (e: Exception) { null }
+            if (weatherData == null) return@withLock false
             
 _state.update { 
     it.copy(
@@ -367,7 +425,7 @@ _state.update {
         weatherWindSpeed = weatherData?.windSpeed
     ) 
 }
-        }
+            true
     }
 
     fun updateSearchQuery(query: String) {
@@ -724,7 +782,11 @@ _state.update { it.copy(hapticIntensity = intensity) }
         _state.update { it.copy(wallpaperTransparency = transparency) }
     }
 
-    fun loadCalendarData() {
+    /** Reloads calendars and today's events. Throttled to once a minute unless [force]. */
+    fun loadCalendarData(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastCalendarLoad < 60_000L) return
+        lastCalendarLoad = now
         viewModelScope.launch {
             val fetchedCalendars = repository.getAvailableCalendars()
             val fetchedEvents = repository.getUpcomingEvents(_state.value.selectedCalendarIds)

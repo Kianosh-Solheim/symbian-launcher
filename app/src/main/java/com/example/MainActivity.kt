@@ -309,115 +309,6 @@ fun rememberBatteryInfo(context: Context): BatteryInfo {
 
 
 @Composable
-fun rememberActiveCallState(context: Context, contacts: List<ContactInfo>): ActiveCallState {
-    var callState by remember { mutableStateOf(ActiveCallState()) }
-    val audioManager = remember {
-        try {
-            context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
-        } catch (e: Exception) {
-            null
-        }
-    }
-    
-    var telephonyCallActive by remember { mutableStateOf(false) }
-    var telephonyNumber by remember { mutableStateOf<String?>(null) }
-    
-    val voipCall by VoipCallMonitor.voipCallState.collectAsState()
-    
-    LaunchedEffect(telephonyCallActive, telephonyNumber, voipCall) {
-        while(true) {
-            var isActive = false
-            var cName: String? = null
-            var cPhoto: String? = null
-            var startTime = 0L
-            var hIntent: android.app.PendingIntent? = null
-            val isSpeaker = audioManager?.isSpeakerphoneOn ?: false
-            
-            if (telephonyCallActive) {
-                isActive = true
-                if (!telephonyNumber.isNullOrEmpty()) {
-                    val normalized = telephonyNumber!!.replace(Regex("[^0-9+]"), "")
-                    val match = contacts.find { it.phoneNumbers.any { p -> p.normalizedNumber.endsWith(normalized) || normalized.endsWith(p.normalizedNumber) } }
-                    if (match != null) {
-                        cName = match.name
-                        cPhoto = match.photoUri
-                    } else {
-                        cName = telephonyNumber // Not in contacts, show number
-                    }
-                }
-                cName = cName ?: "Unknown Caller"
-            } else if (voipCall.isActive) {
-                isActive = true
-                cName = voipCall.contactName
-                startTime = voipCall.startTime
-                hIntent = voipCall.hangUpIntent
-                
-                // Try to find photo by name match
-                val match = contacts.find { it.name.equals(cName, ignoreCase = true) }
-                if (match != null) {
-                    cPhoto = match.photoUri
-                }
-            } else {
-                // Fallback check on audio manager just in case Notification Service missed it
-                val isVoipAudio = audioManager?.let { it.mode == android.media.AudioManager.MODE_IN_COMMUNICATION || it.mode == android.media.AudioManager.MODE_IN_CALL } ?: false
-                if (isVoipAudio) {
-                    isActive = true
-                    cName = "Ongoing Call"
-                }
-            }
-            
-            if (isActive) {
-                if (!callState.isActive) {
-                     callState = ActiveCallState(isActive = true, contactName = cName, photoUri = cPhoto, startTime = if(startTime > 0) startTime else System.currentTimeMillis(), isSpeakerOn = isSpeaker, hangUpIntent = hIntent)
-                } else {
-                     callState = callState.copy(isSpeakerOn = isSpeaker, contactName = cName ?: callState.contactName, photoUri = cPhoto ?: callState.photoUri, hangUpIntent = hIntent ?: callState.hangUpIntent)
-                }
-            } else {
-                callState = ActiveCallState()
-            }
-            
-            kotlinx.coroutines.delay(1000)
-        }
-    }
-    
-    DisposableEffect(context) {
-        val telephonyManager = try {
-            context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-        } catch (e: Exception) {
-            null
-        }
-        
-        val listener = object : PhoneStateListener() {
-            override fun onCallStateChanged(state: Int, phoneNumber: String?) {
-                when (state) {
-                    TelephonyManager.CALL_STATE_OFFHOOK -> {
-                        telephonyCallActive = true
-                        if (!phoneNumber.isNullOrEmpty()) {
-                            telephonyNumber = phoneNumber
-                        }
-                    }
-                    TelephonyManager.CALL_STATE_IDLE -> {
-                        telephonyCallActive = false
-                        telephonyNumber = null
-                    }
-                }
-            }
-        }
-        try {
-            telephonyManager?.listen(listener, PhoneStateListener.LISTEN_CALL_STATE)
-        } catch (e: Exception) { }
-        
-        onDispose {
-            try {
-                telephonyManager?.listen(listener, PhoneStateListener.LISTEN_NONE)
-            } catch (e: Exception) {}
-        }
-    }
-    return callState
-}
-
-
-@Composable
 fun rememberSignalLevel(context: Context): Int {
     var level by remember { mutableIntStateOf(4) }
     DisposableEffect(context) {
@@ -456,13 +347,7 @@ fun rememberSignalLevel(context: Context): Int {
 
 @Composable
 fun ClassicClockWidget(state: LauncherState, modifier: Modifier = Modifier, clockSize: androidx.compose.ui.unit.Dp = 120.dp) {
-    var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            currentTime = System.currentTimeMillis()
-            delay(1000)
-        }
-    }
+    val currentTime = rememberTickingTime(1_000L)
     
     Box(
         modifier = modifier
@@ -615,8 +500,9 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) {
-        viewModel.loadApps()
+    ) { results ->
+        // Only reload if something was actually newly granted.
+        if (results.values.any { it }) viewModel.refreshAll()
     }
     
     val view = LocalView.current
@@ -625,6 +511,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 viewModel.loadCalendarData()
+                SymbianNotificationService.ensureConnected(context)
                 val window = (context as? ComponentActivity)?.window
                 if (window != null) {
                     val insetsController = WindowCompat.getInsetsController(window, view)
@@ -670,7 +557,11 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             perms.add(android.Manifest.permission.BLUETOOTH_CONNECT)
         }
-        permissionLauncher.launch(perms.toTypedArray())
+        // Ask only for what is still missing; avoids a redundant full reload on every start.
+        val missing = perms.filter {
+            androidx.core.content.ContextCompat.checkSelfPermission(context, it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray())
     }
 
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -1581,13 +1472,7 @@ fun AgendaScreen(
 ) {
     val context = LocalContext.current
     val firstItemFocusRequester = remember { FocusRequester() }
-    var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000L)
-            currentTimeMs = System.currentTimeMillis()
-        }
-    }
+    val currentTimeMs = rememberTickingTime(60_000L)
     LaunchedEffect(events) {
         if (events.isNotEmpty()) {
             try { firstItemFocusRequester.requestFocus() } catch(e: Exception) {}
@@ -1634,7 +1519,7 @@ fun AgendaScreen(
                     val now = currentTimeMs
                     val isOngoing = event.isOngoing(now)
                     val timeFmt = if (is24HourFormat) "HH:mm" else "h:mm a"
-                    val timeFormat = java.text.SimpleDateFormat(timeFmt, java.util.Locale.getDefault())
+                    val timeFormat = Formatters.get(timeFmt)
 
                     Row(
                         modifier = Modifier
@@ -1683,7 +1568,7 @@ fun AgendaScreen(
                                     val startStr = timeFormat.format(java.util.Date(event.dtStart))
                                     "$startStr • $startsIn"
                                 } else {
-                                    val format = java.text.SimpleDateFormat("MMM d, $timeFmt", java.util.Locale.getDefault())
+                                    val format = Formatters.get("MMM d, $timeFmt")
                                     val startStr = format.format(java.util.Date(event.dtStart))
                                     "$startStr • $startsIn"
                                 }
@@ -3429,7 +3314,7 @@ fun NotificationsView(
                         if (sbn.postTime > 0) {
                             Spacer(modifier = Modifier.width(6.dp))
                             val timeStr = remember(sbn.postTime) {
-                                java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(sbn.postTime))
+                                Formatters.get("HH:mm").format(java.util.Date(sbn.postTime))
                             }
                             Text(
                                 text = timeStr,
@@ -3682,18 +3567,12 @@ fun HubView(
     val emailNotifs = displayNotifs.filter { MessagingUtils.isEmailNotification(it, emailApps) }
     val generalNotifs = displayNotifs.filter { !MessagingUtils.isMessageNotification(it, messagingApps) && !MessagingUtils.isEmailNotification(it, emailApps) }
     
-    var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000L)
-            currentTimeMs = System.currentTimeMillis()
-        }
-    }
+    val currentTimeMs = rememberTickingTime(60_000L)
 
     val firstEvent = state.todayEvents.firstOrNull()
     val now = currentTimeMs
     val timeFmt = if (state.is24HourFormat) "HH:mm" else "h:mm a"
-    val timeFormat = java.text.SimpleDateFormat(timeFmt, java.util.Locale.getDefault())
+    val timeFormat = Formatters.get(timeFmt)
     
     val eventText = if (firstEvent == null) {
         "No more entries today"
@@ -3724,7 +3603,7 @@ fun HubView(
             val dateStr = if (firstEvent.dtStart in tomorrowStart.timeInMillis..tomorrowEnd.timeInMillis) {
                 "Tomorrow"
             } else {
-                java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault()).format(java.util.Date(firstEvent.dtStart))
+                Formatters.get("MMM d").format(java.util.Date(firstEvent.dtStart))
             }
             "No more entries todaynNext: $dateStr, $timeStr — ${firstEvent.title}"
         }
@@ -3931,39 +3810,28 @@ fun DashedDivider() {
 fun SymbianTopBar(state: LauncherState, batteryInfo: BatteryInfo, signalLevel: Int, onWeatherClick: () -> Unit, onClockClick: () -> Unit = {}) {
     if (!state.showLauncherStatusBar) return
     
-    var currentTime by remember { mutableStateOf("") }
-    var currentDate by remember { mutableStateOf("") }
-    
-    LaunchedEffect(state.is24HourFormat, state.showSeconds, state.dateFormat, state.showWeekday, state.weekdayFormat, state.showTime, state.showDate) {
-        while(true) {
-            if (state.showTime) {
-                val secondsPattern = if (state.showSeconds) ":ss" else ""
-                val timeFmt = if (state.is24HourFormat) "HH:mm$secondsPattern" else "hh:mm$secondsPattern a"
-                currentTime = SimpleDateFormat(timeFmt, Locale.getDefault()).format(Date())
-            } else {
-                currentTime = ""
-            }
-            
-            if (state.showDate) {
-                var dFmt = state.dateFormat.pattern
-                if (dFmt.isEmpty()) {
-                    // System Default (short)
-                    val locale = Locale.getDefault()
-                    val fmt = android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMMyyyy")
-                    dFmt = fmt.replace(Regex("[^dMy]"), " ").trim().replace(Regex("s+"), "/") // Rough approximation
-                    if(dFmt.isEmpty()) dFmt = "dd/MM/yyyy"
-                }
-                if (state.showWeekday) {
-                    val wFmt = if (state.weekdayFormat == WeekdayFormat.FULL) "EEEE" else "EEE"
-                    dFmt = "$wFmt $dFmt"
-                }
-                currentDate = SimpleDateFormat(dFmt.trim(), Locale.getDefault()).format(Date())
-            } else {
-                currentDate = ""
-            }
-            delay(1000)
-        }
+    // Tick each second only when seconds are displayed; otherwise once a minute.
+    val now = rememberTickingTime(if (state.showTime && state.showSeconds) 1_000L else 60_000L)
+    val timePattern = remember(state.is24HourFormat, state.showSeconds) {
+        val secondsPattern = if (state.showSeconds) ":ss" else ""
+        if (state.is24HourFormat) "HH:mm$secondsPattern" else "hh:mm$secondsPattern a"
     }
+    val datePattern = remember(state.dateFormat, state.showWeekday, state.weekdayFormat) {
+        var dFmt = state.dateFormat.pattern
+        if (dFmt.isEmpty()) {
+            // System Default (short)
+            val fmt = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "dMMMMyyyy")
+            dFmt = fmt.replace(Regex("[^dMy]"), " ").trim().replace(Regex("s+"), "/") // Rough approximation
+            if (dFmt.isEmpty()) dFmt = "dd/MM/yyyy"
+        }
+        if (state.showWeekday) {
+            val wFmt = if (state.weekdayFormat == WeekdayFormat.FULL) "EEEE" else "EEE"
+            dFmt = "$wFmt $dFmt"
+        }
+        dFmt.trim()
+    }
+    val currentTime = if (state.showTime) Formatters.format(timePattern, now) else ""
+    val currentDate = if (state.showDate) Formatters.format(datePattern, now) else ""
 
     Row(
         modifier = Modifier
@@ -4192,7 +4060,8 @@ fun SymbianTopBar(state: LauncherState, batteryInfo: BatteryInfo, signalLevel: I
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            val elapsedSeconds = (System.currentTimeMillis() - activeCall.startTime) / 1000
+                            val callNow = rememberTickingTime(1_000L)
+                            val elapsedSeconds = ((callNow - activeCall.startTime) / 1000).coerceAtLeast(0)
                             val durationStr = String.format(java.util.Locale.US, "%02d:%02d", elapsedSeconds / 60, elapsedSeconds % 60)
                             Text(
                                 text = durationStr, 
