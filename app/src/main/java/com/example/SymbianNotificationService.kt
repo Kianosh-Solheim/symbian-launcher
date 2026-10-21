@@ -31,7 +31,7 @@ class SymbianNotificationService : NotificationListenerService() {
             if (instance != null) return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 try {
-                    requestRebind(ComponentName(context, SymbianNotificationService::class.java))
+                    NotificationListenerService.requestRebind(ComponentName(context, SymbianNotificationService::class.java))
                 } catch (_: Exception) { }
             }
         }
@@ -51,7 +51,7 @@ class SymbianNotificationService : NotificationListenerService() {
     override fun onListenerDisconnected() {
         ref = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            try { requestRebind(ComponentName(this, SymbianNotificationService::class.java)) } catch (_: Exception) { }
+            try { NotificationListenerService.requestRebind(ComponentName(this, SymbianNotificationService::class.java)) } catch (_: Exception) { }
         }
     }
 

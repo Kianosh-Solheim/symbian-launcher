@@ -185,6 +185,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private var appsReloadJob: kotlinx.coroutines.Job? = null
     private var contactsReloadJob: kotlinx.coroutines.Job? = null
     private var lastCalendarLoad = 0L
+    private val weatherMutex = kotlinx.coroutines.sync.Mutex()
 
     // Reload contacts when the address book changes (debounced: sync adapters fire in bursts).
     private val contactsObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
@@ -396,8 +397,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
-
-    private val weatherMutex = kotlinx.coroutines.sync.Mutex()
 
     fun loadWeather() {
         viewModelScope.launch { fetchWeather() }

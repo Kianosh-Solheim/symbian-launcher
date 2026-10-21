@@ -33,7 +33,7 @@ object CallerLookup {
     suspend fun lookup(context: Context, number: String, contacts: List<ContactInfo>): Caller {
         synchronized(cache) { cache[number]?.let { return it } }
         val result = withContext(Dispatchers.IO) {
-            try {
+            val fromSystem: Caller? = try {
                 val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
                 context.contentResolver.query(
                     uri,
@@ -44,7 +44,8 @@ object CallerLookup {
                 }
             } catch (e: Exception) {
                 null
-            } ?: fallbackMatch(number, contacts)
+            }
+            fromSystem ?: fallbackMatch(number, contacts)
         }
         synchronized(cache) { cache[number] = result }
         return result
