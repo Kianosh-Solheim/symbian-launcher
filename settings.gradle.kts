@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Symbian Launcher"
+rootProject.name = "symbian-launcher"
 
 include(":app")
