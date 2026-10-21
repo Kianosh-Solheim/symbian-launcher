@@ -183,6 +183,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private var weatherJob: kotlinx.coroutines.Job? = null
 
     private var appsReloadJob: kotlinx.coroutines.Job? = null
+    private var refreshJob: kotlinx.coroutines.Job? = null
     private var contactsReloadJob: kotlinx.coroutines.Job? = null
     private var lastCalendarLoad = 0L
     private val weatherMutex = kotlinx.coroutines.sync.Mutex()
@@ -302,10 +303,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     /** Called when apps are installed/removed/updated. Debounced, and reloads only the app list. */
-    fun loadApps() {
+    fun loadApps(debounceMs: Long = 1_500) {
         appsReloadJob?.cancel()
         appsReloadJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(1_500)
+            if (debounceMs > 0) kotlinx.coroutines.delay(debounceMs)
             val apps = repository.getInstalledApps(iconPackManager, _state.value.currentIconPack, _state.value.individualIconPacks)
             val pinnedIds = getPinnedAppIds()
             val pinnedApps = apps.filter { pinnedIds.contains(it.packageName) }.sortedBy { pinnedIds.indexOf(it.packageName) }
@@ -328,8 +329,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     /** Full load: apps, contacts, calendars. Used at start-up and after permissions are granted. */
     fun refreshAll() {
-        appsReloadJob?.cancel()
-        appsReloadJob = viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             val apps = repository.getInstalledApps(
                 iconPackManager, 
@@ -686,7 +687,7 @@ _state.update { it.copy(iconScale = scale) }
         prefs.edit().putString("globalIconPack", packageName).apply()
         
 _state.update { it.copy(currentIconPack = packageName) }
-        loadApps()
+        loadApps(debounceMs = 0)
     }
 
     fun getIconList(iconPackPackageName: String): List<String> = iconPackManager.getIconList(iconPackPackageName)
@@ -698,7 +699,7 @@ _state.update { it.copy(currentIconPack = packageName) }
         saveIndividualIconPacks(currentMap)
         
 _state.update { it.copy(individualIconPacks = currentMap) }
-        loadApps()
+        loadApps(debounceMs = 0)
     }
 
     fun clearIndividualIconPack(appPackageName: String) {
@@ -707,7 +708,7 @@ _state.update { it.copy(individualIconPacks = currentMap) }
         saveIndividualIconPacks(currentMap)
         
 _state.update { it.copy(individualIconPacks = currentMap) }
-        loadApps()
+        loadApps(debounceMs = 0)
     }
 
     private fun saveIndividualIconPacks(map: Map<String, String>) {
