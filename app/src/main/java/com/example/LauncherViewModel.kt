@@ -147,7 +147,7 @@ data class LauncherState(
     val showCalendarSection: Boolean = true,
     val useIconPackForHub: Boolean = false,
     val showLauncherStatusBar: Boolean = true,
-    val showAndroidStatusBar: Boolean = true,
+    val showAndroidStatusBar: Boolean = false,
     val showWallpaper: Boolean = false,
     val wallpaperTransparency: Float = 0.5f,
     val hapticFeedbackEnabled: Boolean = true,
@@ -193,10 +193,28 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         override fun onChange(selfChange: Boolean) { reloadContacts() }
     }
 
+    // When connectivity returns and the forecast is missing or stale, fetch straight away
+    // instead of waiting for the next scheduled update.
+    private val networkCallback = object : android.net.ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: android.net.Network) { refreshWeatherIfStale() }
+    }
+
+    /** Fetches weather if there is none yet or it is older than the update interval. */
+    fun refreshWeatherIfStale() {
+        val st = _state.value
+        if (!st.showWeather) return
+        val age = System.currentTimeMillis() - (st.weatherLastUpdated ?: 0L)
+        if (st.weather == null || age > st.weatherUpdateInterval.minutes * 60_000L) loadWeather()
+    }
+
     init {
         loadSettings()
         refreshAll()
         startWeatherLoop()
+        try {
+            (application.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager)
+                .registerDefaultNetworkCallback(networkCallback)
+        } catch (_: Exception) { }
         try {
             application.contentResolver.registerContentObserver(
                 android.provider.ContactsContract.Contacts.CONTENT_URI, true, contactsObserver
@@ -299,6 +317,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     override fun onCleared() {
         try { getApplication<Application>().contentResolver.unregisterContentObserver(contactsObserver) } catch (_: Exception) { }
+        try {
+            (getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager)
+                .unregisterNetworkCallback(networkCallback)
+        } catch (_: Exception) { }
         super.onCleared()
     }
 
@@ -388,13 +410,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         weatherJob?.cancel()
         weatherJob = viewModelScope.launch {
             var first = true
+            var failures = 0
             while (true) {
                 // "Only when clicked" still loads once at start-up so the home screen isn't blank.
                 val ok = if (!_state.value.weatherUpdateOnlyWhenClicked || first) fetchWeather() else true
                 first = false
                 val interval = _state.value.weatherUpdateInterval.minutes * 60 * 1000L
                 // On failure (offline, tunnel, flight mode) retry after 5 minutes instead of a full interval.
-                kotlinx.coroutines.delay(if (ok) interval else minOf(interval, 5 * 60 * 1000L))
+                failures = if (ok) 0 else failures + 1
+                // On failure retry quickly at first (1, 2, 5 min…), never slower than the normal interval.
+                val retry = when (failures) { 0 -> interval; 1 -> 60_000L; 2 -> 2 * 60_000L; else -> 5 * 60_000L }
+                kotlinx.coroutines.delay(minOf(interval, retry))
             }
         }
     }
@@ -860,7 +886,7 @@ _state.update { it.copy(hapticIntensity = intensity) }
         val useGpsForWeather = false
         val showDate = prefs.getBoolean("showDate", true)
         val showLauncherStatusBar = prefs.getBoolean("showLauncherStatusBar", true)
-        val showAndroidStatusBar = prefs.getBoolean("showAndroidStatusBar", true)
+        val showAndroidStatusBar = prefs.getBoolean("showAndroidStatusBar", false)
         val showWallpaper = prefs.getBoolean("showWallpaper", false)
         val wallpaperTransparency = prefs.getFloat("wallpaperTransparency", 0.5f)
         val showAnalogClock = true

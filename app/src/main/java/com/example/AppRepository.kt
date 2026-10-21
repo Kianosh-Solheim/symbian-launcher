@@ -770,7 +770,7 @@ class AppRepository(private val context: Context) {
                     // If last known location is too old or null, try to get a fresh one
                     if (location == null || (System.currentTimeMillis() - location.time > 10 * 60 * 1000)) {
                         try {
-                            location = kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+                            location = kotlinx.coroutines.withTimeoutOrNull(8_000) { kotlinx.coroutines.suspendCancellableCoroutine { cont ->
                                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                                     locationManager.getCurrentLocation(
                                         android.location.LocationManager.NETWORK_PROVIDER,
@@ -797,7 +797,7 @@ class AppRepository(private val context: Context) {
                                         if (cont.isActive) cont.resume(null)
                                     }, 5000)
                                 }
-                            }
+                            } } ?: location
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -810,26 +810,30 @@ class AppRepository(private val context: Context) {
                 }
             }
 
+            val weatherPrefs = context.getSharedPreferences("weather_cache", Context.MODE_PRIVATE)
             if (lat == null || lon == null) {
-                // Fallback to IP location
-                val ipUrl = java.net.URL("http://ip-api.com/json/")
-                val ipConnection = ipUrl.openConnection() as java.net.HttpURLConnection
-                ipConnection.connectTimeout = 5000
-                ipConnection.readTimeout = 5000
-                val ipText = ipConnection.inputStream.bufferedReader().use { it.readText() }
-                val ipJson = org.json.JSONObject(ipText)
-                if (ipJson.has("lat") && ipJson.has("lon")) {
-                    lat = ipJson.getDouble("lat")
-                    lon = ipJson.getDouble("lon")
-                    if (ipJson.has("city")) locationName = ipJson.getString("city")
+                // Fall back to IP-based location (HTTPS first), then to the last place that worked.
+                val ip = ipLocation()
+                if (ip != null) {
+                    lat = ip.first; lon = ip.second
+                    if (locationName == null) locationName = ip.third
+                } else if (weatherPrefs.contains("lat")) {
+                    lat = weatherPrefs.getFloat("lat", 0f).toDouble()
+                    lon = weatherPrefs.getFloat("lon", 0f).toDouble()
+                    locationName = locationName ?: weatherPrefs.getString("name", null)
                 } else {
+                    android.util.Log.w("SymbianWeather", "No location available")
                     return@withContext null
                 }
             }
+            weatherPrefs.edit().putFloat("lat", lat!!.toFloat()).putFloat("lon", lon!!.toFloat()).apply()
 
             // Call MET Norway
             // https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={lat}&lon={lon}
-            val metUrl = java.net.URL("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=$lat&lon=$lon")
+            // MET Norway asks for at most 4 decimals (better caching, fewer rejections).
+            val latStr = String.format(java.util.Locale.US, "%.4f", lat)
+            val lonStr = String.format(java.util.Locale.US, "%.4f", lon)
+            val metUrl = java.net.URL("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=$latStr&lon=$lonStr")
             val connection = metUrl.openConnection() as java.net.HttpURLConnection
             connection.requestMethod = "GET"
             connection.setRequestProperty("User-Agent", "SymbianLauncher/1.0 github.com/SymbianLauncher")
@@ -1075,9 +1079,33 @@ class AppRepository(private val context: Context) {
             )
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.w("SymbianWeather", "Weather fetch failed", e)
             null
         }
+    }
+
+    /** Approximate location from the public IP. Tries HTTPS providers before the HTTP-only one. */
+    private fun ipLocation(): Triple<Double, Double, String?>? {
+        fun get(url: String): org.json.JSONObject? = try {
+            val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            c.connectTimeout = 5000; c.readTimeout = 5000
+            c.setRequestProperty("User-Agent", "SymbianLauncher/2.0")
+            c.inputStream.bufferedReader().use { org.json.JSONObject(it.readText()) }
+        } catch (e: Exception) {
+            android.util.Log.w("SymbianWeather", "IP lookup failed: $url", e); null
+        }
+        get("https://ipwho.is/")?.let { j ->
+            if (j.optBoolean("success", false) && j.has("latitude"))
+                return Triple(j.getDouble("latitude"), j.getDouble("longitude"), j.optString("city").ifEmpty { null })
+        }
+        get("https://ipapi.co/json/")?.let { j ->
+            if (j.has("latitude") && !j.isNull("latitude"))
+                return Triple(j.getDouble("latitude"), j.getDouble("longitude"), j.optString("city").ifEmpty { null })
+        }
+        get("http://ip-api.com/json/")?.let { j ->
+            if (j.has("lat")) return Triple(j.getDouble("lat"), j.getDouble("lon"), j.optString("city").ifEmpty { null })
+        }
+        return null
     }
     
     fun launchApp(appInfo: AppInfo) {

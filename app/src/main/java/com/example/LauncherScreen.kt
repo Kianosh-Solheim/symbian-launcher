@@ -280,6 +280,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 viewModel.loadCalendarData()
+                viewModel.refreshWeatherIfStale()
                 SymbianNotificationService.ensureConnected(context)
                 val window = (context as? ComponentActivity)?.window
                 if (window != null) {
@@ -990,7 +991,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                     SettingsHomeScreen(state, haptic) { navigateTo(it) }
                 }
                 Screen.SETTINGS_STATUS_BAR -> {
-                    SettingsStatusBar(state, haptic) { navigateTo(it) }
+                    SettingsStatusBar(state, viewModel, haptic) { navigateTo(it) }
                 }
                 Screen.SETTINGS_WEATHER -> {
                     SettingsWeather(state, viewModel, haptic)

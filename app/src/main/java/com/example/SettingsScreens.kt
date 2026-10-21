@@ -244,10 +244,12 @@ fun SettingsHomeScreen(state: LauncherState, haptic: androidx.compose.ui.hapticf
 }
 
 @Composable
-fun SettingsStatusBar(state: LauncherState, haptic: androidx.compose.ui.hapticfeedback.HapticFeedback, onNavigate: (Screen) -> Unit) {
+fun SettingsStatusBar(state: LauncherState, viewModel: LauncherViewModel, haptic: androidx.compose.ui.hapticfeedback.HapticFeedback, onNavigate: (Screen) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
-            SettingsMenuItem("Weather", Icons.Default.ChevronRight, haptic, isFirst = true) { onNavigate(Screen.SETTINGS_WEATHER) }
+            SettingsToggleItem("Show Android status bar", state.showAndroidStatusBar, haptic, isFirst = true) { viewModel.toggleShowAndroidStatusBar() }
+            SettingsToggleItem("Show launcher status bar", state.showLauncherStatusBar, haptic) { viewModel.toggleShowLauncherStatusBar() }
+            SettingsMenuItem("Weather", Icons.Default.ChevronRight, haptic) { onNavigate(Screen.SETTINGS_WEATHER) }
             SettingsMenuItem("Time & Date", Icons.Default.ChevronRight, haptic) { onNavigate(Screen.SETTINGS_TIME_DATE) }
         }
     }
