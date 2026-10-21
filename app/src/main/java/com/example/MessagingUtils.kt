@@ -198,7 +198,7 @@ object MessagingUtils {
         if (emailApps.contains(sbn.packageName)) return true
         val cat = sbn.notification?.category
         if (cat == Notification.CATEGORY_EMAIL) return true
-        val title = (sbn.notification?.extras?.getString(Notification.EXTRA_TITLE)
+        val title = (sbn.notification?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()
             ?: sbn.notification?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: "").lowercase()
         val text = (sbn.notification?.extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: "").lowercase()
         if (title.contains("email") || text.contains("email") || title.contains("inbox") || text.contains("inbox")) {
@@ -215,7 +215,7 @@ object MessagingUtils {
         val notif = sbn.notification ?: return false
         val cat = notif.category
         if (cat == Notification.CATEGORY_MISSED_CALL || cat == Notification.CATEGORY_CALL) {
-            val title = (notif.extras.getString(Notification.EXTRA_TITLE)
+            val title = (notif.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
                 ?: notif.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: "").lowercase()
             val text = (notif.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: "").lowercase()
             if (cat == Notification.CATEGORY_MISSED_CALL || title.contains("missed") || text.contains("missed")) {
@@ -223,7 +223,7 @@ object MessagingUtils {
             }
         }
 
-        val title = (notif.extras.getString(Notification.EXTRA_TITLE)
+        val title = (notif.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
             ?: notif.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: "").lowercase()
         val text = (notif.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: "").lowercase()
         val subText = (notif.extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString() ?: "").lowercase()

@@ -135,7 +135,7 @@ fun isPersistentNotification(sbn: android.service.notification.StatusBarNotifica
     // Persistent system packages / connected device indicators (USB, charging, tethering, debugging)
     val pkg = sbn.packageName.lowercase()
     if (pkg == "android" || pkg == "com.android.systemui" || pkg.startsWith("com.android.providers.media")) {
-        val title = (notif.extras.getString(android.app.Notification.EXTRA_TITLE) 
+        val title = (notif.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() 
             ?: notif.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: "").lowercase()
         val text = (notif.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: "").lowercase()
         val channelId = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) notif.channelId?.lowercase() ?: "" else ""
@@ -378,7 +378,7 @@ fun NotificationsView(
                 }
             }
             
-            val title = sbn.notification.extras.getString(android.app.Notification.EXTRA_TITLE)
+            val title = sbn.notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString()
                 ?: sbn.notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString()
                 ?: appName
             val text = sbn.notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString()

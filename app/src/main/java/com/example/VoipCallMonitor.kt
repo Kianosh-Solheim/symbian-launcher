@@ -30,8 +30,8 @@ object VoipCallMonitor {
 
         if (callNotif != null) {
             val notif = callNotif.notification
-            val title = notif.extras.getString(Notification.EXTRA_TITLE) ?: ""
-            val text = notif.extras.getString(Notification.EXTRA_TEXT) ?: ""
+            val title = notif.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+            val text = notif.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
             val callerName = if (title.isNotEmpty()) title else if (text.isNotEmpty()) text else "VoIP Call"
 
             // Get start time from notification
