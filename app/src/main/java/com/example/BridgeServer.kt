@@ -132,25 +132,11 @@ class BridgeServer(
         try {
             raw.soTimeout = 30_000
             if (BridgeState.useHttps(context)) {
-                // Look at the first byte: a TLS handshake starts with 0x16. Anything else is plain
-                // HTTP typed into the address bar, which gets redirected to https://.
-                val rawIn = raw.getInputStream()
-                val first = rawIn.read()
-                if (first < 0) return
-                if (first == 0x16) {
-                    val factory = BridgeTls.sslContext(context).socketFactory
-                    socket = factory.createSocket(raw, java.io.ByteArrayInputStream(byteArrayOf(first.toByte())), true)
-                    (socket as javax.net.ssl.SSLSocket).startHandshake()
-                } else {
-                    val plain = BufferedInputStream(java.io.SequenceInputStream(java.io.ByteArrayInputStream(byteArrayOf(first.toByte())), rawIn))
-                    val req = parse(plain, raw.inetAddress) ?: return
-                    val host = req.headers["host"] ?: "${raw.localAddress.hostAddress}:${BridgeState.PORT}"
-                    raw.getOutputStream().apply {
-                        write(("HTTP/1.1 301 Moved Permanently\r\nLocation: https://$host${req.path}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").toByteArray())
-                        flush()
-                    }
-                    return
-                }
+                val factory = BridgeTls.sslContext(context).socketFactory
+                val ssl = factory.createSocket(raw, raw.inetAddress.hostAddress, raw.port, true) as javax.net.ssl.SSLSocket
+                ssl.useClientMode = false
+                ssl.startHandshake()
+                socket = ssl
             }
             socket.soTimeout = 30_000
             val input = BufferedInputStream(socket.getInputStream(), 16 * 1024)
