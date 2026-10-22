@@ -224,6 +224,7 @@ fun SettingsRootView(state: LauncherState, haptic: androidx.compose.ui.hapticfee
         item {
             SettingsMenuItem("Global Settings", Icons.Default.ChevronRight, haptic, isFirst = true) { onNavigate(Screen.SETTINGS_GLOBAL) }
             SettingsMenuItem("Home Screen", Icons.Default.ChevronRight, haptic) { onNavigate(Screen.SETTINGS_HOME_SCREEN) }
+            SettingsMenuItem("Desktop Mode", Icons.Default.ChevronRight, haptic) { onNavigate(Screen.SETTINGS_DESKTOP) }
             SettingsMenuItem("Android System Settings", Icons.Default.Settings, haptic) {
                 val intent = Intent(Settings.ACTION_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

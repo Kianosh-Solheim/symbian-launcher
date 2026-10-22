@@ -451,7 +451,30 @@ _state.update {
         weatherWindSpeed = weatherData?.windSpeed
     ) 
 }
+            publishWeather()
             true
+    }
+
+    /** Shares the current forecast with Desktop Mode. */
+    private fun publishWeather() {
+        val st = _state.value
+        fun fc(f: AppRepository.WeatherForecast) = org.json.JSONObject()
+            .put("time", f.time).put("temp", f.temperature).put("symbol", f.symbolCode)
+            .put("low", f.lowTemp ?: org.json.JSONObject.NULL).put("high", f.highTemp ?: org.json.JSONObject.NULL)
+            .put("precip", f.precipitation ?: org.json.JSONObject.NULL)
+        BridgeState.weather.value = org.json.JSONObject()
+            .put("summary", st.weather ?: "")
+            .put("location", st.weatherLocationName ?: "")
+            .put("temp", st.weatherCurrentTemp)
+            .put("symbol", st.weatherCurrentSymbol)
+            .put("feelsLike", st.weatherFeelsLike ?: org.json.JSONObject.NULL)
+            .put("humidity", st.weatherHumidity ?: org.json.JSONObject.NULL)
+            .put("precip", st.weatherPrecipitation ?: org.json.JSONObject.NULL)
+            .put("wind", st.weatherWindSpeed ?: org.json.JSONObject.NULL)
+            .put("unit", if (st.tempUnit == TempUnit.FAHRENHEIT) "F" else "C")
+            .put("updated", st.weatherLastUpdated ?: 0L)
+            .put("hourly", org.json.JSONArray().apply { st.hourlyForecast.take(24).forEach { put(fc(it)) } })
+            .put("daily", org.json.JSONArray().apply { st.dailyForecast.take(10).forEach { put(fc(it)) } })
     }
 
     fun updateSearchQuery(query: String) {

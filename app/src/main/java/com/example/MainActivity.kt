@@ -80,6 +80,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asImageBitmap
@@ -158,6 +159,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        BridgeService.restoreIfEnabled(this)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         setContent {
             val viewModel: LauncherViewModel = viewModel()
@@ -200,6 +202,15 @@ class MainActivity : ComponentActivity() {
             }
 
             MyApplicationTheme(state = state) {
+                // Share the active theme with Desktop Mode so the browser page matches the phone.
+                val cs = androidx.compose.material3.MaterialTheme.colorScheme
+                LaunchedEffect(cs.background, cs.surface, cs.primary, cs.secondary, cs.onBackground, state.currentFont) {
+                    fun hex(c: androidx.compose.ui.graphics.Color) = String.format("#%06X", 0xFFFFFF and c.toArgb())
+                    BridgeState.theme.value = mapOf(
+                        "background" to hex(cs.background), "surface" to hex(cs.surface), "text" to hex(cs.onBackground),
+                        "accent" to hex(cs.primary), "highlight" to hex(cs.secondary), "font" to state.currentFont.name
+                    )
+                }
                 val currentDensity = androidx.compose.ui.platform.LocalDensity.current
                 androidx.compose.runtime.CompositionLocalProvider(
                     LocalSymbianSoundsEnabled provides state.symbianSoundsEnabled,
@@ -226,7 +237,7 @@ enum class Screen {
     WALLET, WALLET_PASS_DETAIL, CLOCK, CALCULATOR,
     ALARM_EDIT, ALARM_OPTIONS, WORLD_CLOCK_SEARCH, WORLD_CLOCK_OPTIONS,
     SETTINGS_ROOT, SETTINGS_HOME_SCREEN, SETTINGS_ICON_PACK, 
-    SETTINGS_STATUS_BAR, SETTINGS_WEATHER, SETTINGS_TIME_DATE,
+    SETTINGS_STATUS_BAR, SETTINGS_WEATHER, SETTINGS_TIME_DATE, SETTINGS_DESKTOP,
     SETTINGS_HOME_CONTENT, SETTINGS_T9_SEARCH, SETTINGS_PINNED_APPS, SETTINGS_REORDER_PINNED, SETTINGS_MESSAGES, SETTINGS_REORDER_MESSAGES, SETTINGS_EMAIL, SETTINGS_REORDER_EMAIL, SETTINGS_CALENDAR, SETTINGS_GLOBAL, SETTINGS_CUSTOM_THEME,
     // Old screens to keep for potential other flows if needed (or remove if fully replaced)
     SETTINGS_QUICK_INFO, SETTINGS_MANAGE_APPS, SETTINGS_MESSAGING_APPS, SETTINGS_LOOK_AND_FEEL

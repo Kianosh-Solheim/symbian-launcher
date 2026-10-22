@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Symbian Desktop</title>
+<style>
+:root {
+  --bg: #0066CC; --surface: #005080; --text: #FFFFFF; --accent: #00CCCC; --hl: #FDD835;
+  --hl-top: color-mix(in srgb, var(--hl) 60%, white);
+  --bg-top: color-mix(in srgb, var(--bg) 80%, white);
+  --bg-bottom: color-mix(in srgb, var(--bg) 65%, black);
+  --panel: color-mix(in srgb, var(--surface) 70%, transparent);
+  --line: color-mix(in srgb, var(--text) 28%, transparent);
+  --muted: color-mix(in srgb, var(--text) 68%, transparent);
+  --bad: #ff5a4f; --bad-text: #ffb3ad; --good: #6fe36f;
+  --font: "Nokia Sans S60", "Nokia Sans", "Nokia Pure Text", Tahoma, "Segoe UI", Verdana, sans-serif;
+  --shadow: 1px 1px 2px rgba(0,0,0,.65);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font: 15px/1.35 var(--font); color: var(--text);
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 35%, var(--bg-bottom) 100%) fixed;
+  overflow: hidden;
+}
+button, input, textarea { font: inherit; color: inherit; }
+a { color: var(--accent); }
+.hidden { display: none !important; }
+
+/* ── App frame ─────────────────────────────── */
+#app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+.status {
+  display: flex; align-items: center; gap: 18px; padding: 6px 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 75%, white) 0%, var(--surface) 55%, color-mix(in srgb, var(--surface) 80%, black) 100%);
+  border-bottom: 1px solid rgba(0,0,0,.35); text-shadow: var(--shadow);
+}
+.signal { display: flex; align-items: flex-end; gap: 2px; height: 18px; }
+.signal i { width: 4px; background: var(--text); opacity: .25; border-radius: 1px; }
+.signal i.on { opacity: 1; }
+.signal i:nth-child(1){height:5px}.signal i:nth-child(2){height:9px}.signal i:nth-child(3){height:13px}.signal i:nth-child(4){height:18px}
+.status .op { font-weight: bold; }
+.status .grow { flex: 1; }
+.status .clock { font-weight: bold; font-size: 20px; letter-spacing: .5px; }
+.battery { display: flex; align-items: center; gap: 6px; }
+.battery .cell { width: 30px; height: 14px; border: 2px solid var(--text); border-radius: 2px; position: relative; padding: 1px; }
+.battery .cell::after { content: ""; position: absolute; right: -5px; top: 3px; width: 3px; height: 4px; background: var(--text); }
+.battery .fill { height: 100%; background: var(--good); }
+.battery.low .fill { background: var(--bad); }
+.link-state { font-size: 13px; color: var(--muted); }
+.link-state.off { color: var(--hl); }
+.wx-mini { display: flex; align-items: center; gap: 4px; }
+
+.body { display: grid; grid-template-columns: 210px 1fr; min-height: 0; }
+nav { background: var(--panel); border-right: 1px solid rgba(0,0,0,.3); overflow-y: auto; padding: 6px 0; }
+nav button {
+  display: flex; width: 100%; align-items: center; gap: 10px; padding: 9px 14px; border: 0; background: none;
+  text-align: left; cursor: pointer; font-weight: bold; text-shadow: var(--shadow); font-size: 16px;
+}
+nav button svg { width: 22px; height: 22px; flex: none; fill: var(--accent); filter: drop-shadow(1px 1px 1px rgba(0,0,0,.5)); }
+nav button .badge { margin-left: auto; }
+.sel, nav button.active, nav button:focus-visible, .row:focus-visible, .row.active {
+  background: linear-gradient(180deg, var(--hl-top) 0%, var(--hl-top) 50%, var(--hl) 50.1%, var(--hl) 100%);
+  color: #000; text-shadow: none; outline: none; border-radius: 4px;
+}
+nav button.active svg, .row.active svg { fill: #000; filter: none; }
+.badge { background: var(--bad); color: #fff; border-radius: 10px; padding: 0 7px; font-size: 12px; min-width: 20px; text-align: center; text-shadow: none; }
+
+main { display: grid; min-height: 0; overflow: hidden; }
+.view { display: grid; min-height: 0; overflow: hidden; }
+.split { grid-template-columns: minmax(260px, 360px) 1fr; }
+.pane { min-height: 0; overflow-y: auto; }
+.pane + .pane { border-left: 1px solid rgba(0,0,0,.25); }
+.title {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-weight: bold; font-size: 18px;
+  text-shadow: var(--shadow); position: sticky; top: 0; z-index: 2;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 85%, white), var(--bg));
+  border-bottom: 1px dashed var(--line);
+}
+.title .grow { flex: 1; }
+.search { width: 100%; padding: 7px 10px; border-radius: 4px; border: 1px solid rgba(0,0,0,.4); background: rgba(255,255,255,.92); color: #000; }
+.toolbar { padding: 8px 14px; display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px dashed var(--line); }
+
+.row {
+  display: flex; gap: 10px; align-items: center; padding: 9px 14px; cursor: pointer;
+  border-bottom: 1px dashed var(--line); text-shadow: var(--shadow); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left;
+}
+.row .main { flex: 1; min-width: 0; }
+.row .name, .row .sub { display: block; }
+.row .name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .sub { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.active .sub { color: #222; }
+.row .meta { font-size: 12px; color: var(--muted); text-align: right; flex: none; }
+.row.active .meta { color: #222; }
+.avatar {
+  width: 38px; height: 38px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: bold;
+  color: #fff; text-shadow: var(--shadow); border: 2px solid rgba(255,255,255,.7); overflow: hidden; background-size: cover;
+}
+.appicon { width: 34px; height: 34px; border-radius: 6px; flex: none; }
+.empty { padding: 30px 20px; text-align: center; color: var(--muted); }
+
+.btn {
+  border: 1px solid rgba(0,0,0,.45); border-radius: 5px; padding: 6px 14px; cursor: pointer; font-weight: bold;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 55%, white) 0%, var(--surface) 55%, color-mix(in srgb, var(--surface) 75%, black));
+  text-shadow: var(--shadow); white-space: nowrap;
+}
+.btn:hover, .btn:focus-visible { background: linear-gradient(180deg, var(--hl-top) 0%, var(--hl-top) 50%, var(--hl) 50.1%); color: #000; text-shadow: none; outline: none; }
+.btn.good { background: linear-gradient(180deg, #7be37b, #2f9e2f); }
+.btn.bad { background: linear-gradient(180deg, #ff8077, #c3261d); }
+.btn.small { padding: 3px 9px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* ── Conversation ─────────────────────────── */
+.convo { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; height: 100%; }
+.bubbles { overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
+.bubble { max-width: 70%; padding: 7px 11px; border-radius: 10px; white-space: pre-wrap; word-wrap: break-word; box-shadow: 1px 1px 3px rgba(0,0,0,.35); }
+.bubble.in { align-self: flex-start; background: rgba(255,255,255,.93); color: #111; border-bottom-left-radius: 2px; }
+.bubble.out { align-self: flex-end; background: linear-gradient(180deg, var(--hl-top), var(--hl)); color: #000; border-bottom-right-radius: 2px; }
+.bubble .t { display: block; font-size: 11px; opacity: .6; margin-top: 2px; text-align: right; }
+.bubble.failed { outline: 2px solid var(--bad); }
+.daysep { align-self: center; font-size: 12px; color: var(--muted); padding: 6px 0; }
+.compose { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px dashed var(--line); align-items: flex-end; background: var(--panel); }
+.compose textarea {
+  flex: 1; resize: none; min-height: 40px; max-height: 160px; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid rgba(0,0,0,.4); background: #fff; color: #000;
+}
+.counter { font-size: 12px; color: var(--muted); min-width: 64px; text-align: right; }
+.recipient { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px dashed var(--line); position: relative; }
+.suggest { position: absolute; left: 14px; right: 14px; top: 100%; z-index: 5; background: var(--surface); border: 1px solid rgba(0,0,0,.5); max-height: 260px; overflow-y: auto; }
+
+/* ── Home dashboard ───────────────────────── */
+.home { overflow-y: auto; padding: 18px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); align-content: start; }
+.card { background: var(--panel); border: 1px solid rgba(0,0,0,.3); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+.card h3 { margin: 0; padding: 8px 12px; font-size: 15px; text-shadow: var(--shadow); border-bottom: 1px dashed var(--line);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 70%, white), var(--surface)); }
+.card .in { padding: 12px; }
+.bigclock { font-size: 64px; font-weight: bold; text-shadow: 2px 2px 3px rgba(0,0,0,.6); line-height: 1; }
+.bigdate { font-size: 18px; color: var(--muted); margin-top: 6px; }
+.wxnow { display: flex; align-items: center; gap: 14px; }
+.wxnow .ic { font-size: 54px; }
+.wxnow .temp { font-size: 44px; font-weight: bold; text-shadow: var(--shadow); }
+.wxstrip { display: flex; gap: 4px; overflow-x: auto; padding-top: 10px; }
+.wxstrip div { flex: none; width: 54px; text-align: center; font-size: 12px; }
+.wxstrip b { display: block; font-size: 20px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; }
+.kv span:nth-child(odd) { color: var(--muted); }
+.meter { height: 8px; background: rgba(0,0,0,.3); border-radius: 4px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Dialer ───────────────────────────────── */
+.dialer { padding: 16px; display: grid; gap: 10px; justify-items: center; }
+.dialer input { width: 100%; max-width: 300px; font-size: 26px; text-align: center; padding: 6px; border-radius: 6px; border: 1px solid rgba(0,0,0,.4); background: #fff; color: #000; }
+.keys { display: grid; grid-template-columns: repeat(3, 72px); gap: 8px; }
+.keys .btn { height: 52px; font-size: 22px; }
+.keys .btn small { display: block; font-size: 10px; font-weight: normal; opacity: .75; }
+
+/* ── Softkeys ─────────────────────────────── */
+.softkeys {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 6px 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 75%, white) 0%, var(--surface) 55%, color-mix(in srgb, var(--surface) 80%, black));
+  border-top: 1px solid rgba(0,0,0,.35);
+}
+.softkeys button { border: 0; background: none; font-weight: bold; font-size: 17px; cursor: pointer; text-shadow: var(--shadow); padding: 4px 8px; }
+.softkeys button:hover { color: var(--hl); }
+.softkeys .r { justify-self: end; }
+.softkeys button:first-child { justify-self: start; }
+.softkeys .c { font-size: 12px; color: var(--muted); text-shadow: none; }
+
+/* ── Overlays ─────────────────────────────── */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; z-index: 50; }
+.dialog {
+  width: min(420px, 92vw); border-radius: 8px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.6);
+  background: linear-gradient(180deg, var(--bg-top), var(--bg) 40%, var(--bg-bottom)); border: 2px solid rgba(255,255,255,.5);
+}
+.dialog h2 { margin: 0; padding: 10px 14px; font-size: 18px; text-shadow: var(--shadow);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 70%, white), var(--surface)); border-bottom: 1px dashed var(--line); }
+.dialog .in { padding: 16px; display: grid; gap: 12px; }
+.dialog .row2 { display: flex; gap: 8px; justify-content: flex-end; }
+.code { font-size: 34px; letter-spacing: 10px; text-align: center; padding: 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,.4); background: #fff; color: #000; width: 100%; }
+.err { color: var(--hl); font-weight: bold; min-height: 1.3em; }
+.callbar { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: linear-gradient(180deg, #2e9e3a, #1b6d24); text-shadow: var(--shadow); }
+.callbar.ringing { animation: pulse 1s infinite alternate; }
+@keyframes pulse { to { background: linear-gradient(180deg, #4fd35d, #23812e); } }
+.toast { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.85); padding: 8px 16px; border-radius: 6px; z-index: 60; }
+.drop { border: 2px dashed var(--line); border-radius: 8px; padding: 26px; text-align: center; color: var(--muted); }
+.drop.over { border-color: var(--hl); color: var(--hl); }
+textarea.note { width: 100%; min-height: 80px; padding: 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,.4); background: #fff; color: #000; resize: vertical; }
+
+@media (max-width: 900px) {
+  .body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  nav { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid rgba(0,0,0,.3); padding: 0; }
+  nav button { width: auto; flex: none; }
+  nav button span.lbl { display: none; }
+  .split { grid-template-columns: 1fr; }
+  .split .pane.detail:not(.open) { display: none; }
+  .split.detailopen .pane.list { display: none; }
+  .status { gap: 10px; }
+  .softkeys .c { display: none; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M3 5h18v12H7l-4 4zM6 8v2h12V8zm0 4v2h9v-2z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M2 4h14v10H6l-4 4zm16 4h4v12l-4-4h-8v-2h8z"/></symbol>
+  <symbol id="i-call" viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4 0-9 2-9 5v3h18v-3c0-3-5-5-9-5z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.8V3a1.5 1.5 0 0 0-3 0v1.2A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v18H4V4h3zm-1 7v11h12V9zm2 2h3v3H8z"/></symbol>
+  <symbol id="i-tool" viewBox="0 0 24 24"><path d="M22 19.6 13.9 11.5A6 6 0 0 0 6.5 3.3l3.9 3.9-2.8 2.8-3.9-3.9a6 6 0 0 0 8.2 7.4l8.1 8.1z"/></symbol>
+</svg>
+
+<div id="app" class="hidden">
+  <header class="status">
+    <div class="signal" id="sig"><i></i><i></i><i></i><i></i></div>
+    <span class="op" id="op">—</span>
+    <span class="link-state" id="link">Connecting…</span>
+    <span class="grow"></span>
+    <span class="wx-mini" id="wxmini"></span>
+    <span class="clock" id="clock">--:--</span>
+    <span class="battery" id="bat"><span id="batpct">--%</span><span class="cell"><span class="fill" id="batfill" style="width:0%"></span></span></span>
+  </header>
+  <div id="callbar" class="callbar hidden"></div>
+  <div class="body">
+    <nav id="nav"></nav>
+    <main id="main"></main>
+  </div>
+  <footer class="softkeys">
+    <button id="skL">Options</button>
+    <span class="c" id="skC">Alt+1–8 sections · / search · Esc back</span>
+    <button id="skR" class="r">Exit</button>
+  </footer>
+</div>
+
+<div id="pair" class="overlay hidden">
+  <div class="dialog">
+    <h2>Connect to phone</h2>
+    <div class="in">
+      <div>On the phone, open <b>Menu → Settings → Desktop Mode</b> and enter the pairing code shown there.</div>
+      <input id="code" class="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+      <div class="err" id="pairerr"></div>
+      <div class="row2"><button class="btn" id="pairbtn">Connect</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+let token = store.get("symbian.token");
+const S = {
+  view: "home", status: null, weather: null, threads: [], thread: null, messages: [], notifs: [], calls: [], contacts: [],
+  agenda: [], media: null, drafts: {}, contact: null, chat: null, newMsg: false, q: "", online: false,
+};
+
+// ───────────── API ─────────────
+async function api(path, body) {
+  const opt = { headers: { "X-Token": token || "" } };
+  if (body !== undefined) { opt.method = "POST"; opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
+  const r = await fetch("/api/" + path, opt);
+  if (r.status === 401) { showPair(); throw new Error("not paired"); }
+  return r.json();
+}
+const q = s => encodeURIComponent(s);
+function toast(msg) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+async function act(path, body, okMsg) {
+  try { const r = await api(path, body); if (r.ok === false) toast(r.error || "Failed"); else if (okMsg) toast(okMsg); return r; }
+  catch (e) { toast("Phone not reachable"); return { ok: false }; }
+}
+
+// ───────────── Formatting ─────────────
+const pad = n => String(n).padStart(2, "0");
+const hm = t => { const d = new Date(t); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+function when(t) {
+  const d = new Date(t), now = new Date(), y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString()) return hm(t);
+  if (d.toDateString() === y.toDateString()) return "Yesterday";
+  if (now - d < 6 * 864e5) return d.toLocaleDateString(undefined, { weekday: "short" });
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+const dur = s => s >= 3600 ? `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}` : `${Math.floor(s / 60)}:${pad(s % 60)}`;
+const initials = n => (String(n || "?").trim().split(/\s+/).map(w => w[0]).filter(c => /\p{L}/u.test(c)).slice(0, 2).join("") || "#").toUpperCase();
+function hue(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+const avatar = (name, img) => `<span class="avatar" style="background-color:hsl(${hue(name)} 45% 40%);${img ? `background-image:url('${img}')` : ""}">${img ? "" : esc(initials(name))}</span>`;
+function wxIcon(sym) {
+  sym = String(sym || "");
+  const night = sym.includes("night");
+  if (sym.includes("thunder")) return "⛈️";
+  if (sym.includes("snow")) return "❄️";
+  if (sym.includes("sleet")) return "🌨️";
+  if (sym.includes("rain")) return "🌧️";
+  if (sym.includes("fog")) return "🌫️";
+  if (sym.includes("partlycloudy")) return night ? "☁️" : "⛅";
+  if (sym.includes("fair")) return night ? "🌙" : "🌤️";
+  if (sym.includes("clearsky")) return night ? "🌙" : "☀️";
+  if (sym.includes("cloudy")) return "☁️";
+  return "🌡️";
+}
+const icon = id => `<svg><use href="#i-${id}"/></svg>`;
+
+// ───────────── Navigation ─────────────
+const SECTIONS = [
+  ["home", "Home", "home"], ["messages", "Messages", "msg"], ["chats", "Chats", "chat"], ["calls", "Calls", "call"],
+  ["contacts", "Contacts", "person"], ["notifications", "Notifications", "bell"], ["agenda", "Agenda", "cal"], ["tools", "Tools", "tool"],
+];
+function badges() {
+  const unread = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
+  const chats = chatList().length;
+  const seen = Number(store.get("symbian.callsSeen") || 0);
+  const missed = S.calls.filter(c => c.type === "missed" && c.date > seen).length;
+  return { messages: unread, chats, notifications: S.notifs.length, calls: missed };
+}
+function renderNav() {
+  const b = badges();
+  $("#nav").innerHTML = SECTIONS.map(([id, label, ic], i) =>
+    `<button data-go="${id}" class="${S.view === id ? "active" : ""}" title="${label} (Alt+${i + 1})">${icon(ic)}<span class="lbl">${label}</span>${b[id] ? `<span class="badge">${b[id]}</span>` : ""}</button>`).join("");
+}
+function go(view) {
+  S.view = view; S.q = "";
+  if (view === "calls") store.set("symbian.callsSeen", String(Date.now()));
+  render(); load(view);
+  document.title = (SECTIONS.find(s => s[0] === view)?.[1] || "") + " · Symbian Desktop";
+}
+function load(view) {
+  if (view === "home") { refresh("notifications"); refresh("threads"); refresh("agenda"); refresh("media"); refresh("calls"); }
+  if (view === "messages") { refresh("threads"); if (S.thread) openThread(S.thread.thread, S.thread); }
+  if (view === "chats" || view === "notifications") refresh("notifications");
+  if (view === "calls") { refresh("calls"); refresh("contacts"); }
+  if (view === "contacts") refresh("contacts");
+  if (view === "agenda") refresh("agenda");
+}
+async function refresh(what) {
+  try {
+    if (what === "threads") S.threads = await api("threads");
+    if (what === "notifications") S.notifs = await api("notifications");
+    if (what === "calls") S.calls = await api("calls");
+    if (what === "contacts" && !S.contacts.length) S.contacts = await api("contacts");
+    if (what === "contacts!") S.contacts = await api("contacts");
+    if (what === "agenda") S.agenda = await api("agenda");
+    if (what === "media") S.media = await api("media");
+    if (what === "weather") S.weather = await api("weather");
+    if (what === "status") S.status = await api("status");
+    render();
+  } catch (e) { /* offline; SSE reconnect will retry */ }
+}
+
+// ───────────── Rendering ─────────────
+function setSoftkeys(left, leftFn, right = "Back", rightFn = () => back()) {
+  const L = $("#skL"), R = $("#skR");
+  L.textContent = left || ""; L.onclick = leftFn || null; L.style.visibility = left ? "visible" : "hidden";
+  R.textContent = right; R.onclick = rightFn;
+}
+function back() {
+  if (S.newMsg) { S.newMsg = false; return render(); }
+  if (S.view === "messages" && S.thread) { S.thread = null; return render(); }
+  if (S.view === "contacts" && S.contact) { S.contact = null; return render(); }
+  if (S.view === "chats" && S.chat) { S.chat = null; return render(); }
+  if (S.view !== "home") return go("home");
+}
+
+function render() {
+  renderStatus(); renderNav();
+  const m = $("#main");
+  const keepScroll = [...m.querySelectorAll(".pane, .bubbles, .home")].map(e => e.scrollTop);
+  const focusedId = document.activeElement?.id; const sel = document.activeElement?.selectionStart;
+  m.innerHTML = VIEWS[S.view]();
+  [...m.querySelectorAll(".pane, .home")].forEach((e, i) => { if (keepScroll[i] != null) e.scrollTop = keepScroll[i]; });
+  const b = m.querySelector(".bubbles"); if (b && b.dataset.stick !== "0") b.scrollTop = b.scrollHeight;
+  if (focusedId) { const f = document.getElementById(focusedId); if (f) { f.focus(); try { if (sel != null) f.setSelectionRange(sel, sel); } catch {} } }
+  wire(m);
+}
+
+function renderStatus() {
+  const st = S.status;
+  if (st) {
+    const lvl = st.signal ?? -1;
+    [...$("#sig").children].forEach((b, i) => b.classList.toggle("on", i < lvl));
+    $("#op").textContent = st.operator || st.device || "";
+    if (st.battery != null) {
+      $("#batpct").textContent = (st.charging ? "⚡" : "") + st.battery + "%";
+      $("#batfill").style.width = st.battery + "%";
+      $("#bat").classList.toggle("low", st.battery <= 15 && !st.charging);
+    }
+    renderCall(st.call);
+  }
+  const w = S.weather;
+  $("#wxmini").innerHTML = w && w.symbol ? `${wxIcon(w.symbol)} <b>${Math.round(w.temp)}°</b>` : "";
+  const l = $("#link"); l.textContent = S.online ? "Connected" : "Reconnecting…"; l.classList.toggle("off", !S.online);
+}
+
+let callTimer = null;
+function renderCall(c) {
+  const bar = $("#callbar");
+  clearInterval(callTimer);
+  if (!c || c.state === "idle") { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden"); bar.classList.toggle("ringing", c.state === "ringing");
+  const who = esc(c.name || c.number || "Unknown");
+  const paint = () => {
+    const t = c.state === "active" && c.since ? " · " + dur(Math.floor((Date.now() - c.since) / 1000)) : "";
+    bar.innerHTML = `${icon("call").replace("<svg>", '<svg style="width:22px;height:22px;fill:#fff">')}
+      <b>${c.state === "ringing" ? "Incoming call" : "In call"}: ${who}</b><span>${t}</span><span style="flex:1"></span>
+      ${c.state === "ringing" ? `<button class="btn good" data-call="answer">Answer</button><button class="btn bad" data-call="end">Reject</button>`
+        : `<button class="btn" data-call="speaker">Speaker</button><button class="btn bad" data-call="end">End call</button>`}`;
+  };
+  paint();
+  if (c.state === "active") callTimer = setInterval(paint, 1000);
+}
+
+const VIEWS = {
+  home() {
+    setSoftkeys("Ring phone", () => act("ring", { on: true }, "Ringing phone for 30 s"), "Exit", () => toast("Close this tab to exit"));
+    const d = new Date(), w = S.weather, st = S.status || {};
+    const unread = S.threads.filter(t => t.unread).slice(0, 4);
+    const media = S.media;
+    return `<div class="home">
+      <div class="card"><h3>Today</h3><div class="in">
+        <div class="bigclock" id="bigclock">${pad(d.getHours())}:${pad(d.getMinutes())}</div>
+        <div class="bigdate">${esc(d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }))}</div>
+      </div></div>
+      <div class="card"><h3>Weather${w && w.location ? " · " + esc(w.location) : ""}</h3><div class="in">
+        ${w && w.symbol ? `<div class="wxnow"><span class="ic">${wxIcon(w.symbol)}</span><span class="temp">${Math.round(w.temp)}°${esc(w.unit || "")}</span>
+          <div class="kv">${w.feelsLike != null ? `<span>Feels like</span><span>${Math.round(w.feelsLike)}°</span>` : ""}
+          ${w.wind != null ? `<span>Wind</span><span>${w.wind} m/s</span>` : ""}${w.humidity != null ? `<span>Humidity</span><span>${Math.round(w.humidity)}%</span>` : ""}
+          ${w.precip != null ? `<span>Rain (1 h)</span><span>${w.precip} mm</span>` : ""}</div></div>
+          <div class="wxstrip">${(w.hourly || []).slice(0, 12).map(h => `<div>${esc(String(h.time).slice(-5))}<b>${wxIcon(h.symbol)}</b>${Math.round(h.temp)}°</div>`).join("")}</div>
+          <div class="wxstrip">${(w.daily || []).slice(0, 7).map(h => `<div>${esc(dayName(h.time))}<b>${wxIcon(h.symbol)}</b>${h.high != null ? Math.round(h.high) + "°" : ""} <span style="opacity:.7">${h.low != null ? Math.round(h.low) + "°" : ""}</span></div>`).join("")}</div>`
+          : `<div class="empty">Waiting for the phone's forecast…</div>`}
+      </div></div>
+      <div class="card"><h3>Messages</h3>${unread.length ? unread.map(t => threadRow(t)).join("") : `<div class="empty">No unread messages</div>`}
+        <div class="in actions"><button class="btn" data-go="messages">Open messages</button><button class="btn" data-new="1">New message</button></div></div>
+      <div class="card"><h3>Agenda</h3>${S.agenda.length ? S.agenda.slice(0, 5).map(agendaRow).join("") : `<div class="empty">Nothing more today</div>`}</div>
+      <div class="card"><h3>Notifications</h3>${S.notifs.length ? S.notifs.slice(0, 5).map(n => notifRow(n, true)).join("") : `<div class="empty">All clear</div>`}</div>
+      <div class="card"><h3>Now playing</h3><div class="in">
+        ${media && media.active ? `<div class="name" style="font-weight:bold">${esc(media.title || "Unknown")}</div><div class="sub" style="color:var(--muted)">${esc([media.artist, media.app].filter(Boolean).join(" · "))}</div>
+          <div class="actions" style="margin-top:10px"><button class="btn" data-media="previous">⏮</button><button class="btn" data-media="toggle">${media.playing ? "⏸ Pause" : "▶ Play"}</button><button class="btn" data-media="next">⏭</button></div>`
+          : `<div class="empty" style="padding:8px">Nothing playing</div>`}
+      </div></div>
+      <div class="card"><h3>Phone</h3><div class="in">
+        <div class="kv"><span>Device</span><span>${esc(st.device || "")}</span><span>Battery</span><span>${st.battery ?? "–"}%${st.charging ? " (charging)" : ""}</span>
+        <span>Storage free</span><span>${st.storageFree ? (st.storageFree / 1e9).toFixed(1) + " GB of " + (st.storageTotal / 1e9).toFixed(0) + " GB" : "–"}</span></div>
+        ${st.storageTotal ? `<div class="meter" style="margin-top:8px"><i style="width:${100 - Math.round(st.storageFree / st.storageTotal * 100)}%"></i></div>` : ""}
+        <div class="actions" style="margin-top:12px"><button class="btn" data-ring="1">Ring phone</button><button class="btn" data-go="tools">Send to phone…</button></div>
+      </div></div>
+    </div>`;
+  },
+
+  messages() {
+    const list = S.threads.filter(t => !S.q || (t.name + " " + t.address + " " + t.snippet).toLowerCase().includes(S.q.toLowerCase()));
+    setSoftkeys("New message", () => { S.newMsg = true; S.thread = null; render(); $("#to")?.focus(); });
+    const perm = S.status?.permissions;
+    return `<div class="view split ${S.thread || S.newMsg ? "detailopen" : ""}">
+      <div class="pane list">
+        <div class="title">${icon("msg").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Messages</span><button class="btn small" data-new="1">New</button></div>
+        <div class="toolbar"><input class="search" id="search" placeholder="Search messages" value="${esc(S.q)}"></div>
+        ${perm && !perm.sms ? `<div class="empty">SMS access is off on the phone. Turn Desktop Mode off and on again to grant it.</div>` : ""}
+        ${list.length ? list.map(t => threadRow(t)).join("") : `<div class="empty">No conversations</div>`}
+        <div class="empty" style="font-size:13px">RCS and app chats are under <a href="#" data-go="chats">Chats</a>. Full RCS history:
+          <a href="https://messages.google.com/web" target="_blank" rel="noopener">Google Messages for Web</a></div>
+      </div>
+      <div class="pane detail ${S.thread || S.newMsg ? "open" : ""}">${S.newMsg ? newMessage() : S.thread ? conversation() : `<div class="empty">Select a conversation</div>`}</div>
+    </div>`;
+  },
+
+  chats() {
+    const list = chatList();
+    setSoftkeys("Open Google Messages", () => window.open("https://messages.google.com/web", "_blank", "noopener"));
+    const c = S.chat ? list.find(x => x.key === S.chat) : null;
+    return `<div class="view split ${c ? "detailopen" : ""}">
+      <div class="pane list"><div class="title">${icon("chat").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Chats</span></div>
+        <div class="empty" style="font-size:13px;padding:10px 14px">Live chats from RCS, Signal, WhatsApp and other apps, answered through the phone's own notifications.</div>
+        ${list.length ? list.map(n => `<button class="row ${S.chat === n.key ? "active" : ""}" data-chat="${esc(n.key)}">
+          <img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&token=${q(token)}" alt="">
+          <span class="main"><span class="name">${esc(n.title || n.app)}</span><span class="sub">${esc(n.app)} · ${esc(lastText(n))}</span></span>
+          <span class="meta">${when(n.time)}</span></button>`).join("") : `<div class="empty">No open chats</div>`}
+      </div>
+      <div class="pane detail ${c ? "open" : ""}">${c ? chatView(c) : `<div class="empty">Select a chat</div>`}</div>
+    </div>`;
+  },
+
+  calls() {
+    setSoftkeys("Call", () => dial());
+    return `<div class="view split">
+      <div class="pane list"><div class="title">${icon("call").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Call log</span></div>
+        ${S.status?.permissions && !S.status.permissions.calls ? `<div class="empty">Call log access is off on the phone.</div>` : ""}
+        ${S.calls.length ? S.calls.map(c => `<button class="row" data-dial="${esc(c.number)}">
+          ${avatar(c.name)}
+          <span class="main"><span class="name" style="${c.type === "missed" ? "color:var(--bad-text)" : ""}">${esc(c.name)}</span>
+            <span class="sub">${{ incoming: "↙ Incoming", outgoing: "↗ Outgoing", missed: "✕ Missed", rejected: "⊘ Rejected", blocked: "⊘ Blocked" }[c.type] || "Call"}${c.duration ? " · " + dur(c.duration) : ""}</span></span>
+          <span class="meta">${when(c.date)}</span></button>`).join("") : `<div class="empty">No calls</div>`}
+      </div>
+      <div class="pane"><div class="title"><span class="grow">Dialler</span></div>
+        <div class="dialer">
+          <input id="dialnum" placeholder="Number" value="${esc(S.dial || "")}" autocomplete="off">
+          <div class="keys">${[["1", ""], ["2", "abc"], ["3", "def"], ["4", "ghi"], ["5", "jkl"], ["6", "mno"], ["7", "pqrs"], ["8", "tuv"], ["9", "wxyz"], ["*", ""], ["0", "+"], ["#", ""]]
+            .map(([k, s]) => `<button class="btn" data-key="${k}">${k}<small>${s}&nbsp;</small></button>`).join("")}</div>
+          <div class="actions"><button class="btn good" data-dialnow="1">${icon("call").replace("<svg>", '<svg style="width:16px;height:16px;fill:#fff;vertical-align:-3px">')} Call</button>
+          <button class="btn" data-sms-to="1">Text</button><button class="btn" data-key="⌫">⌫</button></div>
+          <div class="empty" style="font-size:13px">The call is placed on the phone; talk through the phone or its headset.</div>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  contacts() {
+    const list = S.contacts.filter(c => !S.q || (c.name + " " + c.numbers.map(n => n.number).join(" ") + " " + c.org).toLowerCase().includes(S.q.toLowerCase()));
+    const c = S.contact ? S.contacts.find(x => x.id === S.contact) : null;
+    setSoftkeys(c && c.numbers[0] ? "Call" : "", c && c.numbers[0] ? () => act("call", { number: c.numbers[0].number }, "Calling…") : null);
+    return `<div class="view split ${c ? "detailopen" : ""}">
+      <div class="pane list"><div class="title">${icon("person").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Contacts</span><span class="sub" style="font-size:13px;color:var(--muted)">${S.contacts.length}</span></div>
+        <div class="toolbar"><input class="search" id="search" placeholder="Search contacts" value="${esc(S.q)}"></div>
+        ${list.length ? list.map(x => `<button class="row ${S.contact === x.id ? "active" : ""}" data-contact="${esc(x.id)}">
+          ${avatar(x.name, x.photo ? `/api/photo?id=${q(x.id)}&token=${q(token)}` : "")}
+          <span class="main"><span class="name">${esc(x.name)}</span><span class="sub">${esc(x.numbers[0]?.number || x.org || "")}</span></span></button>`).join("") : `<div class="empty">No contacts</div>`}
+      </div>
+      <div class="pane detail ${c ? "open" : ""}">${c ? `
+        <div class="title"><span class="grow">${esc(c.name)}</span></div>
+        <div style="display:grid;justify-items:center;padding:20px;gap:8px">
+          <span style="transform:scale(2.3);margin:24px">${avatar(c.name, c.photo ? `/api/photo?id=${q(c.id)}&token=${q(token)}` : "")}</span>
+          <b style="font-size:22px;text-shadow:var(--shadow)">${esc(c.name)}</b>${c.org ? `<span style="color:var(--muted)">${esc(c.org)}</span>` : ""}
+        </div>
+        ${c.numbers.map(n => `<div class="row" style="cursor:default"><span class="main"><span class="name">${esc(n.number)}</span><span class="sub">${esc(n.label)}</span></span>
+          <button class="btn small good" data-callnum="${esc(n.number)}">Call</button><button class="btn small" data-textnum="${esc(n.number)}" data-textname="${esc(c.name)}">Text</button></div>`).join("")}
+        ${c.emails.map(e => `<div class="row" style="cursor:default"><span class="main"><span class="name">${esc(e.address)}</span><span class="sub">${esc(e.label)}</span></span>
+          <a class="btn small" href="mailto:${esc(e.address)}">Email</a></div>`).join("")}
+        ${c.birthday ? `<div class="row" style="cursor:default"><span class="main"><span class="name">${esc(c.birthday)}</span><span class="sub">Birthday</span></span></div>` : ""}
+      ` : `<div class="empty">Select a contact</div>`}</div>
+    </div>`;
+  },
+
+  notifications() {
+    setSoftkeys("Clear all", async () => { await act("notifications/clear", {}); refresh("notifications"); });
+    return `<div class="view"><div class="pane">
+      <div class="title">${icon("bell").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Notifications</span><button class="btn small" data-clearall="1">Clear all</button></div>
+      ${S.status?.permissions && !S.status.permissions.notifications ? `<div class="empty">Notification access is off on the phone.</div>` : ""}
+      ${S.notifs.length ? S.notifs.map(n => notifRow(n, false)).join("") : `<div class="empty">No notifications</div>`}
+    </div></div>`;
+  },
+
+  agenda() {
+    setSoftkeys("");
+    return `<div class="view"><div class="pane"><div class="title">${icon("cal").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Today</span></div>
+      ${S.agenda.length ? S.agenda.map(agendaRow).join("") : `<div class="empty">No more entries today</div>`}</div></div>`;
+  },
+
+  tools() {
+    setSoftkeys("Ring phone", () => act("ring", { on: true }, "Ringing phone for 30 s"));
+    return `<div class="home">
+      <div class="card"><h3>Find my phone</h3><div class="in">
+        <p style="margin-top:0">Rings at full volume for 30 seconds, even when the phone is silent.</p>
+        <div class="actions"><button class="btn" data-ring="1">Ring</button><button class="btn" data-ring="0">Stop</button></div></div></div>
+      <div class="card"><h3>Send to phone</h3><div class="in">
+        <textarea class="note" id="note" placeholder="Text or a link"></textarea>
+        <div class="actions" style="margin-top:8px"><button class="btn" data-send="notify">Show on phone</button><button class="btn" data-send="clip">Copy to phone clipboard</button></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0">Links open on the phone when you tap the notification.</p></div></div>
+      <div class="card"><h3>Upload files</h3><div class="in">
+        <div class="drop" id="drop">Drop files here or <a href="#" id="pick">choose files</a><br><small>Saved to the phone's Downloads folder</small></div>
+        <input type="file" id="files" multiple class="hidden"><div id="upl" style="margin-top:8px;font-size:13px"></div></div></div>
+      <div class="card"><h3>Desktop alerts</h3><div class="in">
+        <p style="margin-top:0">Show a desktop notification for new messages and incoming calls while this tab is in the background.</p>
+        <button class="btn" data-alerts="1">${"Notification" in window && Notification.permission === "granted" ? "Alerts are on" : "Turn on alerts"}</button></div></div>
+      <div class="card"><h3>This browser</h3><div class="in">
+        <p style="margin-top:0">Paired with ${esc(S.status?.device || "the phone")}. To revoke every browser, use <b>Forget paired browsers</b> on the phone.</p>
+        <button class="btn bad" data-unpair="1">Disconnect this browser</button></div></div>
+    </div>`;
+  },
+};
+
+function dayName(s) { const d = new Date(String(s).slice(0, 10) + "T12:00"); return isNaN(d) ? String(s) : d.toLocaleDateString(undefined, { weekday: "short" }); }
+function threadRow(t) {
+  return `<button class="row ${S.thread && S.thread.thread === t.thread ? "active" : ""}" data-thread="${t.thread}">
+    ${avatar(t.name)}<span class="main"><span class="name">${esc(t.name)}</span><span class="sub">${t.outgoing ? "You: " : ""}${esc(t.snippet)}</span></span>
+    <span class="meta">${when(t.date)}${t.unread ? `<br><span class="badge">${t.unread}</span>` : ""}</span></button>`;
+}
+function agendaRow(e) {
+  return `<div class="row" style="cursor:default"><span class="meta" style="min-width:90px;text-align:left;font-size:14px;color:var(--text)">${e.allDay ? "All day" : hm(e.start) + "–" + hm(e.end)}</span>
+    <span class="main"><span class="name">${esc(e.title)}</span></span></div>`;
+}
+function notifRow(n, compact) {
+  return `<div class="row" style="cursor:default;align-items:flex-start">
+    <img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&token=${q(token)}" alt="">
+    <span class="main"><span class="name">${esc(n.title || n.app)}</span>
+      <span class="sub" style="white-space:${compact ? "nowrap" : "pre-wrap"}">${esc(n.text)}</span>
+      ${compact ? "" : `<span class="actions" style="margin-top:6px">
+        ${n.canReply ? `<button class="btn small" data-openchat="${esc(n.key)}">Reply</button>` : ""}
+        ${n.actions.filter(a => !a.reply).map(a => `<button class="btn small" data-naction="${a.index}" data-key="${esc(n.key)}">${esc(a.title)}</button>`).join("")}
+        ${n.clearable ? `<button class="btn small" data-dismiss="${esc(n.key)}">Dismiss</button>` : ""}</span>`}
+    </span><span class="meta">${esc(n.app)}<br>${when(n.time)}</span></div>`;
+}
+function chatList() { return S.notifs.filter(n => n.canReply || n.messaging); }
+function lastText(n) { const m = n.messages && n.messages.length ? n.messages[n.messages.length - 1].text : n.text; return m || ""; }
+
+function smsInfo(text) {
+  const gsm = /^[@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&'()*+,\-./0-9:;<=>?¡A-ZÄÖÑÜ§¿a-zäöñüà^{}\\[~\]|€]*$/.test(text);
+  const len = text.length, single = gsm ? 160 : 70, multi = gsm ? 153 : 67;
+  const parts = len === 0 ? 0 : len <= single ? 1 : Math.ceil(len / multi);
+  return `${len} · ${parts} SMS`;
+}
+function conversation() {
+  const t = S.thread; let last = "";
+  const bubbles = S.messages.map(m => {
+    const day = new Date(m.date).toDateString(); const sep = day !== last ? `<div class="daysep">${esc(new Date(m.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }))}</div>` : "";
+    last = day;
+    return sep + `<div class="bubble ${m.outgoing ? "out" : "in"} ${m.failed ? "failed" : ""}">${esc(m.body)}<span class="t">${hm(m.date)}${m.pending ? " · sending" : ""}${m.failed ? " · failed" : ""}</span></div>`;
+  }).join("");
+  return `<div class="convo">
+    <div class="title">${avatar(t.name)}<span class="grow">${esc(t.name)}<div style="font-size:12px;font-weight:normal;color:var(--muted)">${esc(t.address)}</div></span>
+      <button class="btn small good" data-callnum="${esc(t.address)}">Call</button></div>
+    <div class="bubbles" id="bubbles">${bubbles || `<div class="empty">Loading…</div>`}</div>
+    <div class="compose"><textarea id="reply" placeholder="Text message" rows="1"></textarea><span class="counter" id="counter"></span><button class="btn" data-sendsms="1">Send</button></div>
+  </div>`;
+}
+function newMessage() {
+  return `<div class="convo">
+    <div class="title"><span class="grow">New message</span></div>
+    <div class="recipient"><input class="search" id="to" placeholder="To: name or number" autocomplete="off" value="${esc(S.to || "")}"><div class="suggest hidden" id="suggest"></div></div>
+    <div class="compose" style="border-top:0;align-self:end"><textarea id="reply" placeholder="Text message" rows="3"></textarea><span class="counter" id="counter"></span><button class="btn" data-sendnew="1">Send</button></div>
+  </div>`;
+}
+function chatView(n) {
+  const msgs = n.messages && n.messages.length ? n.messages : [{ text: n.text, sender: n.title, time: n.time }];
+  return `<div class="convo">
+    <div class="title"><img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&token=${q(token)}" alt=""><span class="grow">${esc(n.title || n.app)}<div style="font-size:12px;font-weight:normal;color:var(--muted)">${esc(n.app)}</div></span>
+      ${n.clearable ? `<button class="btn small" data-dismiss="${esc(n.key)}">Dismiss</button>` : ""}</div>
+    <div class="bubbles">${msgs.map(m => `<div class="bubble ${m.sender ? "in" : "out"}">${m.sender && m.sender !== n.title ? `<b>${esc(m.sender)}</b>\n` : ""}${esc(m.text)}<span class="t">${m.time ? hm(m.time) : ""}</span></div>`).join("")}</div>
+    ${n.canReply ? `<div class="compose"><textarea id="reply" placeholder="Reply via ${esc(n.app)}" rows="1"></textarea><button class="btn" data-chatreply="${esc(n.key)}">Send</button></div>`
+      : `<div class="empty">This app doesn't allow replies from notifications.</div>`}
+  </div>`;
+}
+
+async function openThread(id, meta) {
+  S.thread = meta || S.threads.find(t => t.thread === id) || { thread: id, name: "", address: "" };
+  S.newMsg = false;
+  if (!meta || S.messages[0]?.thread !== id) render();
+  try { S.messages = (await api("messages?thread=" + id)).map(m => ({ ...m, thread: id })); } catch {}
+  render(); $("#reply")?.focus();
+}
+function dial() { const n = ($("#dialnum")?.value || S.dial || "").trim(); if (n) act("call", { number: n }, "Calling " + n + "…"); }
+
+// ───────────── Events ─────────────
+function wire(m) {
+  m.querySelectorAll("[data-thread]").forEach(b => b.onclick = () => { if (S.view !== "messages") { S.view = "messages"; } openThread(Number(b.dataset.thread)); });
+  m.querySelectorAll("[data-new]").forEach(b => b.onclick = () => { S.view = "messages"; S.newMsg = true; S.thread = null; render(); refresh("contacts"); $("#to")?.focus(); });
+  m.querySelectorAll("[data-contact]").forEach(b => b.onclick = () => { S.contact = b.dataset.contact; render(); });
+  m.querySelectorAll("[data-chat]").forEach(b => b.onclick = () => { S.chat = b.dataset.chat; render(); $("#reply")?.focus(); });
+  m.querySelectorAll("[data-openchat]").forEach(b => b.onclick = () => { S.chat = b.dataset.openchat; go("chats"); setTimeout(() => $("#reply")?.focus(), 50); });
+  m.querySelectorAll("[data-callnum]").forEach(b => b.onclick = () => act("call", { number: b.dataset.callnum }, "Calling…"));
+  m.querySelectorAll("[data-textnum]").forEach(b => b.onclick = () => startText(b.dataset.textnum));
+  m.querySelectorAll("[data-dial]").forEach(b => b.onclick = () => { S.dial = b.dataset.dial; render(); });
+  m.querySelectorAll("[data-key]:not([data-naction])").forEach(b => b.onclick = () => {
+    const i = $("#dialnum"); const k = b.dataset.key; i.value = k === "⌫" ? i.value.slice(0, -1) : i.value + k; S.dial = i.value; i.focus();
+  });
+  m.querySelectorAll("[data-dialnow]").forEach(b => b.onclick = dial);
+  m.querySelectorAll("[data-sms-to]").forEach(b => b.onclick = () => { const n = ($("#dialnum")?.value || "").trim(); if (n) startText(n); });
+  m.querySelectorAll("[data-dismiss]").forEach(b => b.onclick = async () => { await act("notifications/dismiss", { key: b.dataset.dismiss }); if (S.chat === b.dataset.dismiss) S.chat = null; refresh("notifications"); });
+  m.querySelectorAll("[data-naction]").forEach(b => b.onclick = () => act("notifications/action", { key: b.dataset.key, index: Number(b.dataset.naction) }, "Done"));
+  m.querySelectorAll("[data-clearall]").forEach(b => b.onclick = async () => { await act("notifications/clear", {}); refresh("notifications"); });
+  m.querySelectorAll("[data-media]").forEach(b => b.onclick = () => act("media/" + b.dataset.media, {}));
+  m.querySelectorAll("[data-ring]").forEach(b => b.onclick = () => act("ring", { on: b.dataset.ring === "1" }, b.dataset.ring === "1" ? "Ringing phone for 30 s" : "Stopped"));
+  m.querySelectorAll("[data-send]").forEach(b => b.onclick = async () => {
+    const t = $("#note").value.trim(); if (!t) return;
+    const r = await act(b.dataset.send === "clip" ? "clipboard" : "send", { text: t }, b.dataset.send === "clip" ? "Copied to phone" : "Sent to phone");
+    if (r.ok) $("#note").value = "";
+  });
+  m.querySelectorAll("[data-unpair]").forEach(b => b.onclick = () => { store.del("symbian.token"); token = null; es && es.close(); showPair(); });
+  m.querySelectorAll("[data-alerts]").forEach(b => b.onclick = async () => { if ("Notification" in window) { await Notification.requestPermission(); render(); } });
+  m.querySelectorAll("a[data-go]").forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.go); });
+  m.querySelectorAll("button[data-go]").forEach(a => a.onclick = () => go(a.dataset.go));
+
+  const search = $("#search", m);
+  if (search) search.oninput = () => { S.q = search.value; render(); };
+  const reply = $("#reply", m);
+  if (reply) {
+    const counter = $("#counter", m);
+    const grow = () => { reply.style.height = "auto"; reply.style.height = Math.min(reply.scrollHeight, 160) + "px"; if (counter) counter.textContent = smsInfo(reply.value); };
+    const dk = draftKey(); reply.value = S.drafts[dk] || ""; grow();
+    reply.oninput = () => { S.drafts[dk] = reply.value; grow(); };
+    reply.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); m.querySelector("[data-sendsms],[data-sendnew],[data-chatreply]")?.click(); } };
+  }
+  m.querySelectorAll("[data-sendsms]").forEach(b => b.onclick = () => sendSms(S.thread.address));
+  m.querySelectorAll("[data-sendnew]").forEach(b => b.onclick = () => sendSms(resolveTo($("#to").value)));
+  m.querySelectorAll("[data-chatreply]").forEach(b => b.onclick = async () => {
+    const t = $("#reply").value.trim(); if (!t) return;
+    b.disabled = true; const r = await act("notifications/reply", { key: b.dataset.chatreply, text: t }, "Reply sent");
+    b.disabled = false; if (r.ok) { S.drafts[draftKey()] = ""; $("#reply").value = ""; }
+  });
+  const to = $("#to", m);
+  if (to) {
+    to.oninput = () => {
+      S.to = to.value; const v = to.value.toLowerCase().trim(); const box = $("#suggest");
+      const hits = v ? S.contacts.filter(c => c.name.toLowerCase().includes(v) || c.numbers.some(n => n.number.replace(/\s/g, "").includes(v.replace(/\s/g, "")))).slice(0, 8) : [];
+      box.classList.toggle("hidden", !hits.length);
+      box.innerHTML = hits.flatMap(c => c.numbers.map(n => `<button class="row" data-pick="${esc(n.number)}" data-name="${esc(c.name)}">${avatar(c.name)}<span class="main"><span class="name">${esc(c.name)}</span><span class="sub">${esc(n.number)} ${esc(n.label)}</span></span></button>`)).join("");
+      box.querySelectorAll("[data-pick]").forEach(p => p.onclick = () => { to.value = `${p.dataset.name} <${p.dataset.pick}>`; S.to = to.value; box.classList.add("hidden"); $("#reply").focus(); });
+    };
+  }
+  const drop = $("#drop", m);
+  if (drop) {
+    const files = $("#files", m);
+    $("#pick", m).onclick = e => { e.preventDefault(); files.click(); };
+    files.onchange = () => upload([...files.files]);
+    drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+    drop.ondragleave = () => drop.classList.remove("over");
+    drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); upload([...e.dataTransfer.files]); };
+  }
+  const bub = $(".bubbles", m);
+  if (bub) bub.onscroll = () => { bub.dataset.stick = bub.scrollTop + bub.clientHeight >= bub.scrollHeight - 30 ? "1" : "0"; };
+}
+function draftKey() { return S.view === "chats" ? "chat:" + S.chat : S.newMsg ? "new" : "sms:" + (S.thread && S.thread.thread); }
+function resolveTo(v) { const m = /<([^>]+)>/.exec(v); return (m ? m[1] : v).trim(); }
+function startText(number) {
+  const t = S.threads.find(x => x.address.replace(/\D/g, "").slice(-8) === number.replace(/\D/g, "").slice(-8));
+  S.view = "messages";
+  if (t) { openThread(t.thread, t); } else { S.newMsg = true; S.thread = null; S.to = number; render(); $("#reply")?.focus(); }
+  renderNav();
+}
+async function sendSms(to) {
+  const body = ($("#reply")?.value || "").trim();
+  if (!to || !body) return toast("Enter a recipient and a message");
+  const r = await act("sms", { to, body });
+  if (r.ok) {
+    S.drafts[draftKey()] = ""; if ($("#reply")) $("#reply").value = "";
+    toast("Sending…");
+    if (S.newMsg) { S.newMsg = false; S.to = ""; await refresh("threads"); const t = S.threads.find(x => x.address.replace(/\D/g, "").slice(-8) === to.replace(/\D/g, "").slice(-8)); if (t) openThread(t.thread, t); else render(); }
+  }
+}
+function upload(list) {
+  const out = $("#upl");
+  list.forEach(f => {
+    const line = document.createElement("div"); line.textContent = f.name + " — 0%"; out.appendChild(line);
+    const x = new XMLHttpRequest();
+    x.open("POST", `/api/upload?name=${q(f.name)}&token=${q(token)}`);
+    x.setRequestHeader("Content-Type", f.type || "application/octet-stream");
+    x.upload.onprogress = e => { if (e.lengthComputable) line.textContent = `${f.name} — ${Math.round(e.loaded / e.total * 100)}%`; };
+    x.onload = () => { let r = {}; try { r = JSON.parse(x.responseText); } catch {} line.textContent = r.ok ? `${f.name} — saved to Downloads` : `${f.name} — ${r.error || "failed"}`; };
+    x.onerror = () => line.textContent = f.name + " — failed";
+    x.send(f);
+  });
+}
+
+document.addEventListener("click", e => {
+  const g = e.target.closest("#nav [data-go]"); if (g) go(g.dataset.go);
+  const c = e.target.closest("[data-call]");
+  if (c) { const k = c.dataset.call; act(k === "speaker" ? "call/speaker" : "call/" + k, k === "speaker" ? { on: !S.speaker } : {}); if (k === "speaker") S.speaker = !S.speaker; }
+});
+document.addEventListener("keydown", e => {
+  if (e.altKey && /^[1-8]$/.test(e.key)) { e.preventDefault(); go(SECTIONS[Number(e.key) - 1][0]); return; }
+  const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName);
+  if (e.key === "Escape") { if (typing) document.activeElement.blur(); else back(); return; }
+  if (typing) return;
+  if (e.key === "/") { const s = $("#search"); if (s) { e.preventDefault(); s.focus(); } return; }
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    const rows = [...document.querySelectorAll("main button.row, nav button")];
+    const i = rows.indexOf(document.activeElement);
+    const n = rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
+    if (n) { e.preventDefault(); n.focus(); n.scrollIntoView({ block: "nearest" }); }
+  }
+});
+
+// ───────────── Live stream ─────────────
+let es = null;
+function connect() {
+  es && es.close();
+  es = new EventSource("/api/events?token=" + q(token));
+  es.onopen = () => { S.online = true; renderStatus(); load(S.view); refresh("weather"); refresh("threads"); refresh("notifications"); refresh("calls"); };
+  es.onerror = async () => {
+    S.online = false; renderStatus();
+    try { const h = await (await fetch("/api/hello?token=" + q(token))).json(); if (!h.paired) { es.close(); showPair(); } } catch {}
+  };
+  es.addEventListener("status", e => { S.status = JSON.parse(e.data); renderStatus(); });
+  es.addEventListener("weather", e => { S.weather = JSON.parse(e.data); if (S.view === "home") render(); else renderStatus(); });
+  es.addEventListener("theme", e => applyTheme(JSON.parse(e.data)));
+  es.addEventListener("media", e => { S.media = JSON.parse(e.data); if (S.view === "home") render(); });
+  es.addEventListener("call", e => {
+    const c = JSON.parse(e.data); S.status = { ...(S.status || {}), call: c }; renderCall(c);
+    if (c.state === "ringing") alertUser("Incoming call", c.name || c.number);
+  });
+  es.addEventListener("calls", () => refresh("calls"));
+  es.addEventListener("sms", async () => {
+    const before = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
+    await refresh("threads");
+    const after = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
+    if (after > before) { const t = S.threads.find(x => x.unread); alertUser(t ? t.name : "New message", t ? t.snippet : ""); }
+    if (S.thread) openThread(S.thread.thread, S.thread);
+  });
+  es.addEventListener("sms_status", e => { const r = JSON.parse(e.data); if (!r.ok) toast("Message failed to send"); });
+  es.addEventListener("notifications", () => refresh("notifications"));
+}
+function alertUser(title, body) {
+  if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+    try { new Notification(title, { body, tag: "symbian" }); } catch {}
+  }
+}
+
+function applyTheme(t) {
+  const r = document.documentElement.style;
+  if (t.background) r.setProperty("--bg", t.background);
+  if (t.surface) r.setProperty("--surface", t.surface);
+  if (t.text) r.setProperty("--text", t.text);
+  if (t.accent) r.setProperty("--accent", t.accent);
+  if (t.highlight) r.setProperty("--hl", t.highlight);
+}
+
+// ───────────── Pairing & start ─────────────
+function showPair() {
+  $("#app").classList.add("hidden"); $("#pair").classList.remove("hidden");
+  setTimeout(() => $("#code").focus(), 50);
+}
+async function pair() {
+  const code = $("#code").value.replace(/\D/g, "");
+  if (code.length !== 6) { $("#pairerr").textContent = "Enter the 6-digit code"; return; }
+  try {
+    const r = await (await fetch("/api/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) })).json();
+    if (!r.ok) { $("#pairerr").textContent = r.error || "Wrong code"; return; }
+    token = r.token; store.set("symbian.token", token); $("#code").value = ""; $("#pairerr").textContent = "";
+    start();
+  } catch { $("#pairerr").textContent = "Phone not reachable"; }
+}
+$("#pairbtn").onclick = pair;
+$("#code").onkeydown = e => { if (e.key === "Enter") pair(); };
+$("#code").oninput = e => { if (e.target.value.replace(/\D/g, "").length === 6) pair(); };
+
+async function start() {
+  try {
+    const h = await (await fetch("/api/hello?token=" + q(token || ""))).json();
+    if (!h.paired) return showPair();
+  } catch { return showPair(); }
+  $("#pair").classList.add("hidden"); $("#app").classList.remove("hidden");
+  try { applyTheme(await api("theme")); } catch {}
+  refresh("status"); refresh("weather");
+  go("home");
+  connect();
+}
+setInterval(() => {
+  const d = new Date(); $("#clock").textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
+  const b = $("#bigclock"); if (b) b.textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
+}, 1000);
+start();
+</script>
+</body>
+</html>
