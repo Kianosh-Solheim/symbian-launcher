@@ -48,6 +48,8 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
             add(android.Manifest.permission.CALL_PHONE)
             add(android.Manifest.permission.READ_CALL_LOG)
             add(android.Manifest.permission.READ_CONTACTS)
+            add(android.Manifest.permission.READ_CALENDAR)
+            add(android.Manifest.permission.WRITE_CALENDAR)
             add(android.Manifest.permission.READ_PHONE_STATE)
             add(android.Manifest.permission.ANSWER_PHONE_CALLS)
             if (Build.VERSION.SDK_INT >= 33) add(android.Manifest.permission.POST_NOTIFICATIONS)

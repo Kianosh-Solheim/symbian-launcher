@@ -28,6 +28,7 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.StatFs
+import android.provider.CalendarContract
 import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.MediaStore
@@ -393,6 +394,197 @@ class BridgeData(private val context: Context) {
         events.forEach { e ->
             arr.put(JSONObject().put("title", e.title).put("start", e.dtStart)
                 .put("end", e.getEffectiveEndTime()).put("allDay", e.allDay))
+        }
+        return arr
+    }
+
+    // ───────────────────────────── Calendar ─────────────────────────────
+
+    fun calendars(): JSONArray {
+        val arr = JSONArray()
+        if (!has(android.Manifest.permission.READ_CALENDAR)) return arr
+        val default = defaultCalendarId()
+        try {
+            context.contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                arrayOf(
+                    CalendarContract.Calendars._ID, CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+                    CalendarContract.Calendars.ACCOUNT_NAME, CalendarContract.Calendars.ACCOUNT_TYPE,
+                    CalendarContract.Calendars.CALENDAR_COLOR, CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+                    CalendarContract.Calendars.VISIBLE
+                ), null, null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val id = c.getLong(0)
+                    arr.put(JSONObject()
+                        .put("id", id)
+                        .put("name", c.getString(1) ?: "")
+                        .put("account", c.getString(2) ?: "")
+                        .put("google", c.getString(3) == "com.google")
+                        .put("color", colorHex(c.getInt(4)))
+                        .put("writable", c.getInt(5) >= CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR)
+                        .put("visible", c.getInt(6) == 1)
+                        .put("default", id == default))
+                }
+            }
+        } catch (_: Exception) { }
+        return arr
+    }
+
+    /** The account's own Google calendar if there is one, else the first calendar we may write to. */
+    private fun defaultCalendarId(): Long? {
+        data class Cal(val id: Long, val google: Boolean, val primary: Boolean, val own: Boolean, val writable: Boolean)
+        val cals = mutableListOf<Cal>()
+        try {
+            context.contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                arrayOf(
+                    CalendarContract.Calendars._ID, CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.Calendars.IS_PRIMARY,
+                    CalendarContract.Calendars.ACCOUNT_NAME, CalendarContract.Calendars.OWNER_ACCOUNT,
+                    CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL
+                ), null, null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    cals += Cal(
+                        c.getLong(0), c.getString(1) == "com.google", c.getInt(2) == 1,
+                        c.getString(3) != null && c.getString(3) == c.getString(4),
+                        c.getInt(5) >= CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR
+                    )
+                }
+            }
+        } catch (_: Exception) { }
+        val w = cals.filter { it.writable }
+        return (w.firstOrNull { it.google && it.primary } ?: w.firstOrNull { it.google && it.own }
+            ?: w.firstOrNull { it.google } ?: w.firstOrNull { it.primary } ?: w.firstOrNull())?.id
+    }
+
+    private fun colorHex(c: Int) = String.format("#%06X", 0xFFFFFF and c)
+
+    /** Event occurrences (recurring events expanded) between two instants, from visible calendars. */
+    fun calendarEvents(from: Long, to: Long): JSONArray {
+        val arr = JSONArray()
+        if (!has(android.Manifest.permission.READ_CALENDAR) || to <= from) return arr
+        try {
+            val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+                android.content.ContentUris.appendId(it, from); android.content.ContentUris.appendId(it, to)
+            }.build()
+            context.contentResolver.query(
+                uri,
+                arrayOf(
+                    CalendarContract.Instances.EVENT_ID, CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN,
+                    CalendarContract.Instances.END, CalendarContract.Instances.ALL_DAY, CalendarContract.Instances.EVENT_LOCATION,
+                    CalendarContract.Instances.DESCRIPTION, CalendarContract.Instances.CALENDAR_ID, CalendarContract.Instances.DISPLAY_COLOR,
+                    CalendarContract.Instances.CALENDAR_DISPLAY_NAME, CalendarContract.Instances.RRULE,
+                    CalendarContract.Instances.CALENDAR_ACCESS_LEVEL
+                ),
+                "${CalendarContract.Instances.VISIBLE} = 1", null, "${CalendarContract.Instances.BEGIN} ASC"
+            )?.use { c ->
+                while (c.moveToNext() && arr.length() < 2000) {
+                    arr.put(JSONObject()
+                        .put("id", c.getLong(0))
+                        .put("title", c.getString(1)?.ifBlank { null } ?: "(No title)")
+                        .put("start", c.getLong(2))
+                        .put("end", c.getLong(3))
+                        .put("allDay", c.getInt(4) == 1)
+                        .put("location", c.getString(5) ?: "")
+                        .put("description", c.getString(6) ?: "")
+                        .put("calendarId", c.getLong(7))
+                        .put("color", colorHex(c.getInt(8)))
+                        .put("calendar", c.getString(9) ?: "")
+                        .put("recurring", !c.getString(10).isNullOrBlank())
+                        .put("writable", c.getInt(11) >= CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR))
+                }
+            }
+        } catch (_: Exception) { }
+        return arr
+    }
+
+    /**
+     * Creates or updates an event. Timed events take start/end in epoch ms; all-day events take
+     * date/endDate as yyyy-MM-dd (end inclusive). Google calendars sync to Google automatically.
+     */
+    fun saveEvent(j: JSONObject): JSONObject {
+        if (!has(android.Manifest.permission.WRITE_CALENDAR)) return fail("Calendar write permission not granted on the phone")
+        val title = j.optString("title").trim()
+        if (title.isEmpty()) return fail("Title is required")
+        val allDay = j.optBoolean("allDay")
+        val values = ContentValues()
+        if (allDay) {
+            val utc = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+            val start = try { utc.parse(j.optString("date"))!!.time } catch (_: Exception) { return fail("Invalid date") }
+            val endIncl = try { utc.parse(j.optString("endDate").ifBlank { j.optString("date") })!!.time } catch (_: Exception) { start }
+            values.put(CalendarContract.Events.DTSTART, start)
+            values.put(CalendarContract.Events.DTEND, maxOf(endIncl, start) + 86_400_000L)
+            values.put(CalendarContract.Events.EVENT_TIMEZONE, "UTC")
+            values.put(CalendarContract.Events.ALL_DAY, 1)
+        } else {
+            val start = j.optLong("start"); val end = j.optLong("end")
+            if (start <= 0) return fail("Invalid start time")
+            values.put(CalendarContract.Events.DTSTART, start)
+            values.put(CalendarContract.Events.DTEND, if (end > start) end else start + 3_600_000L)
+            values.put(CalendarContract.Events.EVENT_TIMEZONE, java.util.TimeZone.getDefault().id)
+            values.put(CalendarContract.Events.ALL_DAY, 0)
+        }
+        values.put(CalendarContract.Events.TITLE, title)
+        values.put(CalendarContract.Events.EVENT_LOCATION, j.optString("location"))
+        values.put(CalendarContract.Events.DESCRIPTION, j.optString("description"))
+        val reminder = j.optInt("reminder", -1)
+        values.put(CalendarContract.Events.HAS_ALARM, if (reminder >= 0) 1 else 0)
+        val resolver = context.contentResolver
+        return try {
+            val existing = j.optLong("id", 0L)
+            val eventId: Long
+            if (existing > 0) {
+                if (j.optBoolean("recurring")) return fail("Repeating events can only be edited on the phone")
+                resolver.update(android.content.ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, existing), values, null, null)
+                eventId = existing
+                resolver.delete(CalendarContract.Reminders.CONTENT_URI, "${CalendarContract.Reminders.EVENT_ID} = ?", arrayOf(existing.toString()))
+            } else {
+                val cal = j.optLong("calendarId", 0L).takeIf { it > 0 } ?: defaultCalendarId() ?: return fail("No writable calendar on the phone")
+                values.put(CalendarContract.Events.CALENDAR_ID, cal)
+                val uri = resolver.insert(CalendarContract.Events.CONTENT_URI, values) ?: return fail("Could not create event")
+                eventId = uri.lastPathSegment!!.toLong()
+            }
+            if (reminder >= 0) {
+                resolver.insert(CalendarContract.Reminders.CONTENT_URI, ContentValues().apply {
+                    put(CalendarContract.Reminders.EVENT_ID, eventId)
+                    put(CalendarContract.Reminders.MINUTES, reminder)
+                    put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+                })
+            }
+            ok().put("id", eventId)
+        } catch (e: Exception) { fail("Could not save: ${e.message}") }
+    }
+
+    fun deleteEvent(id: Long): JSONObject {
+        if (!has(android.Manifest.permission.WRITE_CALENDAR)) return fail("Calendar write permission not granted on the phone")
+        return try {
+            val n = context.contentResolver.delete(android.content.ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id), null, null)
+            if (n > 0) ok() else fail("Event not found")
+        } catch (e: Exception) { fail("Could not delete: ${e.message}") }
+    }
+
+    // ───────────────────────────── Birthdays ─────────────────────────────
+
+    /** Contacts with a birthday, soonest first, with days remaining and the age they turn. */
+    fun birthdays(): JSONArray {
+        val list = contactList().mapNotNull { c ->
+            val raw = c.birthday ?: c.events.firstOrNull { it.type == ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY }?.date
+            if (raw.isNullOrBlank()) return@mapNotNull null
+            val f = formatContactDate(raw, isBirthday = true) ?: return@mapNotNull null
+            if (f.daysRemaining < 0) return@mapNotNull null
+            c to f
+        }.sortedBy { it.second.daysRemaining }
+        val arr = JSONArray()
+        list.forEach { (c, f) ->
+            arr.put(JSONObject()
+                .put("id", c.id)
+                .put("name", c.name)
+                .put("photo", c.photoUri != null)
+                .put("date", f.naturalDate)
+                .put("days", f.daysRemaining)
+                .put("turning", Regex("""\d+""").find(f.ageText ?: "")?.value?.toInt() ?: JSONObject.NULL)
+                .put("numbers", JSONArray().apply { c.phoneNumbers.forEach { put(JSONObject().put("number", it.number).put("label", it.label)) } }))
         }
         return arr
     }

@@ -54,6 +54,15 @@ class BridgeService : Service() {
         }
     }
 
+    private var calendarPending = false
+    private val calendarObserver = object : ContentObserver(main) {
+        override fun onChange(selfChange: Boolean) {
+            if (calendarPending) return
+            calendarPending = true
+            main.postDelayed({ calendarPending = false; server?.broadcast("calendar", JSONObject()) }, 1000)
+        }
+    }
+
     private val contactsObserver = object : ContentObserver(main) {
         override fun onChange(selfChange: Boolean) { data.invalidateContacts() }
     }
@@ -120,6 +129,7 @@ class BridgeService : Service() {
             contentResolver.registerContentObserver(Uri.parse("content://sms"), true, smsObserver)
             contentResolver.registerContentObserver(Uri.parse("content://mms-sms/"), true, smsObserver)
             contentResolver.registerContentObserver(android.provider.ContactsContract.Contacts.CONTENT_URI, true, contactsObserver)
+            contentResolver.registerContentObserver(android.provider.CalendarContract.CONTENT_URI, true, calendarObserver)
         } catch (_: Exception) { }
         ContextCompat.registerReceiver(this, batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
         ContextCompat.registerReceiver(this, smsSentReceiver, IntentFilter(ACTION_SMS_SENT), ContextCompat.RECEIVER_NOT_EXPORTED)
@@ -155,6 +165,7 @@ class BridgeService : Service() {
         scope.cancel()
         try { contentResolver.unregisterContentObserver(smsObserver) } catch (_: Exception) { }
         try { contentResolver.unregisterContentObserver(contactsObserver) } catch (_: Exception) { }
+        try { contentResolver.unregisterContentObserver(calendarObserver) } catch (_: Exception) { }
         try { unregisterReceiver(batteryReceiver) } catch (_: Exception) { }
         try { unregisterReceiver(smsSentReceiver) } catch (_: Exception) { }
         try {

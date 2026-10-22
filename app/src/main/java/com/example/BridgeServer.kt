@@ -218,6 +218,13 @@ class BridgeServer(
                 }
             }
             "GET" to "agenda" -> data.agenda()
+            "GET" to "calendars" -> data.calendars()
+            "GET" to "calendar" -> data.calendarEvents(req.query["from"]?.toLongOrNull() ?: 0L, req.query["to"]?.toLongOrNull() ?: 0L)
+            "POST" to "calendar" -> when (seg.getOrNull(1)) {
+                "delete" -> data.deleteEvent(req.json().optLong("id"))
+                else -> data.saveEvent(req.json())
+            }
+            "GET" to "birthdays" -> data.birthdays()
             "GET" to "media" -> data.media()
             "POST" to "media" -> data.mediaCommand(seg.getOrNull(1) ?: "")
             "POST" to "ring" -> data.ringPhone(req.json().optBoolean("on", true))
