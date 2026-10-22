@@ -1369,8 +1369,8 @@ function clipboardView() {
       <label class="switch"><input type="checkbox" id="clipsync" ${c.sync ? "checked" : ""}><i></i> Share the clipboard both ways</label>
       <p class="note-sm">Copy on the phone → it's on this computer's clipboard. Copy on this computer → it's on the phone's.</p>
       ${c.sync ? `<div class="kv" style="margin-top:8px"><span>Phone → computer</span><span>${c.instant ? "Instant ✓" : "When you return to the phone's home screen"}</span>
-        <span>Computer → phone</span><span>${navigator.clipboard?.readText ? "Instant while this tab is open" : "Use \"Send to phone\" below"}</span></div>
-        ${navigator.clipboard?.readText ? `<button class="btn small" id="clipallow" style="margin-top:8px">Allow this page to read the computer's clipboard</button>` : ""}` : ""}
+        <span>Computer → phone</span><span>${silentRead ? "Automatic ✓" : "Press Ctrl+V on this page"}</span></div>
+        ${!silentRead && "permissions" in navigator ? `<p class="note-sm" style="margin-bottom:0">For automatic sending, Chrome, Edge and Vivaldi can be allowed to read the clipboard: <button class="btn small" id="clipallow">Allow once</button></p>` : ""}` : ""}
     </div></div>
     <div class="card"><h3>Phone clipboard</h3><div class="in">
       ${phone ? `<div class="clipnow">${esc(phone.text)}</div><div class="actions" style="margin-top:8px"><button class="btn" data-copytext="${esc(phone.text)}">Copy to this computer</button><span class="note-sm">${when(phone.time)}</span></div>`
@@ -1405,7 +1405,12 @@ function wireClipboard(m) {
   const sw = $("#clipsync", m);
   if (sw) sw.onchange = async () => { S.clip = await act("clipboard/settings", { sync: sw.checked }); setupClipPoll(); render(); };
   const allow = $("#clipallow", m);
-  if (allow) allow.onclick = async () => { try { await navigator.clipboard.readText(); toast("Allowed"); } catch { toast("Not allowed — check the browser's site permissions"); } };
+  if (allow) allow.onclick = async () => {
+    try { await navigator.clipboard.readText(); } catch {}
+    if (await checkSilentRead()) { toast("Allowed — copies on this computer now go to the phone automatically"); setupClipPoll(); }
+    else toast("This browser asks every time, so automatic sending stays off. Use Ctrl+V on this page instead.");
+    render();
+  };
 }
 function onPhoneClip(c) {
   if (S.clip) { S.clip.history = [c, ...S.clip.history.filter(h => h.text !== c.text)].slice(0, 50); S.clip.sync = c.sync; }
@@ -1419,22 +1424,41 @@ function onPhoneClip(c) {
 window.addEventListener("focus", () => {
   if (clipPending != null) { const t = clipPending; clipPending = null; navigator.clipboard?.writeText(t).then(() => toast("Phone clipboard copied here")).catch(() => {}); }
 });
-// Computer → phone: while the tab is focused, notice new clipboard text and send it.
-function setupClipPoll() {
+// Computer → phone. Reading the clipboard in the background is only done when the browser has
+// granted it permanently (Chrome/Edge/Vivaldi after "Allow"). Otherwise it would show a "Paste"
+// prompt on every check, so we rely on copy/paste events inside the page instead.
+let silentRead = false;
+async function checkSilentRead() {
+  silentRead = false;
+  try { silentRead = (await navigator.permissions.query({ name: "clipboard-read" })).state === "granted"; } catch {}
+  return silentRead;
+}
+async function setupClipPoll() {
   clearInterval(clipPoll);
-  if (!S.clip?.sync || !navigator.clipboard?.readText) return;
+  if (!S.clip?.sync || !(await checkSilentRead())) return;
   clipPoll = setInterval(async () => {
-    if (!document.hasFocus() || !S.clip?.sync) return;
+    if (!document.hasFocus() || !S.clip?.sync || !silentRead) return;
     try {
       const t = await navigator.clipboard.readText();
       if (t && t !== lastComputerClip) { lastComputerClip = t; await api("clipboard", { text: t }); }
-    } catch {}
+    } catch { silentRead = false; clearInterval(clipPoll); }
   }, 1500);
 }
-document.addEventListener("copy", () => setTimeout(async () => {
+// Text copied inside this page (Ctrl+C) goes to the phone without reading the clipboard.
+document.addEventListener("copy", () => {
   if (!S.clip?.sync) return;
-  try { const t = await navigator.clipboard.readText(); if (t && t !== lastComputerClip) { lastComputerClip = t; api("clipboard", { text: t }); } } catch {}
-}, 50));
+  const t = String(window.getSelection() || "").trim();
+  if (t && t !== lastComputerClip) { lastComputerClip = t; api("clipboard", { text: t }).catch(() => {}); }
+});
+// Ctrl+V on any page except Wallet (and outside text boxes) sends the computer's clipboard to the phone.
+document.addEventListener("paste", e => {
+  if (S.view === "wallet" || $(".overlay.dlg") || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  const t = e.clipboardData?.getData("text");
+  if (!t) return;
+  e.preventDefault(); lastComputerClip = t;
+  act("clipboard", { text: t }, "Sent to the phone's clipboard").then(() => { if (S.view === "clipboard") refresh("clipboard"); });
+});
+window.addEventListener("focus", () => { if (S.clip?.sync && !silentRead) setupClipPoll(); });
 
 // ───────────── Dialogs ─────────────
 function dialog(html, wide) {
