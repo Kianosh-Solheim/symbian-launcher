@@ -1238,3 +1238,59 @@ fun SkeuomorphicCameraIcon(modifier: Modifier = Modifier) {
 
 
 
+
+/** Desktop Mode: a glossy monitor; a green light shows when Desktop Mode is running. */
+@Composable
+fun SkeuomorphicDesktopIcon(modifier: Modifier = Modifier, active: Boolean = false) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val bezelTop = h * 0.08f
+        val bezelH = h * 0.66f
+        // Stand
+        drawRoundRect(
+            brush = Brush.verticalGradient(listOf(Color(0xFFBDBDBD), Color(0xFF757575)), startY = h * 0.72f, endY = h * 0.84f),
+            topLeft = Offset(w * 0.42f, h * 0.72f), size = Size(w * 0.16f, h * 0.13f)
+        )
+        drawRoundRect(
+            brush = Brush.verticalGradient(listOf(Color(0xFFE0E0E0), Color(0xFF616161)), startY = h * 0.84f, endY = h * 0.94f),
+            topLeft = Offset(w * 0.24f, h * 0.84f), size = Size(w * 0.52f, h * 0.09f),
+            cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
+        )
+        // Bezel
+        drawRoundRect(
+            brush = Brush.verticalGradient(listOf(Color(0xFFF5F5F5), Color(0xFF9E9E9E), Color(0xFF616161)), startY = bezelTop, endY = bezelTop + bezelH),
+            topLeft = Offset(0f, bezelTop), size = Size(w, bezelH),
+            cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+        )
+        drawRoundRect(
+            color = Color(0xFF424242), topLeft = Offset(0f, bezelTop), size = Size(w, bezelH),
+            cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()), style = Stroke(width = 1.5.dp.toPx())
+        )
+        // Screen
+        val pad = w * 0.08f
+        val sTop = bezelTop + pad
+        val sW = w - pad * 2
+        val sH = bezelH - pad * 2
+        drawRoundRect(
+            brush = Brush.verticalGradient(listOf(Color(0xFF4FC3F7), Color(0xFF0277BD), Color(0xFF01579B)), startY = sTop, endY = sTop + sH),
+            topLeft = Offset(pad, sTop), size = Size(sW, sH), cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+        )
+        // Little window panes on the screen
+        val paneC = Color.White.copy(alpha = 0.85f)
+        drawRect(paneC, topLeft = Offset(pad + sW * 0.1f, sTop + sH * 0.18f), size = Size(sW * 0.22f, sH * 0.64f))
+        drawRect(paneC.copy(alpha = 0.6f), topLeft = Offset(pad + sW * 0.38f, sTop + sH * 0.18f), size = Size(sW * 0.52f, sH * 0.28f))
+        drawRect(paneC.copy(alpha = 0.6f), topLeft = Offset(pad + sW * 0.38f, sTop + sH * 0.54f), size = Size(sW * 0.52f, sH * 0.28f))
+        // Gloss
+        val gloss = Path().apply {
+            moveTo(pad, sTop); lineTo(pad + sW, sTop); lineTo(pad + sW, sTop + sH * 0.35f)
+            quadraticTo(pad + sW * 0.5f, sTop + sH * 0.55f, pad, sTop + sH * 0.45f); close()
+        }
+        drawPath(gloss, Color.White.copy(alpha = 0.22f))
+        // Power light
+        drawCircle(
+            color = if (active) Color(0xFF69F0AE) else Color(0xFF9E9E9E),
+            radius = w * 0.035f, center = Offset(w - pad * 1.6f, bezelTop + bezelH - pad * 0.5f)
+        )
+    }
+}

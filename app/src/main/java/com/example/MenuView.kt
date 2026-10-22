@@ -176,7 +176,14 @@ fun MenuView(
                     showBatterySaverConfirmDialog = true
                 }
             }
-            Spacer(modifier = Modifier.weight(1f))
+            val desktopOn by BridgeState.running.collectAsState()
+            MenuIcon(
+                label = "Desktop",
+                haptic = haptic,
+                icon = { SkeuomorphicDesktopIcon(modifier = Modifier.size(40.dp * state.iconScale), active = desktopOn) },
+                modifier = Modifier.weight(1f),
+                fontFamily = state.currentFont.toFontFamily()
+            ) { onNavigate(Screen.SETTINGS_DESKTOP) }
             Spacer(modifier = Modifier.weight(1f))
         }
     }

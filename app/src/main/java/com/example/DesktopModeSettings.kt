@@ -85,20 +85,23 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
                 }
             }
 
+            if (!enabled) {
+                SettingsSectionHeader("What it does")
+                Hint("Turn this on to read and send SMS, answer chats, see notifications, place calls, manage your calendar and browse photos from a computer's web browser. The phone and computer must be on the same Wi-Fi, or joined by a USB cable.")
+            }
+
             if (enabled) {
-                SettingsSectionHeader("Open in your computer's browser")
-                if (addresses.isEmpty()) {
+                val main = addresses.firstOrNull()?.second
+                SettingsSectionHeader("Type this into your computer's browser")
+                if (main == null) {
+                    Hint("No connection yet. Join the same Wi-Fi as your computer — or plug in a USB cable and turn on USB tethering (Android Settings → Network → Hotspot & tethering). The address appears here as soon as there is a connection.")
+                } else {
                     Text(
-                        "Connect to Wi-Fi, or plug in USB and turn on USB tethering.",
-                        color = Color.White, fontSize = 16.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        main.removePrefix("https://").removePrefix("http://").let { if (https) "https://$it" else "http://$it" },
+                        color = MaterialThemeHighlight(), fontSize = 22.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                     )
-                }
-                addresses.forEach { (label, url) ->
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-                        Text(label, color = Color(0xFFAAAAAA), fontSize = 13.sp)
-                        Text(url, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                    }
+                    Hint("Type it exactly in the browser's address bar, including ${if (https) "\"https://\"" else "\"http://\""} at the start and \":${BridgeState.PORT}\" at the end, then press Enter.")
                 }
 
                 SettingsSectionHeader("Pairing code")
@@ -108,11 +111,30 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
-                Text(
-                    "Enter this in the browser. The code changes after each pairing.",
-                    color = Color(0xFFCCCCCC), fontSize = 14.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
+
+                SettingsSectionHeader("Step by step")
+                val steps = buildList {
+                    add("On the computer, open Chrome, Edge, Firefox or Vivaldi.")
+                    add("Type the address above into the address bar and press Enter.")
+                    if (https) add("The browser warns that the connection isn't private — that's expected, as the phone made its own certificate. Choose Advanced, then Proceed (Chrome/Edge/Vivaldi) or Accept the Risk and Continue (Firefox). This is needed only once per browser.")
+                    add("Enter the 6-digit pairing code shown above. The browser remembers it; the code changes after each pairing.")
+                    add("Optional: bookmark the page. In Tools, allow desktop pop-ups for new messages and calls.")
+                }
+                steps.forEachIndexed { i, t -> Hint("${i + 1}. $t") }
+
+                if (addresses.size > 1) {
+                    SettingsSectionHeader("Other addresses")
+                    addresses.drop(1).forEach { (label, url) ->
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                            Text(label, color = Color(0xFFAAAAAA), fontSize = 13.sp)
+                            Text(url, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        }
+                    }
+                    Hint("Use the USB address when the phone is plugged in with USB tethering on — for example on eduroam, which blocks devices from reaching each other.")
+                }
+
+                SettingsSectionHeader("If it doesn't connect")
+                Hint("• Check the computer is on the same Wi-Fi as the phone (not a guest network).\n• Make sure you typed ${if (https) "https" else "http"}:// and :${BridgeState.PORT}.\n• On university or public Wi-Fi, use USB tethering instead.\n• Still stuck? Switch Desktop mode off and on again.")
 
                 SettingsSectionHeader("Security")
                 SettingsToggleItem(
@@ -154,6 +176,12 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
         }
     }
 }
+
+@Composable
+private fun Hint(text: String) = Text(
+    text, color = Color(0xFFDDDDDD), fontSize = 15.sp,
+    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+)
 
 @Composable
 private fun MaterialThemeHighlight(): Color = androidx.compose.material3.MaterialTheme.colorScheme.secondary
