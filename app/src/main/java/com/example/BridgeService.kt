@@ -146,6 +146,13 @@ class BridgeService : Service() {
         } catch (_: Exception) { }
 
         scope.launch { NotificationStore.notifications.drop(1).collectLatest { server?.broadcast("notifications", JSONObject()) } }
+        ClipboardHub.startInstantWatcher(applicationContext)
+        scope.launch {
+            ClipboardHub.events.collect { c ->
+                server?.broadcast("clipboard", JSONObject().put("text", c.text).put("source", c.source).put("time", c.time)
+                    .put("sync", ClipboardHub.syncEnabled(this@BridgeService)))
+            }
+        }
         scope.launch { data.wallet.passes.drop(1).collectLatest { server?.broadcast("wallet", JSONObject()) } }
         scope.launch { BridgeState.weather.drop(1).collectLatest { w -> if (w != null) server?.broadcast("weather", w) } }
         scope.launch { BridgeState.theme.drop(1).collectLatest { server?.broadcast("theme", data.theme()) } }
@@ -163,6 +170,7 @@ class BridgeService : Service() {
 
     override fun onDestroy() {
         server?.stop(); server = null
+        ClipboardHub.stopInstantWatcher()
         scope.cancel()
         try { contentResolver.unregisterContentObserver(smsObserver) } catch (_: Exception) { }
         try { contentResolver.unregisterContentObserver(contactsObserver) } catch (_: Exception) { }

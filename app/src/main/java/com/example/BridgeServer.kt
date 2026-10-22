@@ -237,12 +237,16 @@ class BridgeServer(
             "GET" to "birthdays" -> data.birthdays()
             "GET" to "wallet" -> when (seg.getOrNull(1)) {
                 "barcode" -> return bytes(out, data.walletBarcode(req.query["id"] ?: ""), "image/png")
+                "logos" -> data.walletLogoSearch(req.query["q"] ?: "")
                 else -> data.walletPasses()
             }
             "POST" to "wallet" -> when (seg.getOrNull(1)) {
                 "import" -> data.walletImport(req.query["name"] ?: "ticket", req.input, req.contentLength, req.query["title"])
                 "add" -> data.walletAddManual(req.json())
                 "delete" -> data.walletDelete(req.json().optString("id"))
+                "update" -> data.walletUpdate(req.json())
+                "logo" -> req.json().let { j -> if (j.optBoolean("clear")) data.walletClearLogo(j.optString("id")) else data.walletSetLogoFromUrl(j.optString("id"), j.optString("url")) }
+                "logo-upload" -> data.walletSetLogoFromUpload(req.query["id"] ?: "", req.input, req.contentLength)
                 else -> null
             }
             "GET" to "photos" -> data.photos(req.query["offset"]?.toIntOrNull() ?: 0, (req.query["limit"]?.toIntOrNull() ?: 60).coerceIn(1, 200))
@@ -264,7 +268,11 @@ class BridgeServer(
             "GET" to "media" -> data.media()
             "POST" to "media" -> data.mediaCommand(seg.getOrNull(1) ?: "")
             "POST" to "ring" -> data.ringPhone(req.json().optBoolean("on", true))
-            "POST" to "clipboard" -> data.setClipboard(req.json().optString("text"))
+            "GET" to "clipboard" -> data.clipboardState()
+            "POST" to "clipboard" -> when (seg.getOrNull(1)) {
+                "settings" -> data.clipboardSettings(req.json())
+                else -> data.setClipboard(req.json().optString("text"))
+            }
             "POST" to "send" -> data.sendToPhone(req.json().optString("text"))
             "POST" to "upload" -> data.saveUpload(
                 req.query["name"] ?: "upload", req.headers["content-type"] ?: "", req.input, req.contentLength.coerceAtMost(1L shl 31))

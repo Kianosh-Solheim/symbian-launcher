@@ -654,6 +654,11 @@ fun SymbianWalletPassCardItem(
                 .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center
         ) {
+            val logo = rememberPassLogo(pass.logoBitmapBase64)
+            if (logo != null) {
+                androidx.compose.foundation.Image(bitmap = logo, contentDescription = null, modifier = Modifier.padding(5.dp).fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit)
+            } else {
             Icon(
                 imageVector = when (pass.type) {
                     PassType.BOARDING_PASS -> Icons.Default.FlightTakeoff
@@ -666,6 +671,7 @@ fun SymbianWalletPassCardItem(
                 tint = Color(pass.foregroundColor),
                 modifier = Modifier.size(24.dp)
             )
+            }
         }
         
         Spacer(modifier = Modifier.width(16.dp))
@@ -776,7 +782,12 @@ fun WalletPassDetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (pass.type == PassType.LOYALTY_CARD) {
+                            val headerLogo = rememberPassLogo(pass.logoBitmapBase64)
+                            if (headerLogo != null) {
+                                androidx.compose.foundation.Image(bitmap = headerLogo, contentDescription = null,
+                                    modifier = Modifier.padding(end = 10.dp).height(32.dp).widthIn(max = 96.dp),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Fit)
+                            } else if (pass.type == PassType.LOYALTY_CARD) {
                                 SkeuomorphicEmvChip(modifier = Modifier.padding(end = 10.dp))
                             }
                             Column {
@@ -1897,4 +1908,14 @@ fun SymbianManualAddFlightDialog(
             }
         }
     }
+}
+
+
+/** Decodes a pass logo (base64 PNG) once and caches it for recompositions. */
+@Composable
+fun rememberPassLogo(base64: String?): androidx.compose.ui.graphics.ImageBitmap? = remember(base64) {
+    if (base64.isNullOrBlank()) null else try {
+        val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+    } catch (_: Exception) { null }
 }

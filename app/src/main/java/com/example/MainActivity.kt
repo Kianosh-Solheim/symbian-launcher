@@ -156,6 +156,12 @@ fun Modifier.symbianHighlight(
 }
 
 class MainActivity : ComponentActivity() {
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Coming back to the home screen after copying something: share it with the desktop.
+        if (hasFocus && BridgeState.running.value && ClipboardHub.syncEnabled(this)) ClipboardHub.readNow(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

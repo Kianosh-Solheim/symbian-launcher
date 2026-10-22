@@ -931,6 +931,133 @@ class BridgeData(private val context: Context) {
         return ok().put("id", pass.id)
     }
 
+    private fun hexColor(s: String?, fallback: Long): Long =
+        s?.removePrefix("#")?.takeIf { it.length == 6 }?.toLongOrNull(16)?.let { 0xFF000000 or it } ?: fallback
+
+    /** Edits a card: name, type, colours, barcode and every field's label/value. */
+    fun walletUpdate(j: JSONObject): JSONObject {
+        val p = wallet.passes.value.firstOrNull { it.id == j.optString("id") } ?: return fail("Card not found")
+        fun fields(key: String, old: List<PassField>): List<PassField> {
+            val arr = j.optJSONArray(key) ?: return old
+            return (0 until arr.length()).mapNotNull { i ->
+                val f = arr.optJSONObject(i) ?: return@mapNotNull null
+                val value = f.optString("value").trim()
+                if (value.isEmpty()) null else PassField(f.optString("key").ifBlank { "f$i" }, f.optString("label").trim(), value)
+            }
+        }
+        val code = j.optString("code", p.barcode?.message ?: "").trim()
+        val format = runCatching { BarcodeFormatType.valueOf(j.optString("format")) }.getOrNull() ?: p.barcode?.format ?: BarcodeFormatType.QR_CODE
+        val name = j.optString("name").trim().ifEmpty { p.organizationName }
+        val updated = p.copy(
+            organizationName = name,
+            logoText = if (j.has("name")) name.uppercase() else p.logoText,
+            description = j.optString("description", p.description),
+            type = runCatching { PassType.valueOf(j.optString("type")) }.getOrNull() ?: p.type,
+            backgroundColor = hexColor(j.optString("bg"), p.backgroundColor),
+            foregroundColor = hexColor(j.optString("fg"), p.foregroundColor),
+            labelColor = hexColor(j.optString("label"), p.labelColor),
+            headerFields = fields("headerFields", p.headerFields),
+            primaryFields = fields("primaryFields", p.primaryFields),
+            secondaryFields = fields("secondaryFields", p.secondaryFields),
+            auxiliaryFields = fields("auxiliaryFields", p.auxiliaryFields),
+            backFields = fields("backFields", p.backFields),
+            barcode = if (code.isEmpty()) null else PassBarcode(code, format, j.optString("altText", p.barcode?.altText ?: code).ifBlank { null })
+        )
+        runBlocking { wallet.addPass(updated) }
+        return ok()
+    }
+
+    /** Scales any image to a logo-sized PNG and returns it base64-encoded. */
+    private fun logoFromBytes(bytes: ByteArray): String? {
+        val src = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+        val scale = minOf(1f, 320f / src.width, 160f / src.height)
+        val bmp = if (scale < 1f) Bitmap.createScaledBitmap(src, (src.width * scale).toInt().coerceAtLeast(1), (src.height * scale).toInt().coerceAtLeast(1), true) else src
+        val png = ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+        return android.util.Base64.encodeToString(png, android.util.Base64.NO_WRAP)
+    }
+
+    private fun setLogo(id: String, base64: String?): JSONObject {
+        val p = wallet.passes.value.firstOrNull { it.id == id } ?: return fail("Card not found")
+        runBlocking { wallet.addPass(p.copy(logoBitmapBase64 = base64)) }
+        return ok()
+    }
+
+    private fun httpGet(url: String, limit: Int = 4_000_000): ByteArray? = try {
+        val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        c.connectTimeout = 6000; c.readTimeout = 8000; c.instanceFollowRedirects = true
+        c.setRequestProperty("User-Agent", "SymbianLauncher/2.0 (logo search)")
+        if (c.responseCode in 200..299) c.inputStream.use { s ->
+            val out = ByteArrayOutputStream(); val buf = ByteArray(16 * 1024); var total = 0
+            while (true) { val n = s.read(buf); if (n < 0) break; total += n; if (total > limit) return null; out.write(buf, 0, n) }
+            out.toByteArray()
+        } else null
+    } catch (_: Exception) { null }
+
+    /**
+     * Logo candidates for a brand: Wikimedia Commons logo files, plus the brand's website icons
+     * (official site from DuckDuckGo when known, otherwise guessed .no/.com domains).
+     */
+    fun walletLogoSearch(query: String): JSONArray {
+        val q = query.trim()
+        val out = JSONArray(); val seen = HashSet<String>()
+        fun add(url: String, source: String, label: String) { if (seen.add(url)) out.put(JSONObject().put("url", url).put("source", source).put("label", label)) }
+        if (q.isEmpty()) return out
+        val enc = java.net.URLEncoder.encode(q, "UTF-8")
+        // 1. Brand websites
+        val domains = LinkedHashSet<String>()
+        httpGet("https://api.duckduckgo.com/?format=json&no_html=1&skip_disambig=1&q=$enc")?.let { b ->
+            try {
+                val j = JSONObject(String(b))
+                j.optJSONObject("Infobox")?.optJSONArray("content")?.let { a ->
+                    for (i in 0 until a.length()) {
+                        val e = a.optJSONObject(i) ?: continue
+                        if (e.optString("data_type") == "official_website" || e.optString("label").equals("Website", true)) {
+                            Uri.parse(e.optString("value").let { if (it.startsWith("http")) it else "https://$it" }).host?.let { domains += it.removePrefix("www.") }
+                        }
+                    }
+                }
+                j.optJSONArray("Results")?.optJSONObject(0)?.optString("FirstURL")?.let { Uri.parse(it).host?.let { h -> domains += h.removePrefix("www.") } }
+            } catch (_: Exception) { }
+        }
+        val slug = java.text.Normalizer.normalize(q.lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}"), "").replace("æ", "ae").replace("ø", "o").replace("å", "a").replace(Regex("[^a-z0-9]"), "")
+        if (slug.isNotEmpty()) { domains += "$slug.no"; domains += "$slug.com" }
+        domains.take(4).forEach { d ->
+            add("https://www.google.com/s2/favicons?sz=256&domain=$d", d, "Website icon")
+            add("https://$d/apple-touch-icon.png", d, "App icon")
+        }
+        // 2. Wikimedia Commons logo files
+        httpGet("https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=12" +
+                "&gsrsearch=" + java.net.URLEncoder.encode("$q logo", "UTF-8") + "&prop=imageinfo&iiprop=url&iiurlwidth=320")?.let { b ->
+            try {
+                val pages = JSONObject(String(b)).optJSONObject("query")?.optJSONObject("pages")
+                pages?.keys()?.asSequence()?.mapNotNull { pages.optJSONObject(it) }?.sortedBy { it.optInt("index") }?.forEach { pg ->
+                    val info = pg.optJSONArray("imageinfo")?.optJSONObject(0) ?: return@forEach
+                    val url = info.optString("thumburl").ifEmpty { info.optString("url") }
+                    if (url.isNotEmpty()) add(url, "Wikimedia Commons", pg.optString("title").removePrefix("File:"))
+                }
+            } catch (_: Exception) { }
+        }
+        return out
+    }
+
+    fun walletSetLogoFromUrl(id: String, url: String): JSONObject {
+        if (!url.startsWith("https://") && !url.startsWith("http://")) return fail("Invalid address")
+        val bytes = httpGet(url) ?: return fail("Couldn't download that image")
+        val b64 = logoFromBytes(bytes) ?: return fail("That isn't an image the phone can read")
+        return setLogo(id, b64)
+    }
+
+    fun walletSetLogoFromUpload(id: String, input: InputStream, length: Long): JSONObject {
+        if (length <= 0 || length > 8_000_000) return fail("Image is empty or too large")
+        val bytes = ByteArray(length.toInt()); var read = 0
+        while (read < bytes.size) { val n = input.read(bytes, read, bytes.size - read); if (n < 0) break; read += n }
+        val b64 = logoFromBytes(bytes) ?: return fail("That isn't an image the phone can read")
+        return setLogo(id, b64)
+    }
+
+    fun walletClearLogo(id: String) = setLogo(id, null)
+
     fun walletDelete(id: String): JSONObject {
         if (wallet.passes.value.none { it.id == id }) return fail("Card not found")
         runBlocking { wallet.removePass(id) }
@@ -960,13 +1087,22 @@ class BridgeData(private val context: Context) {
         return ok()
     }
 
+    fun clipboardState(): JSONObject = JSONObject()
+        .put("sync", ClipboardHub.syncEnabled(context))
+        .put("instant", ClipboardHub.instantAvailable(context))
+        .put("readLogs", ClipboardHub.canReadLogs(context))
+        .put("overlay", ClipboardHub.canOverlay(context))
+        .put("package", context.packageName)
+        .put("history", ClipboardHub.historyJson())
+
+    fun clipboardSettings(j: JSONObject): JSONObject {
+        ClipboardHub.setSync(context, j.optBoolean("sync"))
+        return clipboardState().put("ok", true)
+    }
+
     fun setClipboard(text: String): JSONObject {
-        main.post {
-            try {
-                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                cm.setPrimaryClip(ClipData.newPlainText("From desktop", text))
-            } catch (_: Exception) { }
-        }
+        if (text.isEmpty()) return fail("Nothing to copy")
+        ClipboardHub.fromComputer(context, text)
         return ok()
     }
 

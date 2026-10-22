@@ -227,6 +227,24 @@ textarea.note { width: 100%; min-height: 80px; padding: 8px; border-radius: 6px;
 .addcard { border: 2px dashed var(--line); border-radius: 12px; min-height: 190px; display: grid; place-items: center; text-align: center; padding: 16px; color: var(--muted); }
 .addcard.over { border-color: var(--hl); color: var(--hl); }
 
+.logopick { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 50vh; overflow-y: auto; }
+.logopick button { background: #fff; border: 2px solid transparent; border-radius: 6px; padding: 6px; cursor: pointer; display: grid; gap: 4px; justify-items: center; color: #333; font-size: 10px; }
+.logopick button:hover, .logopick button:focus-visible { border-color: var(--hl); outline: none; }
+.logopick img { max-width: 96px; max-height: 64px; object-fit: contain; }
+.logoprev { background: #fff; border-radius: 6px; padding: 6px; min-width: 80px; min-height: 40px; display: grid; place-items: center; color: #555; font-size: 12px; }
+.logoprev img { max-height: 48px; max-width: 160px; }
+.fieldrows { display: grid; gap: 6px; }
+.fieldrows .fr { display: grid; grid-template-columns: 1fr 2fr auto; gap: 6px; }
+.fieldrows input { padding: 5px 7px; border-radius: 5px; border: 1px solid rgba(0,0,0,.4); background: #fff; color: #000; font: inherit; }
+.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: bold; }
+.switch input { display: none; }
+.switch i { width: 46px; height: 26px; border-radius: 13px; background: rgba(0,0,0,.4); position: relative; transition: background .15s; border: 1px solid rgba(0,0,0,.5); }
+.switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #eee; transition: left .15s; }
+.switch input:checked + i { background: var(--good); }
+.switch input:checked + i::after { left: 22px; }
+.clipnow { background: rgba(255,255,255,.93); color: #111; border-radius: 8px; padding: 12px; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; font-size: 15px; }
+code.cmd { display: block; background: rgba(0,0,0,.45); padding: 6px 8px; border-radius: 4px; font-size: 12px; margin: 4px 0; user-select: all; word-break: break-all; }
+
 /* ── Calendar ─────────────────────────────── */
 .calbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px dashed var(--line); flex-wrap: wrap; }
 .calbar .label { font-weight: bold; font-size: 18px; text-shadow: var(--shadow); min-width: 220px; }
@@ -298,6 +316,7 @@ textarea.note { width: 100%; min-height: 80px; padding: 8px; border-radius: 6px;
   <symbol id="i-cake" viewBox="0 0 24 24"><path d="M12 2c1 1.5 1.5 2.5 1.5 3.5a1.5 1.5 0 0 1-3 0C10.5 4.5 11 3.5 12 2zm-1 6h2v3h6a2 2 0 0 1 2 2v2c-1 0-1.5.8-2.5.8S16.7 15 15.5 15s-1.8.8-3 .8-1.8-.8-3-.8-1.8.8-3 .8S4.5 15 3 15v-2a2 2 0 0 1 2-2h6zm-8 9c1 0 1.7-.8 2.5-.8s1.5.8 3 .8 1.8-.8 3-.8 1.8.8 3 .8 1.8-.8 3-.8.8.8 2.5.8V22H3z"/></symbol>
   <symbol id="i-photo" viewBox="0 0 24 24"><path d="M3 5h18v14H3zm2 2v8.5l4-4 3 3 4-5 3 3.5V7zm4 3a1.5 1.5 0 1 0 0-.01z"/></symbol>
   <symbol id="i-card" viewBox="0 0 24 24"><path d="M2 5h20v14H2zm2 3v2h16V8zm0 5v4h7v-4z"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M9 2h6v2h4v18H5V4h4zm0 4H7v14h10V6h-2v2H9zm2-2v2h2V4z"/></symbol>
   <symbol id="i-tool" viewBox="0 0 24 24"><path d="M22 19.6 13.9 11.5A6 6 0 0 0 6.5 3.3l3.9 3.9-2.8 2.8-3.9-3.9a6 6 0 0 0 8.2 7.4l8.1 8.1z"/></symbol>
 </svg>
 
@@ -348,7 +367,7 @@ const store = {
 let token = store.get("symbian.token");
 const S = {
   view: "home", status: null, weather: null, threads: [], thread: null, messages: [], notifs: [], calls: [], contacts: [],
-  agenda: [], media: null, drafts: {}, wallet: [], birthdays: [], calendars: [],
+  agenda: [], media: null, drafts: {}, wallet: [], clip: null, birthdays: [], calendars: [],
   photos: { items: [], total: 0, loading: false, sel: new Set(), selecting: false, permission: true },
   cal: { mode: store.get("symbian.calmode") || "month", date: new Date(), events: [], loaded: "" }, contact: null, chat: null, newMsg: false, q: "", online: false,
 };
@@ -404,7 +423,7 @@ const icon = id => `<svg><use href="#i-${id}"/></svg>`;
 // ───────────── Navigation ─────────────
 const SECTIONS = [
   ["home", "Home", "home"], ["messages", "Messages", "msg"], ["chats", "Chats", "chat"], ["calls", "Calls", "call"],
-  ["contacts", "Contacts", "person"], ["birthdays", "Birthdays", "cake"], ["photos", "Photos", "photo"], ["notifications", "Notifications", "bell"], ["calendar", "Calendar", "cal"], ["wallet", "Wallet", "card"], ["tools", "Tools", "tool"],
+  ["contacts", "Contacts", "person"], ["birthdays", "Birthdays", "cake"], ["photos", "Photos", "photo"], ["notifications", "Notifications", "bell"], ["calendar", "Calendar", "cal"], ["wallet", "Wallet", "card"], ["clipboard", "Clipboard", "clip"], ["tools", "Tools", "tool"],
 ];
 function badges() {
   const unread = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
@@ -434,6 +453,7 @@ function load(view) {
   if (view === "birthdays") refresh("birthdays");
   if (view === "photos" && !S.photos.items.length) loadPhotos();
   if (view === "wallet") refresh("wallet");
+  if (view === "clipboard") refresh("clipboard");
   if (view === "home") refresh("birthdays");
 }
 async function refresh(what) {
@@ -446,6 +466,7 @@ async function refresh(what) {
     if (what === "agenda") S.agenda = await api("agenda");
     if (what === "birthdays") S.birthdays = await api("birthdays");
     if (what === "wallet") S.wallet = await api("wallet");
+    if (what === "clipboard") S.clip = await api("clipboard");
     if (what === "media") S.media = await api("media");
     if (what === "weather") S.weather = await api("weather");
     if (what === "status") S.status = await api("status");
@@ -652,6 +673,7 @@ const VIEWS = {
   birthdays() { return birthdaysView(); },
   photos() { return photosView(); },
   wallet() { return walletView(); },
+  clipboard() { return clipboardView(); },
 
   tools() {
     setSoftkeys("Ring phone", () => act("ring", { on: true }, "Ringing phone for 30 s"));
@@ -831,6 +853,7 @@ function wire(m) {
   wireCalendar(m);
   wirePhotos(m);
   wireWallet(m);
+  wireClipboard(m);
   m.querySelectorAll("[data-zoom]").forEach(i => i.onclick = () => window.open(i.dataset.zoom, "_blank"));
   m.querySelectorAll("[data-alertpref]").forEach(c => c.onchange = () => { const p = alertPrefs(); p[c.dataset.alertpref] = c.checked; store.set("symbian.alerts", JSON.stringify(p)); });
   const rb = $("[data-restore]", m);
@@ -891,7 +914,7 @@ document.addEventListener("click", e => {
 document.addEventListener("keydown", e => {
   if (e.altKey && /^[0-9]$/.test(e.key)) { e.preventDefault(); const i = (Number(e.key) + 9) % 10; if (SECTIONS[i]) go(SECTIONS[i][0]); return; }
   const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName);
-  if (e.key === "Escape") { const d = $(".overlay.dlg"); if (d) { d.remove(); return; } if (typing) document.activeElement.blur(); else back(); return; }
+  if (e.key === "Escape") { const d = [...document.querySelectorAll(".overlay.dlg")].filter(x => x.style.display !== "none").pop(); if (d) { if (d.querySelector("#ls-cancel")) d.querySelector("#ls-cancel").click(); else d.remove(); return; } if (typing) document.activeElement.blur(); else back(); return; }
   if (typing) return;
   if (S.view === "calendar" && !e.ctrlKey && !e.metaKey && !e.altKey && !$(".overlay.dlg")) {
     const k = e.key;
@@ -1197,15 +1220,16 @@ async function walletImport(files) {
 function walletDetail(id) {
   const p = S.wallet.find(x => x.id === id); if (!p) return;
   const o = dialog(`<h2>${esc(p.organizationName)}</h2><div class="in">${passCard(p, true)}
-    <div class="row2"><button class="btn bad" id="pd-del">Delete</button><span style="flex:1"></span><button class="btn" id="pd-close">Close</button></div></div>`, true);
+    <div class="row2"><button class="btn bad" id="pd-del">Delete</button><span style="flex:1"></span><button class="btn" id="pd-edit">Edit</button><button class="btn" id="pd-close">Close</button></div></div>`, true);
   $("#pd-close", o).onclick = () => o.remove();
+  $("#pd-edit", o).onclick = () => walletEdit(id);
   const del = $("#pd-del", o);
   del.onclick = async () => {
     if (!del.dataset.sure) { del.dataset.sure = "1"; del.textContent = "Confirm delete"; return; }
     const r = await act("wallet/delete", { id }, "Removed from Wallet"); if (r.ok) { o.remove(); refresh("wallet"); }
   };
 }
-function walletAddDialog() {
+function walletAddDialog(prefill) {
   const o = dialog(`<h2>Add a card or ticket</h2><div class="in">
     <div class="form">
       <label>Type</label><select id="wa-type">${Object.entries(KINDS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
@@ -1223,6 +1247,7 @@ function walletAddDialog() {
     <div class="err" id="wa-err"></div>
     <div class="row2"><button class="btn" id="wa-cancel">Cancel</button><button class="btn good" id="wa-save">Add to Wallet</button></div></div>`, true);
   const num = $("#wa-number", o), code = $("#wa-code", o);
+  if (prefill) { num.value = prefill; code.value = prefill; }
   num.oninput = () => { if (!code.dataset.edited) code.value = num.value; };
   code.oninput = () => { code.dataset.edited = "1"; };
   setTimeout(() => $("#wa-name", o).focus(), 30);
@@ -1237,9 +1262,183 @@ function walletAddDialog() {
   };
 }
 
+// Paste (Ctrl+V) anywhere in Wallet: files/images are imported; plain text starts a new card.
+document.addEventListener("paste", e => {
+  const editing = $(".overlay.dlg [data-logozone]");
+  const files = [...(e.clipboardData?.files || [])];
+  if (editing && files.length) { e.preventDefault(); uploadLogo(editing.dataset.logozone, files[0]); return; }
+  if (S.view !== "wallet" || $(".overlay.dlg")) return;
+  if (/INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  if (files.length) { e.preventDefault(); toast("Pasted — reading…"); walletImport(files.map((f, i) => f.name && f.name !== "image.png" ? f : new File([f], `pasted-${Date.now()}-${i}.${(f.type.split("/")[1] || "png")}`, { type: f.type }))); return; }
+  const text = e.clipboardData?.getData("text")?.trim();
+  if (text) { e.preventDefault(); walletAddDialog(text); }
+});
+
+const FIELD_GROUPS = [["headerFields", "Top right"], ["primaryFields", "Main"], ["secondaryFields", "Details"], ["auxiliaryFields", "More details"], ["backFields", "Back of card"]];
+function walletEdit(id) {
+  const p = S.wallet.find(x => x.id === id); if (!p) return;
+  const groups = FIELD_GROUPS.map(([k, label]) => `<label>${label}</label><div class="fieldrows" data-group="${k}">
+      ${(p[k] || []).map(f => fieldRow(f.label, f.value, f.key)).join("")}
+      <button class="btn small" data-addfield="${k}" style="justify-self:start">+ Add field</button></div>`).join("");
+  const o = dialog(`<h2>Edit ${esc(p.organizationName)}</h2><div class="in" style="max-height:78vh;overflow-y:auto">
+    <div class="form">
+      <label>Logo</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" data-logozone="${esc(p.id)}">
+        <span class="logoprev" id="ed-logo">${p.logoBitmapBase64 ? `<img src="data:image/png;base64,${p.logoBitmapBase64}" alt="">` : "No logo"}</span>
+        <button class="btn small" id="ed-logosearch">Search the internet…</button><button class="btn small" id="ed-logofile">Upload…</button>
+        ${p.logoBitmapBase64 ? `<button class="btn small" id="ed-logoclear">Remove</button>` : ""}
+        <input type="file" id="ed-logoinput" accept="image/*" class="hidden"><span class="note-sm" style="flex-basis:100%">Tip: copy an image and press Ctrl+V here.</span></div>
+      <label>Name</label><input id="ed-name" value="${esc(p.organizationName)}">
+      <label>Description</label><input id="ed-desc" value="${esc(p.description || "")}">
+      <label>Type</label><select id="ed-type">${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${k === p.type ? "selected" : ""}>${v}</option>`).join("")}</select>
+      <label>Colours</label><span class="pair"><input type="color" id="ed-bg" value="${argb(p.backgroundColor)}" title="Card"><input type="color" id="ed-fg" value="${argb(p.foregroundColor)}" title="Text"><input type="color" id="ed-lbl" value="${argb(p.labelColor)}" title="Labels"></span>
+      <label>Barcode</label><input id="ed-code" value="${esc(p.barcode?.message || "")}" placeholder="Leave empty for no barcode">
+      <label>Format</label><select id="ed-format">${["QR_CODE", "AZTEC", "PDF_417", "CODE_128", "CODE_39", "EAN_13"].map(f => `<option ${p.barcode?.format === f ? "selected" : ""}>${f}</option>`).join("")}</select>
+      <label>Text under code</label><input id="ed-alt" value="${esc(p.barcode?.altText || "")}">
+      ${groups}
+    </div>
+    <div class="err" id="ed-err"></div>
+    <div class="row2"><button class="btn" id="ed-cancel">Cancel</button><button class="btn good" id="ed-save">Save</button></div></div>`, true);
+  wireFieldRows(o);
+  $("#ed-cancel", o).onclick = () => o.remove();
+  $("#ed-logosearch", o).onclick = () => logoSearch(p.id, $("#ed-name", o).value);
+  const li = $("#ed-logoinput", o); $("#ed-logofile", o).onclick = () => li.click();
+  li.onchange = () => li.files[0] && uploadLogo(p.id, li.files[0]);
+  const lc = $("#ed-logoclear", o); if (lc) lc.onclick = async () => { const r = await act("wallet/logo", { id: p.id, clear: true }, "Logo removed"); if (r.ok) afterLogo(p.id); };
+  $("#ed-save", o).onclick = async () => {
+    const v = x => $("#" + x, o).value;
+    const body = { id: p.id, name: v("ed-name"), description: v("ed-desc"), type: v("ed-type"), bg: v("ed-bg"), fg: v("ed-fg"), label: v("ed-lbl"),
+      code: v("ed-code"), format: v("ed-format"), altText: v("ed-alt") };
+    o.querySelectorAll("[data-group]").forEach(g => {
+      body[g.dataset.group] = [...g.querySelectorAll(".fr")].map(r => ({ key: r.dataset.key, label: r.querySelector(".fl").value, value: r.querySelector(".fv").value }));
+    });
+    const r = await act("wallet/update", body, "Card updated");
+    if (r.ok) { o.remove(); await refresh("wallet"); } else $("#ed-err", o).textContent = r.error || "Couldn't save";
+  };
+}
+function fieldRow(label, value, key) {
+  return `<div class="fr" data-key="${esc(key || "f" + Math.random().toString(36).slice(2, 8))}"><input class="fl" value="${esc(label || "")}" placeholder="Label"><input class="fv" value="${esc(value || "")}" placeholder="Value"><button class="btn small" data-rmfield="1" title="Remove">✕</button></div>`;
+}
+function wireFieldRows(o) {
+  o.querySelectorAll("[data-addfield]").forEach(b => b.onclick = () => { b.insertAdjacentHTML("beforebegin", fieldRow("", "")); wireFieldRows(o); b.previousElementSibling.querySelector(".fl").focus(); });
+  o.querySelectorAll("[data-rmfield]").forEach(b => b.onclick = () => b.closest(".fr").remove());
+}
+async function afterLogo(id) {
+  await refresh("wallet");
+  const p = S.wallet.find(x => x.id === id), prev = $("#ed-logo");
+  if (prev && p) prev.innerHTML = p.logoBitmapBase64 ? `<img src="data:image/png;base64,${p.logoBitmapBase64}" alt="">` : "No logo";
+}
+async function uploadLogo(id, file) {
+  try {
+    const r = await (await fetch(`/api/wallet/logo-upload?id=${q(id)}&token=${q(token)}`, { method: "POST", headers: { "Content-Type": file.type || "image/png" }, body: file })).json();
+    toast(r.ok ? "Logo updated" : r.error || "Couldn't use that image"); if (r.ok) afterLogo(id);
+  } catch { toast("Phone not reachable"); }
+}
+function logoSearch(id, name) {
+  const back = $(".overlay.dlg"); if (back) { back.style.display = "none"; back.dataset.keep = "1"; }
+  const o = dialog(`<h2>Find a logo</h2><div class="in">
+    <div style="display:flex;gap:8px"><input class="search" id="ls-q" value="${esc(name)}" placeholder="Brand or company"><button class="btn" id="ls-go">Search</button></div>
+    <div id="ls-res" class="logopick"><div class="empty">Searching…</div></div>
+    <div class="note-sm">Results come from the brand's website and Wikimedia Commons. Click one to use it.</div>
+    <div class="row2"><button class="btn" id="ls-cancel">Cancel</button></div></div>`, true);
+  const close = () => { o.remove(); if (back) { back.style.display = ""; delete back.dataset.keep; document.body.appendChild(back); } };
+  $("#ls-cancel", o).onclick = close;
+  const run = async () => {
+    const res = $("#ls-res", o); res.innerHTML = `<div class="empty">Searching…</div>`;
+    let list = [];
+    try { list = await api("wallet/logos?q=" + q($("#ls-q", o).value)); } catch {}
+    res.innerHTML = list.length ? list.map(l => `<button data-url="${esc(l.url)}" title="${esc(l.label)}"><img src="${esc(l.url)}" alt="" referrerpolicy="no-referrer" onerror="this.closest('button').remove()"><span>${esc(l.source)}</span></button>`).join("")
+      : `<div class="empty">Nothing found — try the company's full name, or upload an image.</div>`;
+    res.querySelectorAll("[data-url]").forEach(b => b.onclick = async () => {
+      b.disabled = true; const r = await act("wallet/logo", { id, url: b.dataset.url }, "Logo updated"); b.disabled = false;
+      if (r.ok) { close(); afterLogo(id); }
+    });
+  };
+  $("#ls-go", o).onclick = run; $("#ls-q", o).onkeydown = e => { if (e.key === "Enter") run(); };
+  run();
+}
+
+// ───────────── Clipboard ─────────────
+let clipPending = null, clipPoll = null, lastComputerClip = null;
+function clipboardView() {
+  const c = S.clip || { history: [] };
+  setSoftkeys("Send to phone", () => $("#clipsend")?.click());
+  const phone = c.history.find(h => h.source === "phone");
+  const cmds = [`adb shell pm grant ${c.package || "no.kianosh.symbianlauncher"} android.permission.READ_LOGS`, `adb shell appops set ${c.package || "no.kianosh.symbianlauncher"} SYSTEM_ALERT_WINDOW allow`];
+  return `<div class="home">
+    <div class="card"><h3>Clipboard sharing</h3><div class="in">
+      <label class="switch"><input type="checkbox" id="clipsync" ${c.sync ? "checked" : ""}><i></i> Share the clipboard both ways</label>
+      <p class="note-sm">Copy on the phone → it's on this computer's clipboard. Copy on this computer → it's on the phone's.</p>
+      ${c.sync ? `<div class="kv" style="margin-top:8px"><span>Phone → computer</span><span>${c.instant ? "Instant ✓" : "When you return to the phone's home screen"}</span>
+        <span>Computer → phone</span><span>${navigator.clipboard?.readText ? "Instant while this tab is open" : "Use \"Send to phone\" below"}</span></div>
+        ${navigator.clipboard?.readText ? `<button class="btn small" id="clipallow" style="margin-top:8px">Allow this page to read the computer's clipboard</button>` : ""}` : ""}
+    </div></div>
+    <div class="card"><h3>Phone clipboard</h3><div class="in">
+      ${phone ? `<div class="clipnow">${esc(phone.text)}</div><div class="actions" style="margin-top:8px"><button class="btn" data-copytext="${esc(phone.text)}">Copy to this computer</button><span class="note-sm">${when(phone.time)}</span></div>`
+        : `<div class="empty" style="padding:8px">Nothing yet. Copy something on the phone${c.instant ? "" : ", then press Home"}.</div>`}
+    </div></div>
+    <div class="card"><h3>Send to phone</h3><div class="in">
+      <textarea class="note" id="cliptext" placeholder="Type or paste text"></textarea>
+      <div class="actions" style="margin-top:8px"><button class="btn" id="clipsend">Copy to phone clipboard</button></div></div></div>
+    <div class="card" style="grid-column:1/-1"><h3>History</h3>
+      ${c.history.length ? c.history.map(h => `<div class="row" style="cursor:default;align-items:flex-start">
+        <span class="meta" style="min-width:84px;text-align:left">${h.source === "phone" ? "📱 Phone" : "💻 Computer"}<br>${when(h.time)}</span>
+        <span class="main"><span class="sub" style="white-space:pre-wrap;color:var(--text);max-height:4.2em;overflow:hidden">${esc(h.text)}</span></span>
+        <button class="btn small" data-copytext="${esc(h.text)}">Copy here</button>${h.source === "phone" ? "" : `<button class="btn small" data-tophone="${esc(h.text)}">To phone</button>`}</div>`).join("")
+        : `<div class="empty">Copied text will appear here</div>`}
+    </div>
+    ${c.sync && !c.instant ? `<div class="card" style="grid-column:1/-1"><h3>Make phone → computer instant (one-time setup)</h3><div class="in">
+      <p style="margin-top:0">Android only lets the app in front read the clipboard. With two extra permissions, granted once over USB, the launcher can catch every copy straight away. Connect the phone with USB debugging on, then run on the computer:</p>
+      ${cmds.map(x => `<code class="cmd">${esc(x)}</code>`).join("")}
+      <div class="actions"><button class="btn small" data-copytext="${esc(cmds.join("\n"))}">Copy commands</button></div>
+      <p class="note-sm">${c.readLogs ? "✓ Log access granted" : "✕ Log access missing"} · ${c.overlay ? "✓ Display over other apps granted" : "✕ Display over other apps missing"}. Afterwards switch sharing off and on again.</p></div></div>` : ""}
+  </div>`;
+}
+async function copyHere(text) {
+  try { await navigator.clipboard.writeText(text); lastComputerClip = text; toast("Copied to this computer"); return true; }
+  catch { toast("The browser blocked clipboard access — click the page and try again"); return false; }
+}
+function wireClipboard(m) {
+  m.querySelectorAll("[data-copytext]").forEach(b => b.onclick = () => copyHere(b.dataset.copytext));
+  m.querySelectorAll("[data-tophone]").forEach(b => b.onclick = () => act("clipboard", { text: b.dataset.tophone }, "On the phone's clipboard"));
+  const send = $("#clipsend", m);
+  if (send) send.onclick = async () => { const t = $("#cliptext").value; if (!t) return; const r = await act("clipboard", { text: t }, "On the phone's clipboard"); if (r.ok) { $("#cliptext").value = ""; refresh("clipboard"); } };
+  const sw = $("#clipsync", m);
+  if (sw) sw.onchange = async () => { S.clip = await act("clipboard/settings", { sync: sw.checked }); setupClipPoll(); render(); };
+  const allow = $("#clipallow", m);
+  if (allow) allow.onclick = async () => { try { await navigator.clipboard.readText(); toast("Allowed"); } catch { toast("Not allowed — check the browser's site permissions"); } };
+}
+function onPhoneClip(c) {
+  if (S.clip) { S.clip.history = [c, ...S.clip.history.filter(h => h.text !== c.text)].slice(0, 50); S.clip.sync = c.sync; }
+  if (c.source === "phone" && c.sync) {
+    lastComputerClip = c.text;
+    if (document.hasFocus()) navigator.clipboard?.writeText(c.text).catch(() => { clipPending = c.text; });
+    else clipPending = c.text;
+  }
+  if (S.view === "clipboard") render();
+}
+window.addEventListener("focus", () => {
+  if (clipPending != null) { const t = clipPending; clipPending = null; navigator.clipboard?.writeText(t).then(() => toast("Phone clipboard copied here")).catch(() => {}); }
+});
+// Computer → phone: while the tab is focused, notice new clipboard text and send it.
+function setupClipPoll() {
+  clearInterval(clipPoll);
+  if (!S.clip?.sync || !navigator.clipboard?.readText) return;
+  clipPoll = setInterval(async () => {
+    if (!document.hasFocus() || !S.clip?.sync) return;
+    try {
+      const t = await navigator.clipboard.readText();
+      if (t && t !== lastComputerClip) { lastComputerClip = t; await api("clipboard", { text: t }); }
+    } catch {}
+  }, 1500);
+}
+document.addEventListener("copy", () => setTimeout(async () => {
+  if (!S.clip?.sync) return;
+  try { const t = await navigator.clipboard.readText(); if (t && t !== lastComputerClip) { lastComputerClip = t; api("clipboard", { text: t }); } } catch {}
+}, 50));
+
 // ───────────── Dialogs ─────────────
 function dialog(html, wide) {
-  $(".overlay.dlg")?.remove();
+  $(".overlay.dlg:not([data-keep])")?.remove();
   const o = document.createElement("div"); o.className = "overlay dlg";
   o.innerHTML = `<div class="dialog ${wide ? "wide" : ""}">${html}</div>`;
   o.onclick = e => { if (e.target === o) o.remove(); };
@@ -1382,6 +1581,7 @@ function connect() {
   es.addEventListener("sms_status", e => { const r = JSON.parse(e.data); if (!r.ok) toast("Message failed to send"); });
   es.addEventListener("notifications", () => refresh("notifications"));
   es.addEventListener("wallet", () => { if (S.view === "wallet") refresh("wallet"); });
+  es.addEventListener("clipboard", e => onPhoneClip(JSON.parse(e.data)));
   es.addEventListener("calendar", () => { refresh("agenda"); if (S.view === "calendar") loadCal(true); });
 }
 function alertPrefs() {
@@ -1451,6 +1651,7 @@ async function start() {
   $("#pair").classList.add("hidden"); $("#app").classList.remove("hidden");
   try { applyTheme(await api("theme")); } catch {}
   refresh("status"); refresh("weather");
+  try { S.clip = await api("clipboard"); setupClipPoll(); } catch {}
   go("home");
   connect();
 }
