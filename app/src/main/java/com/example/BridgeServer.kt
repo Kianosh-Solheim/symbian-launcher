@@ -235,6 +235,16 @@ class BridgeServer(
                 else -> data.saveEvent(req.json())
             }
             "GET" to "birthdays" -> data.birthdays()
+            "GET" to "wallet" -> when (seg.getOrNull(1)) {
+                "barcode" -> return bytes(out, data.walletBarcode(req.query["id"] ?: ""), "image/png")
+                else -> data.walletPasses()
+            }
+            "POST" to "wallet" -> when (seg.getOrNull(1)) {
+                "import" -> data.walletImport(req.query["name"] ?: "ticket", req.input, req.contentLength, req.query["title"])
+                "add" -> data.walletAddManual(req.json())
+                "delete" -> data.walletDelete(req.json().optString("id"))
+                else -> null
+            }
             "GET" to "photos" -> data.photos(req.query["offset"]?.toIntOrNull() ?: 0, (req.query["limit"]?.toIntOrNull() ?: 60).coerceIn(1, 200))
             "GET" to "thumb" -> return bytes(out, data.thumbnail(req.query["id"]?.toLongOrNull() ?: -1, req.query["video"] == "1"), "image/jpeg")
             "GET" to "media-file" -> return streamMedia(out, req)

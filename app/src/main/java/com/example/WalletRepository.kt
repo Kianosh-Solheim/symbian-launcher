@@ -17,11 +17,20 @@ import java.util.UUID
 class WalletRepository(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("symbian_wallet_prefs", Context.MODE_PRIVATE)
 
-    private val _passes = MutableStateFlow<List<WalletPass>>(emptyList())
-    val passes: StateFlow<List<WalletPass>> = _passes.asStateFlow()
+    // Shared by every WalletRepository in the app, so a card added from Desktop Mode
+    // appears on the phone's Wallet screen immediately (and vice versa).
+    private val _passes get() = sharedPasses
+    val passes: StateFlow<List<WalletPass>> get() = sharedPasses.asStateFlow()
+
+    companion object {
+        private val sharedPasses = MutableStateFlow<List<WalletPass>>(emptyList())
+        @Volatile private var loaded = false
+    }
 
     init {
-        loadPasses()
+        synchronized(WalletRepository::class.java) {
+            if (!loaded) { loadPasses(); loaded = true }
+        }
     }
 
     private fun loadPasses() {
@@ -52,19 +61,19 @@ class WalletRepository(private val context: Context) {
         _passes.value = list
     }
 
-    suspend fun addPass(pass: WalletPass) = withContext(Dispatchers.IO) {
+    suspend fun addPass(pass: WalletPass) = withContext(Dispatchers.IO) { synchronized(WalletRepository::class.java) {
         val current = _passes.value.toMutableList()
         // Remove existing with same id if any
         current.removeAll { it.id == pass.id }
         current.add(0, pass)
         savePasses(current)
-    }
+    } }
 
-    suspend fun removePass(passId: String) = withContext(Dispatchers.IO) {
+    suspend fun removePass(passId: String) = withContext(Dispatchers.IO) { synchronized(WalletRepository::class.java) {
         val current = _passes.value.toMutableList()
         current.removeAll { it.id == passId }
         savePasses(current)
-    }
+    } }
 
     suspend fun importPkPassUri(uri: Uri): WalletPass? = withContext(Dispatchers.IO) {
         try {

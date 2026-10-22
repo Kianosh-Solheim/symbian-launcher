@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.Ringtone
@@ -819,6 +820,121 @@ class BridgeData(private val context: Context) {
             val input = context.contentResolver.openInputStream(uri) ?: return null
             MediaFile(input, size, mime, name)
         } catch (_: Exception) { null }
+    }
+
+    // ───────────────────────────── Wallet ─────────────────────────────
+
+    val wallet by lazy { WalletRepository(context) }
+
+    fun walletPasses(): JSONArray {
+        val arr = JSONArray()
+        wallet.passes.value.forEach { p ->
+            try {
+                val j = JSONObject(p.toJsonString())
+                j.remove("stripBitmapBase64") // large; the desktop draws its own card
+                arr.put(j)
+            } catch (_: Exception) { }
+        }
+        return arr
+    }
+
+    fun walletBarcode(id: String): ByteArray? {
+        val p = wallet.passes.value.firstOrNull { it.id == id } ?: return null
+        val b = p.barcode ?: return null
+        val square = b.format == BarcodeFormatType.QR_CODE || b.format == BarcodeFormatType.AZTEC
+        val bmp = BarcodeUtils.generateBarcodeBitmap(b.message, b.format, 600, if (square) 600 else 240) ?: return null
+        return ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+    }
+
+    /**
+     * Imports a ticket file: Apple Wallet .pkpass, a PDF ticket (barcode read from its pages),
+     * or a screenshot/photo of a barcode.
+     */
+    fun walletImport(name: String, input: InputStream, length: Long, title: String?): JSONObject {
+        if (length <= 0 || length > 25_000_000) return fail("File is empty or larger than 25 MB")
+        val bytes = ByteArray(length.toInt()); var read = 0
+        while (read < bytes.size) { val n = input.read(bytes, read, bytes.size - read); if (n < 0) break; read += n }
+        val lower = name.lowercase()
+        val isZip = bytes.size > 3 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte()
+        val isPdf = bytes.size > 4 && String(bytes, 0, 4) == "%PDF"
+        val pass: WalletPass? = try {
+            when {
+                isZip || lower.endsWith(".pkpass") -> PkPassParser.parsePkPass(bytes.inputStream())
+                isPdf || lower.endsWith(".pdf") -> passFromPdf(bytes, title)
+                else -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { bmp ->
+                    BarcodeUtils.decodeBarcodeFromBitmap(bmp)?.let { BarcodeUtils.createPassFromScannedBarcode(it, title?.ifBlank { null }) }
+                }
+            }
+        } catch (e: Exception) { android.util.Log.w("SymbianBridge", "Wallet import failed", e); null }
+        if (pass == null) {
+            return fail(when {
+                isZip || lower.endsWith(".pkpass") -> "Couldn't read this .pkpass file"
+                isPdf -> "No barcode found in the PDF"
+                else -> "No barcode found in the image"
+            })
+        }
+        val finalPass = if (!title.isNullOrBlank() && (isZip || lower.endsWith(".pkpass")).not()) pass.copy(organizationName = title) else pass
+        runBlocking { wallet.addPass(finalPass) }
+        return ok().put("id", finalPass.id).put("name", finalPass.organizationName)
+    }
+
+    private fun passFromPdf(bytes: ByteArray, title: String?): WalletPass? {
+        val tmp = java.io.File(context.cacheDir, "ticket-${System.nanoTime()}.pdf")
+        try {
+            tmp.writeBytes(bytes)
+            android.os.ParcelFileDescriptor.open(tmp, android.os.ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+                android.graphics.pdf.PdfRenderer(fd).use { r ->
+                    for (i in 0 until minOf(r.pageCount, 6)) {
+                        r.openPage(i).use { page ->
+                            // Render at ~200 dpi so small QR/Aztec codes stay readable.
+                            val scale = 200f / 72f
+                            val w = (page.width * scale).toInt().coerceAtMost(2400)
+                            val h = (page.height * scale).toInt().coerceAtMost(3400)
+                            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                            bmp.eraseColor(android.graphics.Color.WHITE)
+                            page.render(bmp, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                            val found = BarcodeUtils.decodeBarcodeFromBitmap(bmp)
+                            bmp.recycle()
+                            if (found != null) return BarcodeUtils.createPassFromScannedBarcode(found, title?.ifBlank { null })
+                        }
+                    }
+                }
+            }
+        } finally { tmp.delete() }
+        return null
+    }
+
+    /** A card or ticket typed in on the desktop. */
+    fun walletAddManual(j: JSONObject): JSONObject {
+        val org = j.optString("name").trim()
+        val code = j.optString("code").trim()
+        if (org.isEmpty()) return fail("Give the card a name")
+        val type = runCatching { PassType.valueOf(j.optString("type", "LOYALTY_CARD")) }.getOrDefault(PassType.LOYALTY_CARD)
+        val format = runCatching { BarcodeFormatType.valueOf(j.optString("format", "QR_CODE")) }.getOrDefault(BarcodeFormatType.QR_CODE)
+        val color = j.optString("color").removePrefix("#").toLongOrNull(16)?.let { 0xFF000000 or it } ?: 0xFF1C2B39
+        fun f(key: String, label: String) = j.optString(key).trim().takeIf { it.isNotEmpty() }?.let { PassField(key, label, it) }
+        val pass = WalletPass(
+            id = java.util.UUID.randomUUID().toString(),
+            type = type,
+            organizationName = org,
+            description = j.optString("description").ifBlank { type.displayName },
+            logoText = org.uppercase(),
+            backgroundColor = color,
+            headerFields = listOfNotNull(f("date", "DATE")),
+            primaryFields = listOfNotNull(f("number", if (type == PassType.LOYALTY_CARD) "MEMBER ID" else "TICKET")),
+            secondaryFields = listOfNotNull(f("holder", "NAME"), f("seat", "SEAT")),
+            auxiliaryFields = listOfNotNull(f("venue", "PLACE")),
+            backFields = listOfNotNull(f("notes", "NOTES")),
+            barcode = if (code.isNotEmpty()) PassBarcode(code, format, j.optString("number").ifBlank { code }) else null
+        )
+        runBlocking { wallet.addPass(pass) }
+        return ok().put("id", pass.id)
+    }
+
+    fun walletDelete(id: String): JSONObject {
+        if (wallet.passes.value.none { it.id == id }) return fail("Card not found")
+        runBlocking { wallet.removePass(id) }
+        return ok()
     }
 
     // ───────────────────────────── Tools ─────────────────────────────

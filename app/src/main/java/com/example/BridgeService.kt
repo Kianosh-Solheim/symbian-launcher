@@ -146,6 +146,7 @@ class BridgeService : Service() {
         } catch (_: Exception) { }
 
         scope.launch { NotificationStore.notifications.drop(1).collectLatest { server?.broadcast("notifications", JSONObject()) } }
+        scope.launch { data.wallet.passes.drop(1).collectLatest { server?.broadcast("wallet", JSONObject()) } }
         scope.launch { BridgeState.weather.drop(1).collectLatest { w -> if (w != null) server?.broadcast("weather", w) } }
         scope.launch { BridgeState.theme.drop(1).collectLatest { server?.broadcast("theme", data.theme()) } }
         scope.launch { BridgeState.pairingCode.collectLatest { updateNotification() } }

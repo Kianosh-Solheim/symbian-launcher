@@ -205,6 +205,28 @@ textarea.note { width: 100%; min-height: 80px; padding: 8px; border-radius: 6px;
 .checks { display: grid; gap: 6px; margin: 8px 0; }
 .checks label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
 
+/* ── Wallet ───────────────────────────────── */
+.wallet { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; padding: 16px; align-content: start; }
+.pass { border-radius: 12px; padding: 14px 16px; color: var(--fg); background: var(--pbg); box-shadow: 0 4px 12px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.25);
+  cursor: pointer; position: relative; overflow: hidden; min-height: 190px; display: flex; flex-direction: column; gap: 8px; border: 0; text-align: left; font: inherit; }
+.pass::after { content: ""; position: absolute; inset: 0 0 55% 0; background: linear-gradient(180deg, rgba(255,255,255,.18), transparent); pointer-events: none; }
+.pass:hover, .pass:focus-visible { outline: 3px solid var(--hl); }
+.pass .top { display: flex; align-items: center; gap: 10px; }
+.pass .top img { max-height: 32px; max-width: 110px; }
+.pass .org { font-weight: bold; font-size: 16px; flex: 1; }
+.pass .kind { font-size: 11px; opacity: .8; border: 1px solid currentColor; border-radius: 8px; padding: 0 6px; }
+.pass .fields { display: flex; gap: 16px; flex-wrap: wrap; }
+.pass .f small { display: block; font-size: 10px; letter-spacing: .5px; color: var(--lbl); text-transform: uppercase; }
+.pass .f b { font-size: 15px; }
+.pass .f.big b { font-size: 26px; }
+.pass .route { display: flex; align-items: center; gap: 12px; font-size: 30px; font-weight: bold; }
+.pass .route span { font-size: 18px; opacity: .7; }
+.pass .code { width: fit-content; margin-left: auto; margin-right: auto; margin-top: auto; background: #fff; border-radius: 6px; padding: 6px; align-self: center; }
+.pass .code img { display: block; max-height: 90px; max-width: 220px; }
+.passdetail .code img { max-height: 280px; max-width: 100%; }
+.addcard { border: 2px dashed var(--line); border-radius: 12px; min-height: 190px; display: grid; place-items: center; text-align: center; padding: 16px; color: var(--muted); }
+.addcard.over { border-color: var(--hl); color: var(--hl); }
+
 /* ── Calendar ─────────────────────────────── */
 .calbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px dashed var(--line); flex-wrap: wrap; }
 .calbar .label { font-weight: bold; font-size: 18px; text-shadow: var(--shadow); min-width: 220px; }
@@ -275,6 +297,7 @@ textarea.note { width: 100%; min-height: 80px; padding: 8px; border-radius: 6px;
   <symbol id="i-cal" viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v18H4V4h3zm-1 7v11h12V9zm2 2h3v3H8z"/></symbol>
   <symbol id="i-cake" viewBox="0 0 24 24"><path d="M12 2c1 1.5 1.5 2.5 1.5 3.5a1.5 1.5 0 0 1-3 0C10.5 4.5 11 3.5 12 2zm-1 6h2v3h6a2 2 0 0 1 2 2v2c-1 0-1.5.8-2.5.8S16.7 15 15.5 15s-1.8.8-3 .8-1.8-.8-3-.8-1.8.8-3 .8S4.5 15 3 15v-2a2 2 0 0 1 2-2h6zm-8 9c1 0 1.7-.8 2.5-.8s1.5.8 3 .8 1.8-.8 3-.8 1.8.8 3 .8 1.8-.8 3-.8.8.8 2.5.8V22H3z"/></symbol>
   <symbol id="i-photo" viewBox="0 0 24 24"><path d="M3 5h18v14H3zm2 2v8.5l4-4 3 3 4-5 3 3.5V7zm4 3a1.5 1.5 0 1 0 0-.01z"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><path d="M2 5h20v14H2zm2 3v2h16V8zm0 5v4h7v-4z"/></symbol>
   <symbol id="i-tool" viewBox="0 0 24 24"><path d="M22 19.6 13.9 11.5A6 6 0 0 0 6.5 3.3l3.9 3.9-2.8 2.8-3.9-3.9a6 6 0 0 0 8.2 7.4l8.1 8.1z"/></symbol>
 </svg>
 
@@ -325,7 +348,7 @@ const store = {
 let token = store.get("symbian.token");
 const S = {
   view: "home", status: null, weather: null, threads: [], thread: null, messages: [], notifs: [], calls: [], contacts: [],
-  agenda: [], media: null, drafts: {}, birthdays: [], calendars: [],
+  agenda: [], media: null, drafts: {}, wallet: [], birthdays: [], calendars: [],
   photos: { items: [], total: 0, loading: false, sel: new Set(), selecting: false, permission: true },
   cal: { mode: store.get("symbian.calmode") || "month", date: new Date(), events: [], loaded: "" }, contact: null, chat: null, newMsg: false, q: "", online: false,
 };
@@ -381,7 +404,7 @@ const icon = id => `<svg><use href="#i-${id}"/></svg>`;
 // ───────────── Navigation ─────────────
 const SECTIONS = [
   ["home", "Home", "home"], ["messages", "Messages", "msg"], ["chats", "Chats", "chat"], ["calls", "Calls", "call"],
-  ["contacts", "Contacts", "person"], ["birthdays", "Birthdays", "cake"], ["photos", "Photos", "photo"], ["notifications", "Notifications", "bell"], ["calendar", "Calendar", "cal"], ["tools", "Tools", "tool"],
+  ["contacts", "Contacts", "person"], ["birthdays", "Birthdays", "cake"], ["photos", "Photos", "photo"], ["notifications", "Notifications", "bell"], ["calendar", "Calendar", "cal"], ["wallet", "Wallet", "card"], ["tools", "Tools", "tool"],
 ];
 function badges() {
   const unread = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
@@ -393,7 +416,7 @@ function badges() {
 function renderNav() {
   const b = badges();
   $("#nav").innerHTML = SECTIONS.map(([id, label, ic], i) =>
-    `<button data-go="${id}" class="${S.view === id ? "active" : ""}" title="${label} (Alt+${(i + 1) % 10})">${icon(ic)}<span class="lbl">${label}</span>${b[id] ? `<span class="badge">${b[id]}</span>` : ""}</button>`).join("");
+    `<button data-go="${id}" class="${S.view === id ? "active" : ""}" title="${label}${i < 10 ? ` (Alt+${(i + 1) % 10})` : ""}">${icon(ic)}<span class="lbl">${label}</span>${b[id] ? `<span class="badge">${b[id]}</span>` : ""}</button>`).join("");
 }
 function go(view) {
   S.view = view; S.q = "";
@@ -410,6 +433,7 @@ function load(view) {
   if (view === "calendar") { loadCalendars(); loadCal(); }
   if (view === "birthdays") refresh("birthdays");
   if (view === "photos" && !S.photos.items.length) loadPhotos();
+  if (view === "wallet") refresh("wallet");
   if (view === "home") refresh("birthdays");
 }
 async function refresh(what) {
@@ -421,6 +445,7 @@ async function refresh(what) {
     if (what === "contacts!") S.contacts = await api("contacts");
     if (what === "agenda") S.agenda = await api("agenda");
     if (what === "birthdays") S.birthdays = await api("birthdays");
+    if (what === "wallet") S.wallet = await api("wallet");
     if (what === "media") S.media = await api("media");
     if (what === "weather") S.weather = await api("weather");
     if (what === "status") S.status = await api("status");
@@ -626,6 +651,7 @@ const VIEWS = {
   calendar() { return calendarView(); },
   birthdays() { return birthdaysView(); },
   photos() { return photosView(); },
+  wallet() { return walletView(); },
 
   tools() {
     setSoftkeys("Ring phone", () => act("ring", { on: true }, "Ringing phone for 30 s"));
@@ -804,6 +830,7 @@ function wire(m) {
   }
   wireCalendar(m);
   wirePhotos(m);
+  wireWallet(m);
   m.querySelectorAll("[data-zoom]").forEach(i => i.onclick = () => window.open(i.dataset.zoom, "_blank"));
   m.querySelectorAll("[data-alertpref]").forEach(c => c.onchange = () => { const p = alertPrefs(); p[c.dataset.alertpref] = c.checked; store.set("symbian.alerts", JSON.stringify(p)); });
   const rb = $("[data-restore]", m);
@@ -1109,6 +1136,107 @@ function lightbox(i) {
   show();
 }
 
+// ───────────── Wallet ─────────────
+const argb = v => "#" + (Number(v) & 0xFFFFFF).toString(16).padStart(6, "0");
+const KINDS = { BOARDING_PASS: "Boarding pass", LOYALTY_CARD: "Loyalty card", EVENT_TICKET: "Ticket", COUPON: "Coupon", GENERIC: "Pass" };
+function passFields(list, cls) {
+  return (list || []).filter(f => f.value).map(f => `<span class="f ${cls || ""}"><small>${esc(f.label)}</small><b>${esc(f.value)}</b></span>`).join("");
+}
+function passCard(p, detail) {
+  const style = `--pbg:${argb(p.backgroundColor)};--fg:${argb(p.foregroundColor)};--lbl:${argb(p.labelColor)}`;
+  const logo = p.logoBitmapBase64 ? `<img src="data:image/png;base64,${p.logoBitmapBase64}" alt="">` : "";
+  const route = p.originAirport && p.destinationAirport
+    ? `<div class="route">${esc(p.originAirport)} <span>✈</span> ${esc(p.destinationAirport)}</div>` : "";
+  const code = p.barcode && p.barcode.message ? `<div class="code"><img src="/api/wallet/barcode?id=${q(p.id)}&token=${q(token)}" alt="Barcode"></div>` : "";
+  return `<${detail ? "div" : "button"} class="pass ${detail ? "passdetail" : ""}" style="${style}" data-pass="${esc(p.id)}">
+    <div class="top">${logo}<span class="org">${esc(p.logoText && !logo ? p.logoText : p.organizationName)}</span><span class="kind">${esc(KINDS[p.type] || "Pass")}</span></div>
+    ${p.headerFields && p.headerFields.length ? `<div class="fields" style="justify-content:flex-end">${passFields(p.headerFields)}</div>` : ""}
+    ${route || `<div class="fields">${passFields(p.primaryFields, "big")}</div>`}
+    <div class="fields">${passFields(p.secondaryFields)}${passFields(p.auxiliaryFields)}</div>
+    ${detail && p.backFields && p.backFields.length ? `<div class="fields" style="flex-direction:column;gap:6px;border-top:1px solid var(--lbl);padding-top:8px">${passFields(p.backFields)}</div>` : ""}
+    ${code}${detail && p.barcode && p.barcode.altText ? `<div style="text-align:center;font-family:monospace">${esc(p.barcode.altText)}</div>` : ""}
+  </${detail ? "div" : "button"}>`;
+}
+function walletView() {
+  setSoftkeys("Add card", () => walletAddDialog());
+  return `<div class="view"><div class="pane" id="walletpane">
+    <div class="title">${icon("card").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Wallet</span>
+      <span style="font-size:13px;color:var(--muted)">${S.wallet.length} card${S.wallet.length === 1 ? "" : "s"}</span>
+      <button class="btn small" data-walletfile="1">Import file…</button><button class="btn small" data-walletadd="1">Type in a card</button></div>
+    <input type="file" id="walletfile" class="hidden" multiple accept=".pkpass,.pdf,image/*,application/vnd.apple.pkpass,application/pdf">
+    <div class="wallet">
+      ${S.wallet.map(p => passCard(p, false)).join("")}
+      <div class="addcard" id="walletdrop"><div><b>Drop tickets here</b><br><small>Apple Wallet .pkpass, PDF tickets, or a screenshot of a barcode — they appear in the phone's Wallet straight away</small><br><br>
+        <button class="btn small" data-walletfile="1">Choose files…</button></div></div>
+    </div>
+    <div id="walletmsg" class="empty" style="padding-top:0"></div>
+  </div></div>`;
+}
+function wireWallet(m) {
+  const input = $("#walletfile", m); if (!input) return;
+  m.querySelectorAll("[data-walletfile]").forEach(b => b.onclick = () => input.click());
+  m.querySelectorAll("[data-walletadd]").forEach(b => b.onclick = () => walletAddDialog());
+  input.onchange = () => walletImport([...input.files]);
+  m.querySelectorAll("[data-pass]").forEach(c => c.onclick = () => walletDetail(c.dataset.pass));
+  const drop = $("#walletdrop", m), pane = $("#walletpane", m);
+  pane.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+  pane.ondragleave = e => { if (!pane.contains(e.relatedTarget)) drop.classList.remove("over"); };
+  pane.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); walletImport([...e.dataTransfer.files]); };
+}
+async function walletImport(files) {
+  for (const f of files) {
+    const msg = $("#walletmsg"); if (msg) msg.textContent = `Reading ${f.name}…`;
+    try {
+      const r = await (await fetch(`/api/wallet/import?name=${q(f.name)}&token=${q(token)}`, { method: "POST", headers: { "Content-Type": f.type || "application/octet-stream" }, body: f })).json();
+      toast(r.ok ? `Added ${r.name || f.name} to Wallet` : `${f.name}: ${r.error || "couldn't import"}`);
+      if ($("#walletmsg")) $("#walletmsg").textContent = r.ok ? "" : `${f.name}: ${r.error || "couldn't import"}. You can type the card in instead.`;
+    } catch { toast("Phone not reachable"); }
+  }
+  refresh("wallet");
+}
+function walletDetail(id) {
+  const p = S.wallet.find(x => x.id === id); if (!p) return;
+  const o = dialog(`<h2>${esc(p.organizationName)}</h2><div class="in">${passCard(p, true)}
+    <div class="row2"><button class="btn bad" id="pd-del">Delete</button><span style="flex:1"></span><button class="btn" id="pd-close">Close</button></div></div>`, true);
+  $("#pd-close", o).onclick = () => o.remove();
+  const del = $("#pd-del", o);
+  del.onclick = async () => {
+    if (!del.dataset.sure) { del.dataset.sure = "1"; del.textContent = "Confirm delete"; return; }
+    const r = await act("wallet/delete", { id }, "Removed from Wallet"); if (r.ok) { o.remove(); refresh("wallet"); }
+  };
+}
+function walletAddDialog() {
+  const o = dialog(`<h2>Add a card or ticket</h2><div class="in">
+    <div class="form">
+      <label>Type</label><select id="wa-type">${Object.entries(KINDS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
+      <label>Name</label><input id="wa-name" placeholder="e.g. Trumf, Vy, Bergen Kino">
+      <label>Number</label><input id="wa-number" placeholder="Member or ticket number">
+      <label>Barcode</label><input id="wa-code" placeholder="Code to show (usually the same number)">
+      <label>Format</label><select id="wa-format"><option value="QR_CODE">QR code</option><option value="CODE_128">Barcode (Code 128)</option><option value="EAN_13">Barcode (EAN-13)</option><option value="CODE_39">Barcode (Code 39)</option><option value="AZTEC">Aztec</option><option value="PDF_417">PDF417</option></select>
+      <label>Holder</label><input id="wa-holder" placeholder="Name on the card (optional)">
+      <label>Date</label><input id="wa-date" placeholder="Optional, e.g. 24 Oct 19:30">
+      <label>Place</label><input id="wa-venue" placeholder="Optional venue or route">
+      <label>Seat</label><input id="wa-seat" placeholder="Optional">
+      <label>Notes</label><input id="wa-notes" placeholder="Optional">
+      <label>Colour</label><input id="wa-color" type="color" value="#1c2b39">
+    </div>
+    <div class="err" id="wa-err"></div>
+    <div class="row2"><button class="btn" id="wa-cancel">Cancel</button><button class="btn good" id="wa-save">Add to Wallet</button></div></div>`, true);
+  const num = $("#wa-number", o), code = $("#wa-code", o);
+  num.oninput = () => { if (!code.dataset.edited) code.value = num.value; };
+  code.oninput = () => { code.dataset.edited = "1"; };
+  setTimeout(() => $("#wa-name", o).focus(), 30);
+  $("#wa-cancel", o).onclick = () => o.remove();
+  $("#wa-save", o).onclick = async () => {
+    const v = id => $("#" + id, o).value;
+    const body = { type: v("wa-type"), name: v("wa-name"), number: v("wa-number"), code: v("wa-code"), format: v("wa-format"),
+      holder: v("wa-holder"), date: v("wa-date"), venue: v("wa-venue"), seat: v("wa-seat"), notes: v("wa-notes"), color: v("wa-color") };
+    if (!body.name.trim()) { $("#wa-err", o).textContent = "Give the card a name"; return; }
+    const r = await act("wallet/add", body, "Added to Wallet");
+    if (r.ok) { o.remove(); refresh("wallet"); } else $("#wa-err", o).textContent = r.error || "Couldn't add";
+  };
+}
+
 // ───────────── Dialogs ─────────────
 function dialog(html, wide) {
   $(".overlay.dlg")?.remove();
@@ -1253,6 +1381,7 @@ function connect() {
   });
   es.addEventListener("sms_status", e => { const r = JSON.parse(e.data); if (!r.ok) toast("Message failed to send"); });
   es.addEventListener("notifications", () => refresh("notifications"));
+  es.addEventListener("wallet", () => { if (S.view === "wallet") refresh("wallet"); });
   es.addEventListener("calendar", () => { refresh("agenda"); if (S.view === "calendar") loadCal(true); });
 }
 function alertPrefs() {
