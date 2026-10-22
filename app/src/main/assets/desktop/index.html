@@ -99,7 +99,7 @@ main { display: grid; min-height: 0; overflow: hidden; }
 .appicon { width: 34px; height: 34px; border-radius: 6px; flex: none; }
 .empty { padding: 30px 20px; text-align: center; color: var(--muted); }
 
-.btn {
+.btn { text-decoration: none; display: inline-block;
   border: 1px solid rgba(0,0,0,.45); border-radius: 5px; padding: 6px 14px; cursor: pointer; font-weight: bold;
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 55%, white) 0%, var(--surface) 55%, color-mix(in srgb, var(--surface) 75%, black));
   text-shadow: var(--shadow); white-space: nowrap;
@@ -187,6 +187,24 @@ main { display: grid; min-height: 0; overflow: hidden; }
 .drop.over { border-color: var(--hl); color: var(--hl); }
 textarea.note { width: 100%; min-height: 80px; padding: 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,.4); background: #fff; color: #000; resize: vertical; }
 
+/* ── Photos & MMS ─────────────────────────── */
+.mms { display: block; max-width: 260px; max-height: 260px; border-radius: 6px; margin: 4px 0; cursor: zoom-in; }
+.photogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px; padding: 4px 14px 14px; }
+.ph { position: relative; aspect-ratio: 1; background: rgba(0,0,0,.25) center/cover no-repeat; border-radius: 4px; cursor: pointer; overflow: hidden; border: 2px solid transparent; }
+.ph:hover { border-color: var(--hl-top); }
+.ph.sel { border-color: var(--hl); box-shadow: inset 0 0 0 3px var(--hl); }
+.ph .tick { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,.35); display: none; place-items: center; color: #000; font-weight: bold; font-size: 14px; }
+.photogrid.selecting .ph .tick, .ph:hover .tick { display: grid; }
+.ph.sel .tick { background: var(--hl); }
+.ph .dur { position: absolute; right: 6px; bottom: 6px; font-size: 12px; background: rgba(0,0,0,.65); padding: 0 5px; border-radius: 3px; }
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 70; display: grid; grid-template-rows: auto 1fr; }
+.lightbox .bar { display: flex; gap: 8px; align-items: center; padding: 8px 14px; }
+.lightbox .stage { display: grid; place-items: center; min-height: 0; position: relative; }
+.lightbox img, .lightbox video { max-width: 96vw; max-height: calc(100vh - 70px); object-fit: contain; }
+.lightbox .nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 34px; padding: 10px 16px; }
+.checks { display: grid; gap: 6px; margin: 8px 0; }
+.checks label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+
 /* ── Calendar ─────────────────────────────── */
 .calbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px dashed var(--line); flex-wrap: wrap; }
 .calbar .label { font-weight: bold; font-size: 18px; text-shadow: var(--shadow); min-width: 220px; }
@@ -256,6 +274,7 @@ textarea.note { width: 100%; min-height: 80px; padding: 8px; border-radius: 6px;
   <symbol id="i-bell" viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.8V3a1.5 1.5 0 0 0-3 0v1.2A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></symbol>
   <symbol id="i-cal" viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v18H4V4h3zm-1 7v11h12V9zm2 2h3v3H8z"/></symbol>
   <symbol id="i-cake" viewBox="0 0 24 24"><path d="M12 2c1 1.5 1.5 2.5 1.5 3.5a1.5 1.5 0 0 1-3 0C10.5 4.5 11 3.5 12 2zm-1 6h2v3h6a2 2 0 0 1 2 2v2c-1 0-1.5.8-2.5.8S16.7 15 15.5 15s-1.8.8-3 .8-1.8-.8-3-.8-1.8.8-3 .8S4.5 15 3 15v-2a2 2 0 0 1 2-2h6zm-8 9c1 0 1.7-.8 2.5-.8s1.5.8 3 .8 1.8-.8 3-.8 1.8.8 3 .8 1.8-.8 3-.8.8.8 2.5.8V22H3z"/></symbol>
+  <symbol id="i-photo" viewBox="0 0 24 24"><path d="M3 5h18v14H3zm2 2v8.5l4-4 3 3 4-5 3 3.5V7zm4 3a1.5 1.5 0 1 0 0-.01z"/></symbol>
   <symbol id="i-tool" viewBox="0 0 24 24"><path d="M22 19.6 13.9 11.5A6 6 0 0 0 6.5 3.3l3.9 3.9-2.8 2.8-3.9-3.9a6 6 0 0 0 8.2 7.4l8.1 8.1z"/></symbol>
 </svg>
 
@@ -276,7 +295,7 @@ textarea.note { width: 100%; min-height: 80px; padding: 8px; border-radius: 6px;
   </div>
   <footer class="softkeys">
     <button id="skL">Options</button>
-    <span class="c" id="skC">Alt+1–9 sections · / search · Esc back</span>
+    <span class="c" id="skC">Alt+0–9 sections · / search · Esc back</span>
     <button id="skR" class="r">Exit</button>
   </footer>
 </div>
@@ -307,6 +326,7 @@ let token = store.get("symbian.token");
 const S = {
   view: "home", status: null, weather: null, threads: [], thread: null, messages: [], notifs: [], calls: [], contacts: [],
   agenda: [], media: null, drafts: {}, birthdays: [], calendars: [],
+  photos: { items: [], total: 0, loading: false, sel: new Set(), selecting: false, permission: true },
   cal: { mode: store.get("symbian.calmode") || "month", date: new Date(), events: [], loaded: "" }, contact: null, chat: null, newMsg: false, q: "", online: false,
 };
 
@@ -343,7 +363,7 @@ const initials = n => (String(n || "?").trim().split(/\s+/).map(w => w[0]).filte
 function hue(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
 const avatar = (name, img) => `<span class="avatar" style="background-color:hsl(${hue(name)} 45% 40%);${img ? `background-image:url('${img}')` : ""}">${img ? "" : esc(initials(name))}</span>`;
 function wxIcon(sym) {
-  sym = String(sym || "");
+  sym = String(sym || "").toLowerCase().replace(/ /g, "_");
   const night = sym.includes("night");
   if (sym.includes("thunder")) return "⛈️";
   if (sym.includes("snow")) return "❄️";
@@ -361,7 +381,7 @@ const icon = id => `<svg><use href="#i-${id}"/></svg>`;
 // ───────────── Navigation ─────────────
 const SECTIONS = [
   ["home", "Home", "home"], ["messages", "Messages", "msg"], ["chats", "Chats", "chat"], ["calls", "Calls", "call"],
-  ["contacts", "Contacts", "person"], ["birthdays", "Birthdays", "cake"], ["notifications", "Notifications", "bell"], ["calendar", "Calendar", "cal"], ["tools", "Tools", "tool"],
+  ["contacts", "Contacts", "person"], ["birthdays", "Birthdays", "cake"], ["photos", "Photos", "photo"], ["notifications", "Notifications", "bell"], ["calendar", "Calendar", "cal"], ["tools", "Tools", "tool"],
 ];
 function badges() {
   const unread = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
@@ -373,7 +393,7 @@ function badges() {
 function renderNav() {
   const b = badges();
   $("#nav").innerHTML = SECTIONS.map(([id, label, ic], i) =>
-    `<button data-go="${id}" class="${S.view === id ? "active" : ""}" title="${label} (Alt+${i + 1})">${icon(ic)}<span class="lbl">${label}</span>${b[id] ? `<span class="badge">${b[id]}</span>` : ""}</button>`).join("");
+    `<button data-go="${id}" class="${S.view === id ? "active" : ""}" title="${label} (Alt+${(i + 1) % 10})">${icon(ic)}<span class="lbl">${label}</span>${b[id] ? `<span class="badge">${b[id]}</span>` : ""}</button>`).join("");
 }
 function go(view) {
   S.view = view; S.q = "";
@@ -389,12 +409,13 @@ function load(view) {
   if (view === "contacts") { refresh("contacts"); refresh("birthdays"); }
   if (view === "calendar") { loadCalendars(); loadCal(); }
   if (view === "birthdays") refresh("birthdays");
+  if (view === "photos" && !S.photos.items.length) loadPhotos();
   if (view === "home") refresh("birthdays");
 }
 async function refresh(what) {
   try {
     if (what === "threads") S.threads = await api("threads");
-    if (what === "notifications") S.notifs = await api("notifications");
+    if (what === "notifications") { const fresh = await api("notifications"); announceNew(fresh); S.notifs = fresh; }
     if (what === "calls") S.calls = await api("calls");
     if (what === "contacts" && !S.contacts.length) S.contacts = await api("contacts");
     if (what === "contacts!") S.contacts = await api("contacts");
@@ -604,6 +625,7 @@ const VIEWS = {
 
   calendar() { return calendarView(); },
   birthdays() { return birthdaysView(); },
+  photos() { return photosView(); },
 
   tools() {
     setSoftkeys("Ring phone", () => act("ring", { on: true }, "Ringing phone for 30 s"));
@@ -619,8 +641,15 @@ const VIEWS = {
         <div class="drop" id="drop">Drop files here or <a href="#" id="pick">choose files</a><br><small>Saved to the phone's Downloads folder</small></div>
         <input type="file" id="files" multiple class="hidden"><div id="upl" style="margin-top:8px;font-size:13px"></div></div></div>
       <div class="card"><h3>Desktop alerts</h3><div class="in">
-        <p style="margin-top:0">Show a desktop notification for new messages and incoming calls while this tab is in the background.</p>
-        <button class="btn" data-alerts="1">${"Notification" in window && Notification.permission === "granted" ? "Alerts are on" : "Turn on alerts"}</button></div></div>
+        <p style="margin-top:0">Pop up a notification on this computer when the phone gets something new, while this tab is in the background.</p>
+        <div class="checks">${[["sms", "Text messages"], ["calls", "Incoming calls"], ["chats", "Chats (RCS, Signal, WhatsApp…)"], ["other", "All other notifications"]]
+          .map(([k, l]) => `<label><input type="checkbox" data-alertpref="${k}" ${alertPrefs()[k] ? "checked" : ""}> ${l}</label>`).join("")}</div>
+        ${!window.isSecureContext ? `<p class="note-sm">Desktop pop-ups need the encrypted connection. On the phone: Desktop Mode → Encrypted connection (HTTPS). Until then alerts show inside this page.</p>`
+          : `<button class="btn" data-alerts="1">${"Notification" in window && Notification.permission === "granted" ? "Pop-ups are allowed ✓" : "Allow pop-ups"}</button>`}</div></div>
+      <div class="card"><h3>Settings backup</h3><div class="in">
+        <p style="margin-top:0">Home screen, theme, pinned apps, weather, alarms, wallet cards and Desktop Mode options in one file.</p>
+        <div class="actions"><a class="btn" href="/api/backup?token=${q(token)}" download>Download backup</a><button class="btn" data-restore="1">Restore…</button></div>
+        <input type="file" id="restorefile" accept=".json,application/json" class="hidden"><div class="err" id="restoremsg"></div></div></div>
       <div class="card"><h3>This browser</h3><div class="in">
         <p style="margin-top:0">Paired with ${esc(S.status?.device || "the phone")}. To revoke every browser, use <b>Forget paired browsers</b> on the phone.</p>
         <button class="btn bad" data-unpair="1">Disconnect this browser</button></div></div>
@@ -663,7 +692,7 @@ function conversation() {
   const bubbles = S.messages.map(m => {
     const day = new Date(m.date).toDateString(); const sep = day !== last ? `<div class="daysep">${esc(new Date(m.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }))}</div>` : "";
     last = day;
-    return sep + `<div class="bubble ${m.outgoing ? "out" : "in"} ${m.failed ? "failed" : ""}">${esc(m.body)}<span class="t">${hm(m.date)}${m.pending ? " · sending" : ""}${m.failed ? " · failed" : ""}</span></div>`;
+    return sep + `<div class="bubble ${m.outgoing ? "out" : "in"} ${m.failed ? "failed" : ""}">${mediaHtml(m.media)}${esc(m.body)}<span class="t">${hm(m.date)}${m.pending ? " · sending" : ""}${m.failed ? " · failed" : ""}</span></div>`;
   }).join("");
   return `<div class="convo">
     <div class="title">${avatar(t.name)}<span class="grow">${esc(t.name)}<div style="font-size:12px;font-weight:normal;color:var(--muted)">${esc(t.address)}</div></span>
@@ -671,6 +700,14 @@ function conversation() {
     <div class="bubbles" id="bubbles">${bubbles || `<div class="empty">Loading…</div>`}</div>
     <div class="compose"><textarea id="reply" placeholder="Text message" rows="1"></textarea><span class="counter" id="counter"></span><button class="btn" data-sendsms="1">Send</button></div>
   </div>`;
+}
+function mediaHtml(list) {
+  return (list || []).map(p => {
+    const src = `/api/mmspart?id=${p.id}&token=${q(token)}`;
+    if (p.type.startsWith("image/")) return `<img class="mms" src="${src}" data-zoom="${src}" alt="Photo">`;
+    if (p.type.startsWith("video/")) return `<video class="mms" src="${src}" controls preload="metadata"></video>`;
+    return `<audio src="${src}" controls preload="none"></audio>`;
+  }).join("");
 }
 function newMessage() {
   return `<div class="convo">
@@ -766,6 +803,22 @@ function wire(m) {
     drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); upload([...e.dataTransfer.files]); };
   }
   wireCalendar(m);
+  wirePhotos(m);
+  m.querySelectorAll("[data-zoom]").forEach(i => i.onclick = () => window.open(i.dataset.zoom, "_blank"));
+  m.querySelectorAll("[data-alertpref]").forEach(c => c.onchange = () => { const p = alertPrefs(); p[c.dataset.alertpref] = c.checked; store.set("symbian.alerts", JSON.stringify(p)); });
+  const rb = $("[data-restore]", m);
+  if (rb) {
+    const f = $("#restorefile", m); rb.onclick = () => f.click();
+    f.onchange = async () => {
+      const file = f.files[0]; if (!file) return;
+      const text = await file.text();
+      if (!confirmOnce(rb, "Replace all launcher settings?")) return;
+      try {
+        const r = await (await fetch("/api/restore", { method: "POST", headers: { "X-Token": token, "Content-Type": "application/json" }, body: text })).json();
+        $("#restoremsg").textContent = r.ok ? "Restored — the launcher is restarting…" : (r.error || "Restore failed");
+      } catch { $("#restoremsg").textContent = "Phone not reachable"; }
+    };
+  }
   m.querySelectorAll("[data-greet]").forEach(b => b.onclick = () => greetDialog(b.dataset.greet));
   m.querySelectorAll("[data-newevent]").forEach(b => b.onclick = () => eventDialog(null, b.dataset.newevent ? new Date(b.dataset.newevent) : null));
   const bub = $(".bubbles", m);
@@ -809,7 +862,7 @@ document.addEventListener("click", e => {
   if (c) { const k = c.dataset.call; act(k === "speaker" ? "call/speaker" : "call/" + k, k === "speaker" ? { on: !S.speaker } : {}); if (k === "speaker") S.speaker = !S.speaker; }
 });
 document.addEventListener("keydown", e => {
-  if (e.altKey && /^[1-9]$/.test(e.key)) { e.preventDefault(); go(SECTIONS[Number(e.key) - 1][0]); return; }
+  if (e.altKey && /^[0-9]$/.test(e.key)) { e.preventDefault(); const i = (Number(e.key) + 9) % 10; if (SECTIONS[i]) go(SECTIONS[i][0]); return; }
   const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName);
   if (e.key === "Escape") { const d = $(".overlay.dlg"); if (d) { d.remove(); return; } if (typing) document.activeElement.blur(); else back(); return; }
   if (typing) return;
@@ -973,6 +1026,89 @@ function wireCalendar(m) {
   if (ws) { const key = S.cal.mode + dkey(S.cal.date); if (calScrollSet !== key) { ws.scrollTop = 7 * 46; calScrollSet = key; } else if (window._wsTop != null) ws.scrollTop = window._wsTop; ws.onscroll = () => window._wsTop = ws.scrollTop; }
 }
 
+// ───────────── Photos ─────────────
+async function loadPhotos(more) {
+  const P = S.photos; if (P.loading) return; P.loading = true;
+  try {
+    const r = await api(`photos?offset=${more ? P.items.length : 0}&limit=90`);
+    P.permission = r.permission !== false; P.total = r.total || 0;
+    P.items = more ? P.items.concat(r.items) : r.items;
+  } catch {}
+  P.loading = false; if (S.view === "photos") render();
+}
+const fileUrl = (p, dl) => `/api/media-file?id=${p.id}&video=${p.video ? 1 : 0}${dl ? "&download=1" : ""}&token=${q(token)}`;
+function photosView() {
+  const P = S.photos;
+  setSoftkeys(P.sel.size ? `Download ${P.sel.size}` : "Select", P.sel.size ? downloadSelected : () => { P.selecting = !P.selecting; render(); }, P.sel.size ? "Clear" : "Back", P.sel.size ? () => { P.sel.clear(); P.selecting = false; render(); } : () => back());
+  let html = "", last = "";
+  const today = dkey(new Date()), yest = dkey(addDays(new Date(), -1));
+  for (const p of P.items) {
+    const k = dkey(new Date(p.date));
+    if (k !== last) {
+      if (last) html += `</div>`;
+      const label = k === today ? "Today" : k === yest ? "Yesterday" : new Date(p.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      html += `<div class="dayhead">${esc(label)}</div><div class="photogrid ${P.selecting || P.sel.size ? "selecting" : ""}">`; last = k;
+    }
+    html += `<div class="ph ${P.sel.has(p.id) ? "sel" : ""}" draggable="true" data-ph="${p.id}" title="${esc(p.name)}"
+      style="background-image:url('/api/thumb?id=${p.id}&video=${p.video ? 1 : 0}&token=${q(token)}')"><span class="tick" data-tick="${p.id}">${P.sel.has(p.id) ? "✓" : ""}</span>${p.video ? `<span class="dur">▶ ${p.duration ? dur(Math.round(p.duration / 1000)) : ""}</span>` : ""}</div>`;
+  }
+  if (last) html += `</div>`;
+  return `<div class="view"><div class="pane" id="photopane">
+    <div class="title">${icon("photo").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Photos</span>
+      <span style="font-size:13px;color:var(--muted)">${P.total ? P.total + " items · drag a photo onto your desktop to save it" : ""}</span>
+      ${P.sel.size ? `<button class="btn small" data-dlsel="1">Download ${P.sel.size}</button>` : `<button class="btn small" data-selmode="1">${P.selecting ? "Done" : "Select"}</button>`}</div>
+    ${!P.permission ? `<div class="empty">Photo access is off on the phone. Switch Desktop Mode off and on again to allow it.</div>` : ""}
+    ${html || (P.loading ? `<div class="empty">Loading…</div>` : `<div class="empty">No photos</div>`)}
+    ${P.items.length < P.total ? `<div class="empty"><button class="btn" data-morephotos="1">Load more</button></div>` : ""}
+  </div></div>`;
+}
+function wirePhotos(m) {
+  const P = S.photos;
+  m.querySelectorAll("[data-ph]").forEach(el => {
+    const id = Number(el.dataset.ph), p = P.items.find(x => x.id === id);
+    el.onclick = e => {
+      if (P.selecting || P.sel.size || e.target.closest("[data-tick]") || e.ctrlKey || e.metaKey) {
+        P.sel.has(id) ? P.sel.delete(id) : P.sel.add(id); render(); return;
+      }
+      lightbox(P.items.indexOf(p));
+    };
+    el.ondragstart = e => {
+      const url = location.origin + fileUrl(p, true);
+      e.dataTransfer.setData("DownloadURL", `${p.mime}:${p.name}:${url}`);
+      e.dataTransfer.setData("text/uri-list", url);
+    };
+  });
+  m.querySelectorAll("[data-selmode]").forEach(b => b.onclick = () => { P.selecting = !P.selecting; render(); });
+  m.querySelectorAll("[data-dlsel]").forEach(b => b.onclick = downloadSelected);
+  m.querySelectorAll("[data-morephotos]").forEach(b => b.onclick = () => loadPhotos(true));
+  const pane = $("#photopane", m);
+  if (pane) pane.onscroll = () => { if (pane.scrollTop + pane.clientHeight > pane.scrollHeight - 400 && P.items.length < P.total) loadPhotos(true); };
+}
+function downloadSelected() {
+  const P = S.photos; const list = P.items.filter(p => P.sel.has(p.id));
+  list.forEach((p, i) => setTimeout(() => { const a = document.createElement("a"); a.href = fileUrl(p, true); a.download = p.name; document.body.appendChild(a); a.click(); a.remove(); }, i * 400));
+  toast(`Downloading ${list.length} file${list.length === 1 ? "" : "s"}…`); P.sel.clear(); P.selecting = false; render();
+}
+function lightbox(i) {
+  const items = S.photos.items; if (i < 0) return;
+  $(".lightbox")?.remove();
+  const box = document.createElement("div"); box.className = "lightbox overlay dlg"; document.body.appendChild(box);
+  const show = () => {
+    const p = items[i];
+    box.innerHTML = `<div class="bar"><b>${esc(p.name)}</b><span class="note-sm">${esc(new Date(p.date).toLocaleString())}${p.w ? " · " + p.w + "×" + p.h : ""} · ${(p.size / 1e6).toFixed(1)} MB</span>
+      <span style="flex:1"></span><a class="btn small" href="${fileUrl(p, true)}" download="${esc(p.name)}">Download</a><button class="btn small" data-x="1">Close</button></div>
+      <div class="stage">${p.video ? `<video src="${fileUrl(p)}" controls autoplay></video>` : `<img src="${fileUrl(p)}" alt="">`}
+      ${i > 0 ? `<button class="btn nav" style="left:14px" data-step="-1">‹</button>` : ""}${i < items.length - 1 ? `<button class="btn nav" style="right:14px" data-step="1">›</button>` : ""}</div>`;
+    box.querySelector("[data-x]").onclick = () => box.remove();
+    box.querySelectorAll("[data-step]").forEach(b => b.onclick = () => { i += Number(b.dataset.step); show(); });
+  };
+  box.onkeydown = null;
+  const key = e => { if (!document.body.contains(box)) return document.removeEventListener("keydown", key);
+    if (e.key === "ArrowRight" && i < items.length - 1) { i++; show(); } if (e.key === "ArrowLeft" && i > 0) { i--; show(); } };
+  document.addEventListener("keydown", key);
+  show();
+}
+
 // ───────────── Dialogs ─────────────
 function dialog(html, wide) {
   $(".overlay.dlg")?.remove();
@@ -1105,25 +1241,50 @@ function connect() {
   es.addEventListener("media", e => { S.media = JSON.parse(e.data); if (S.view === "home") render(); });
   es.addEventListener("call", e => {
     const c = JSON.parse(e.data); S.status = { ...(S.status || {}), call: c }; renderCall(c);
-    if (c.state === "ringing") alertUser("Incoming call", c.name || c.number);
+    if (c.state === "ringing" && alertPrefs().calls) alertUser("Incoming call", c.name || c.number, null, null, true);
   });
   es.addEventListener("calls", () => refresh("calls"));
   es.addEventListener("sms", async () => {
     const before = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
     await refresh("threads");
     const after = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
-    if (after > before) { const t = S.threads.find(x => x.unread); alertUser(t ? t.name : "New message", t ? t.snippet : ""); }
+    if (after > before && alertPrefs().sms) { const t = S.threads.find(x => x.unread); alertUser(t ? t.name : "New message", t ? t.snippet : "", null, () => { if (t) openThread(t.thread, t); }); }
     if (S.thread) openThread(S.thread.thread, S.thread);
   });
   es.addEventListener("sms_status", e => { const r = JSON.parse(e.data); if (!r.ok) toast("Message failed to send"); });
   es.addEventListener("notifications", () => refresh("notifications"));
   es.addEventListener("calendar", () => { refresh("agenda"); if (S.view === "calendar") loadCal(true); });
 }
-function alertUser(title, body) {
-  if (document.hidden && "Notification" in window && Notification.permission === "granted") {
-    try { new Notification(title, { body, tag: "symbian" }); } catch {}
+function alertPrefs() {
+  let p = {}; try { p = JSON.parse(store.get("symbian.alerts") || "{}"); } catch {}
+  return { sms: true, calls: true, chats: true, other: false, ...p };
+}
+function alertUser(title, body, icon, onClick, urgent) {
+  const canPop = "Notification" in window && Notification.permission === "granted" && window.isSecureContext;
+  if (document.hidden && canPop) {
+    try {
+      const n = new Notification(title, { body, icon: icon || undefined, tag: "symbian-" + title, requireInteraction: !!urgent });
+      n.onclick = () => { window.focus(); n.close(); onClick && onClick(); };
+      return;
+    } catch {}
+  }
+  if (!document.hidden || !canPop) toast(`${title}${body ? ": " + body : ""}`);
+}
+let seenNotifs = null;
+function announceNew(list) {
+  const prev = seenNotifs; seenNotifs = new Map(list.map(n => [n.key, n.time]));
+  if (!prev) return; // first load: nothing is "new"
+  const p = alertPrefs();
+  for (const n of list) {
+    if (n.ongoing || (prev.has(n.key) && prev.get(n.key) >= n.time)) continue;
+    if (n.pkg === "com.google.android.apps.messaging" && !n.canReply) continue;
+    const isChat = n.canReply || n.messaging;
+    if (isChat ? !p.chats : !p.other) continue;
+    const icon = `/api/icon?pkg=${q(n.pkg)}&token=${q(token)}`;
+    alertUser(n.title || n.app, n.text, icon, () => { if (isChat) { S.chat = n.key; go("chats"); } else go("notifications"); });
   }
 }
+function confirmOnce(btn, msg) { return window.confirm(msg); }
 
 function applyTheme(t) {
   const r = document.documentElement.style;

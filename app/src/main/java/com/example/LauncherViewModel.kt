@@ -272,6 +272,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             putString("weekdayFormat", st.weekdayFormat.name)
             putString("locationMethod", st.locationMethod.name)
             putString("weatherProvider", st.weatherProvider.name)
+            putString("manualLocation", st.manualLocationSearch)
             putBoolean("showWeather", st.showWeather)
             putBoolean("enableT9Search", st.enableT9Search)
             putBoolean("t9SearchApps", st.t9SearchApps)
@@ -432,7 +433,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     /** Fetches weather; keeps the last good forecast if the request fails. Returns success. */
     private suspend fun fetchWeather(): Boolean = weatherMutex.withLock {
             val weatherData = try {
-                repository.getWeather(_state.value.tempUnit == TempUnit.FAHRENHEIT, _state.value.locationMethod == LocationMethod.GPS, null, _state.value.is24HourFormat)
+                _state.value.let { st ->
+                    repository.getWeather(
+                        isFahrenheit = st.tempUnit == TempUnit.FAHRENHEIT,
+                        useGps = st.locationMethod == LocationMethod.GPS,
+                        queryCity = if (st.locationMethod == LocationMethod.MANUAL) st.manualLocationSearch.trim().ifEmpty { null } else null,
+                        is24Hour = st.is24HourFormat,
+                        openMeteo = st.weatherProvider == WeatherProvider.OPEN_METEO
+                    )
+                }
             } catch (e: Exception) { null }
             if (weatherData == null) return@withLock false
             
@@ -1008,6 +1017,7 @@ _state.update { it.copy(hapticIntensity = intensity) }
             weekdayFormat = weekdayFormat,
             locationMethod = locationMethod,
             weatherProvider = weatherProvider,
+            manualLocationSearch = prefs.getString("manualLocation", "") ?: "",
             enableT9Search = enableT9Search,
             t9SearchApps = t9SearchApps,
             t9SearchContacts = t9SearchContacts,

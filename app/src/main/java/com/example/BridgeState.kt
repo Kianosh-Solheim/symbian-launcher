@@ -36,6 +36,10 @@ object BridgeState {
     private val random = SecureRandom()
 
     fun isEnabled(context: Context) = prefs(context).getBoolean("enabled", false)
+
+    /** HTTPS with the phone's own certificate (default). Plain HTTP stays available as an option for USB. */
+    fun useHttps(context: Context) = prefs(context).getBoolean("https", true)
+    fun setHttps(context: Context, on: Boolean) = prefs(context).edit().putBoolean("https", on).apply()
     fun setEnabled(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean("enabled", enabled).apply()
 
     /** Six-digit code shown on the phone; regenerated on each start and after each pairing. */
@@ -77,7 +81,7 @@ object BridgeState {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /** Addresses a browser can use: Wi-Fi first, then USB tethering, then anything else. */
-    fun addresses(): List<Pair<String, String>> {
+    fun addresses(https: Boolean = true): List<Pair<String, String>> {
         val result = mutableListOf<Pair<String, String>>()
         try {
             NetworkInterface.getNetworkInterfaces()?.toList()?.forEach { nif ->
@@ -90,7 +94,7 @@ object BridgeState {
                     else -> nif.name
                 }
                 nif.inetAddresses.toList().filterIsInstance<Inet4Address>().forEach { addr ->
-                    if (!addr.isLoopbackAddress) result += label to "http://${addr.hostAddress}:$PORT"
+                    if (!addr.isLoopbackAddress) result += label to "${if (https) "https" else "http"}://${addr.hostAddress}:$PORT"
                 }
             }
         } catch (_: Exception) { }

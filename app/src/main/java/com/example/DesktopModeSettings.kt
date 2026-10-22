@@ -38,7 +38,8 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
     // Re-read addresses and pairing count every few seconds while this screen is visible.
     val tick = rememberTickingTime(3_000L)
     val enabled = remember(tick, running) { BridgeState.isEnabled(context) }
-    val addresses = remember(tick) { BridgeState.addresses() }
+    val https = remember(tick) { BridgeState.useHttps(context) }
+    val addresses = remember(tick, https) { BridgeState.addresses(https) }
     val paired = remember(tick) { BridgeState.pairedCount(context) }
 
     val needed = remember {
@@ -52,7 +53,11 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
             add(android.Manifest.permission.WRITE_CALENDAR)
             add(android.Manifest.permission.READ_PHONE_STATE)
             add(android.Manifest.permission.ANSWER_PHONE_CALLS)
-            if (Build.VERSION.SDK_INT >= 33) add(android.Manifest.permission.POST_NOTIFICATIONS)
+            if (Build.VERSION.SDK_INT >= 33) {
+                add(android.Manifest.permission.POST_NOTIFICATIONS)
+                add(android.Manifest.permission.READ_MEDIA_IMAGES)
+                add(android.Manifest.permission.READ_MEDIA_VIDEO)
+            } else add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
         }
     }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -110,6 +115,22 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
                 )
 
                 SettingsSectionHeader("Security")
+                SettingsToggleItem(
+                    "Encrypted connection (HTTPS)", https, haptic,
+                    subtitle = if (https) "The browser warns once about the phone's own certificate — choose Advanced → Proceed"
+                               else "Unencrypted — fine over USB, not on shared Wi-Fi"
+                ) { on ->
+                    BridgeState.setHttps(context, on)
+                    BridgeService.stop(context); BridgeService.start(context)
+                }
+                if (https) {
+                    val fp = remember { BridgeTls.fingerprint(context) }
+                    Text(
+                        "Certificate fingerprint (SHA-256):\n" + fp.chunked(24).joinToString("\n"),
+                        color = Color(0xFFCCCCCC), fontSize = 12.sp, fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                    )
+                }
                 SettingsMenuItem("Forget paired browsers ($paired)", null, haptic) { BridgeState.forgetAll(context) }
 
                 SettingsSectionHeader("Reliability")

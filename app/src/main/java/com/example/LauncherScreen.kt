@@ -224,7 +224,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                         Screen.AGENDA -> "Calendar"
                         Screen.CONTACTS_DRAWER, Screen.CONTACT_DETAIL -> "Contacts"
                         Screen.USAGE -> "Usage Stats"
-                        Screen.SETTINGS_ROOT, Screen.SETTINGS_HOME_SCREEN, Screen.SETTINGS_ICON_PACK, Screen.SETTINGS_STATUS_BAR, Screen.SETTINGS_WEATHER, Screen.SETTINGS_DESKTOP, Screen.SETTINGS_TIME_DATE, Screen.SETTINGS_T9_SEARCH, Screen.SETTINGS_PINNED_APPS -> "Settings"
+                        Screen.SETTINGS_ROOT, Screen.SETTINGS_HOME_SCREEN, Screen.SETTINGS_ICON_PACK, Screen.SETTINGS_STATUS_BAR, Screen.SETTINGS_WEATHER, Screen.SETTINGS_DESKTOP, Screen.SETTINGS_BACKUP, Screen.SETTINGS_TIME_DATE, Screen.SETTINGS_T9_SEARCH, Screen.SETTINGS_PINNED_APPS -> "Settings"
                         else -> "Launcher"
                     }
                     viewModel.logInternalAppUsage(appName, durationMs)
@@ -246,7 +246,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                     Screen.AGENDA -> "Calendar"
                     Screen.CONTACTS_DRAWER, Screen.CONTACT_DETAIL -> "Contacts"
                     Screen.USAGE -> "Usage Stats"
-                    Screen.SETTINGS_ROOT, Screen.SETTINGS_HOME_SCREEN, Screen.SETTINGS_ICON_PACK, Screen.SETTINGS_STATUS_BAR, Screen.SETTINGS_WEATHER, Screen.SETTINGS_DESKTOP, Screen.SETTINGS_TIME_DATE, Screen.SETTINGS_T9_SEARCH, Screen.SETTINGS_PINNED_APPS -> "Settings"
+                    Screen.SETTINGS_ROOT, Screen.SETTINGS_HOME_SCREEN, Screen.SETTINGS_ICON_PACK, Screen.SETTINGS_STATUS_BAR, Screen.SETTINGS_WEATHER, Screen.SETTINGS_DESKTOP, Screen.SETTINGS_BACKUP, Screen.SETTINGS_TIME_DATE, Screen.SETTINGS_T9_SEARCH, Screen.SETTINGS_PINNED_APPS -> "Settings"
                     else -> "Launcher"
                 }
                 viewModel.logInternalAppUsage(appName, durationMs)
@@ -998,6 +998,9 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                 }
                 Screen.SETTINGS_DESKTOP -> {
                     SettingsDesktopMode(state, haptic)
+                }
+                Screen.SETTINGS_BACKUP -> {
+                    SettingsBackupScreen(haptic)
                 }
                 Screen.SETTINGS_TIME_DATE -> {
                     SettingsTimeDate(state, viewModel, haptic)

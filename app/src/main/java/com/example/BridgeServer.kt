@@ -126,9 +126,32 @@ class BridgeServer(
 
     // ───────────────────────────── Request handling ─────────────────────────────
 
-    private fun handle(socket: Socket) {
+    private fun handle(raw: Socket) {
         var keepOpen = false
+        var socket: Socket = raw
         try {
+            raw.soTimeout = 30_000
+            if (BridgeState.useHttps(context)) {
+                // Look at the first byte: a TLS handshake starts with 0x16. Anything else is plain
+                // HTTP typed into the address bar, which gets redirected to https://.
+                val rawIn = raw.getInputStream()
+                val first = rawIn.read()
+                if (first < 0) return
+                if (first == 0x16) {
+                    val factory = BridgeTls.sslContext(context).socketFactory
+                    socket = factory.createSocket(raw, java.io.ByteArrayInputStream(byteArrayOf(first.toByte())), true)
+                    (socket as javax.net.ssl.SSLSocket).startHandshake()
+                } else {
+                    val plain = BufferedInputStream(java.io.SequenceInputStream(java.io.ByteArrayInputStream(byteArrayOf(first.toByte())), rawIn))
+                    val req = parse(plain, raw.inetAddress) ?: return
+                    val host = req.headers["host"] ?: "${raw.localAddress.hostAddress}:${BridgeState.PORT}"
+                    raw.getOutputStream().apply {
+                        write(("HTTP/1.1 301 Moved Permanently\r\nLocation: https://$host${req.path}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").toByteArray())
+                        flush()
+                    }
+                    return
+                }
+            }
             socket.soTimeout = 30_000
             val input = BufferedInputStream(socket.getInputStream(), 16 * 1024)
             val out = socket.getOutputStream()
@@ -141,7 +164,7 @@ class BridgeServer(
         } catch (e: Exception) {
             Log.w(TAG, "Request failed", e)
         } finally {
-            if (!keepOpen) try { socket.close() } catch (_: Exception) { }
+            if (!keepOpen) try { socket.close(); raw.close() } catch (_: Exception) { }
         }
     }
 
@@ -198,6 +221,7 @@ class BridgeServer(
             "GET" to "icon" -> return bytes(out, data.appIcon(req.query["pkg"] ?: ""), "image/png")
             "GET" to "threads" -> data.smsThreads()
             "GET" to "messages" -> data.smsMessages(req.query["thread"]?.toLongOrNull() ?: -1)
+            "GET" to "mmspart" -> return data.mmsPart(req.query["id"]?.toLongOrNull() ?: -1).let { bytes(out, it?.first, it?.second ?: "application/octet-stream") }
             "POST" to "sms" -> req.json().let { data.sendSms(it.optString("to"), it.optString("body")) }
             "GET" to "calls" -> data.callLog()
             "POST" to "call" -> when (seg.getOrNull(1)) {
@@ -225,6 +249,22 @@ class BridgeServer(
                 else -> data.saveEvent(req.json())
             }
             "GET" to "birthdays" -> data.birthdays()
+            "GET" to "photos" -> data.photos(req.query["offset"]?.toIntOrNull() ?: 0, (req.query["limit"]?.toIntOrNull() ?: 60).coerceIn(1, 200))
+            "GET" to "thumb" -> return bytes(out, data.thumbnail(req.query["id"]?.toLongOrNull() ?: -1, req.query["video"] == "1"), "image/jpeg")
+            "GET" to "media-file" -> return streamMedia(out, req)
+            "GET" to "backup" -> return send(out, 200, "application/json; charset=utf-8",
+                SettingsBackup.export(context).toString(2).toByteArray(Charsets.UTF_8),
+                extra = "Content-Disposition: attachment; filename=\"${SettingsBackup.fileName()}\"\r\n")
+            "POST" to "restore" -> {
+                val body = try { JSONObject(String(req.body(5_000_000), Charsets.UTF_8)) } catch (_: Exception) { null }
+                val err = if (body == null) "Not a valid backup file" else SettingsBackup.import(context, body)
+                if (err == null) {
+                    json(out, BridgeData.ok())
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ SettingsBackup.restart(context) }, 800)
+                    return
+                }
+                BridgeData.fail(err)
+            }
             "GET" to "media" -> data.media()
             "POST" to "media" -> data.mediaCommand(seg.getOrNull(1) ?: "")
             "POST" to "ring" -> data.ringPhone(req.json().optBoolean("on", true))
@@ -298,7 +338,22 @@ class BridgeServer(
         send(out, 200, type, bytes)
     }
 
-    private fun send(out: OutputStream, status: Int, type: String, body: ByteArray, cache: Boolean = false) {
+    private fun streamMedia(out: OutputStream, req: Request) {
+        val f = data.openMedia(req.query["id"]?.toLongOrNull() ?: -1, req.query["video"] == "1")
+            ?: return send(out, 404, "text/plain", ByteArray(0))
+        f.input.use { input ->
+            val disposition = if (req.query["download"] == "1") "attachment" else "inline"
+            val safe = f.name.replace("\"", "")
+            val head = StringBuilder("HTTP/1.1 200 OK\r\nContent-Type: ${f.mime}\r\n")
+            if (f.length >= 0) head.append("Content-Length: ${f.length}\r\n")
+            head.append("Content-Disposition: $disposition; filename=\"$safe\"\r\nCache-Control: private, max-age=86400\r\nConnection: close\r\n\r\n")
+            out.write(head.toString().toByteArray())
+            input.copyTo(out, 64 * 1024)
+            out.flush()
+        }
+    }
+
+    private fun send(out: OutputStream, status: Int, type: String, body: ByteArray, cache: Boolean = false, extra: String = "") {
         val reason = when (status) { 200 -> "OK"; 401 -> "Unauthorized"; 404 -> "Not Found"; 503 -> "Service Unavailable"; else -> "Error" }
         val headers = StringBuilder()
             .append("HTTP/1.1 $status $reason\r\n")
@@ -308,6 +363,7 @@ class BridgeServer(
             .append("X-Content-Type-Options: nosniff\r\n")
             .append("Referrer-Policy: no-referrer\r\n")
             .append(if (cache) "Cache-Control: private, max-age=86400\r\n" else "Cache-Control: no-store\r\n")
+            .append(extra)
             .append("\r\n")
         out.write(headers.toString().toByteArray())
         out.write(body)

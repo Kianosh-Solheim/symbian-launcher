@@ -173,7 +173,19 @@ class BridgeData(private val context: Context) {
                 }
             }
         } catch (_: Exception) { }
-        seen.forEach { (thread, obj) -> arr.put(obj.put("unread", unread[thread] ?: 0)) }
+        // Merge picture messages: newer MMS replaces the snippet; MMS-only threads are added.
+        mmsLatest().forEach { (thread, m) ->
+            val existing = seen[thread]
+            if (existing == null) {
+                val address = m.optString("address")
+                seen[thread] = JSONObject().put("thread", thread).put("address", address).put("name", nameFor(address))
+                    .put("snippet", m.optString("snippet")).put("date", m.optLong("date")).put("outgoing", m.optBoolean("outgoing"))
+            } else if (m.optLong("date") > existing.optLong("date")) {
+                existing.put("snippet", m.optString("snippet")).put("date", m.optLong("date")).put("outgoing", m.optBoolean("outgoing"))
+            }
+            if (m.optInt("unread") > 0) unread[thread] = (unread[thread] ?: 0) + m.optInt("unread")
+        }
+        seen.values.sortedByDescending { it.optLong("date") }.forEach { obj -> arr.put(obj.put("unread", unread[obj.getLong("thread")] ?: 0)) }
         return arr
     }
 
@@ -198,11 +210,120 @@ class BridgeData(private val context: Context) {
                         .put("failed", type == 5)
                         .put("pending", type == 4 || type == 6)
                 }
-                rows.asReversed().forEach { arr.put(it) }
+                rows += mmsMessages(thread)
+                rows.sortedBy { it.optLong("date") }.takeLast(400).forEach { arr.put(it) }
             }
         } catch (_: Exception) { }
         return arr
     }
+
+    // ───── MMS (picture messages) ─────
+
+    private fun mmsAddress(id: Long, outgoing: Boolean): String {
+        // 137 = from, 151 = to
+        val type = if (outgoing) 151 else 137
+        try {
+            context.contentResolver.query(Uri.parse("content://mms/$id/addr"), arrayOf("address", "type"), "type = $type", null, null)?.use { c ->
+                while (c.moveToNext()) {
+                    val a = c.getString(0) ?: continue
+                    if (a != "insert-address-token") return a
+                }
+            }
+        } catch (_: Exception) { }
+        return ""
+    }
+
+    private data class MmsPart(val id: Long, val type: String, val text: String?)
+
+    private fun mmsParts(id: Long): List<MmsPart> {
+        val parts = mutableListOf<MmsPart>()
+        try {
+            context.contentResolver.query(Uri.parse("content://mms/part"), arrayOf("_id", "ct", "text", "_data"), "mid = ?", arrayOf(id.toString()), null)?.use { c ->
+                while (c.moveToNext()) {
+                    val pid = c.getLong(0); val ct = c.getString(1) ?: ""
+                    var text: String? = null
+                    if (ct == "text/plain") {
+                        text = c.getString(2)
+                        if (text == null && c.getString(3) != null) {
+                            text = try {
+                                context.contentResolver.openInputStream(Uri.parse("content://mms/part/$pid"))?.use { it.readBytes().toString(Charsets.UTF_8) }
+                            } catch (_: Exception) { null }
+                        }
+                    }
+                    if (ct == "application/smil") continue
+                    parts += MmsPart(pid, ct, text)
+                }
+            }
+        } catch (_: Exception) { }
+        return parts
+    }
+
+    private fun mmsSnippet(parts: List<MmsPart>): String {
+        val text = parts.firstOrNull { it.text != null }?.text?.take(160)
+        val media = parts.firstOrNull { it.type.startsWith("image/") || it.type.startsWith("video/") || it.type.startsWith("audio/") }
+        val label = when {
+            media == null -> null
+            media.type.startsWith("image/") -> "📷 Photo"
+            media.type.startsWith("video/") -> "🎬 Video"
+            else -> "🎵 Audio"
+        }
+        return listOfNotNull(label, text).joinToString(" ").ifBlank { "MMS" }
+    }
+
+    /** Latest picture message per thread (thread → snippet, date, outgoing, address, unread). */
+    private fun mmsLatest(): Map<Long, JSONObject> {
+        val out = LinkedHashMap<Long, JSONObject>()
+        try {
+            context.contentResolver.query(Uri.parse("content://mms"), arrayOf("_id", "thread_id", "date", "msg_box", "read"), null, null, "date DESC")?.use { c ->
+                var rows = 0
+                while (c.moveToNext() && rows < 1500) {
+                    rows++
+                    val thread = c.getLong(1)
+                    val unreadIn = if (c.getInt(4) == 0 && c.getInt(3) == 1) 1 else 0
+                    val existing = out[thread]
+                    if (existing != null) { existing.put("unread", existing.optInt("unread") + unreadIn); continue }
+                    val id = c.getLong(0); val outgoing = c.getInt(3) != 1
+                    out[thread] = JSONObject().put("snippet", mmsSnippet(mmsParts(id))).put("date", c.getLong(2) * 1000)
+                        .put("outgoing", outgoing).put("address", mmsAddress(id, outgoing)).put("unread", unreadIn)
+                }
+            }
+        } catch (_: Exception) { }
+        return out
+    }
+
+    private fun mmsMessages(thread: Long): List<JSONObject> {
+        val list = mutableListOf<JSONObject>()
+        try {
+            context.contentResolver.query(Uri.parse("content://mms"), arrayOf("_id", "date", "msg_box"), "thread_id = ?", arrayOf(thread.toString()), "date DESC")?.use { c ->
+                while (c.moveToNext() && list.size < 100) {
+                    val id = c.getLong(0); val box = c.getInt(2)
+                    val parts = mmsParts(id)
+                    list += JSONObject()
+                        .put("id", "mms$id")
+                        .put("address", mmsAddress(id, box != 1))
+                        .put("body", parts.filter { it.text != null }.joinToString("\n") { it.text!! })
+                        .put("date", c.getLong(1) * 1000)
+                        .put("outgoing", box != 1)
+                        .put("failed", box == 5)
+                        .put("pending", box == 4)
+                        .put("media", JSONArray().apply {
+                            parts.filter { it.type.startsWith("image/") || it.type.startsWith("video/") || it.type.startsWith("audio/") }
+                                .forEach { put(JSONObject().put("id", it.id).put("type", it.type)) }
+                        })
+                }
+            }
+        } catch (_: Exception) { }
+        return list
+    }
+
+    /** Raw bytes of one MMS attachment (photo, video or audio). */
+    fun mmsPart(id: Long): Pair<ByteArray, String>? = try {
+        var type = "application/octet-stream"
+        context.contentResolver.query(Uri.parse("content://mms/part"), arrayOf("ct"), "_id = ?", arrayOf(id.toString()), null)?.use { c ->
+            if (c.moveToFirst()) type = c.getString(0) ?: type
+        }
+        context.contentResolver.openInputStream(Uri.parse("content://mms/part/$id"))?.use { it.readBytes() }?.let { it to type }
+    } catch (_: Exception) { null }
 
     /** Sends an SMS (split into parts if long). Delivery results arrive via [BridgeService]. */
     fun sendSms(address: String, body: String): JSONObject {
@@ -620,6 +741,84 @@ class BridgeData(private val context: Context) {
             else -> return fail("Unknown command")
         }
         return ok()
+    }
+
+    // ───────────────────────────── Gallery ─────────────────────────────
+
+    private fun hasMedia() = if (Build.VERSION.SDK_INT >= 33)
+        has(android.Manifest.permission.READ_MEDIA_IMAGES) || has(android.Manifest.permission.READ_MEDIA_VIDEO)
+    else has(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+
+    /** Photos and videos, newest first. */
+    fun photos(offset: Int, limit: Int): JSONObject {
+        val arr = JSONArray()
+        if (!hasMedia()) return JSONObject().put("items", arr).put("permission", false)
+        var total = 0
+        try {
+            val uri = MediaStore.Files.getContentUri("external")
+            val sel = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (${MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE}, ${MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO})"
+            context.contentResolver.query(
+                uri,
+                arrayOf(MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.MIME_TYPE,
+                    MediaStore.Files.FileColumns.DATE_ADDED, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.WIDTH,
+                    MediaStore.Files.FileColumns.HEIGHT, MediaStore.Files.FileColumns.MEDIA_TYPE, "datetaken", "duration"),
+                sel, null, "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
+            )?.use { c ->
+                total = c.count
+                if (c.moveToPosition(offset)) {
+                    do {
+                        val taken = c.getLong(8)
+                        arr.put(JSONObject()
+                            .put("id", c.getLong(0))
+                            .put("name", c.getString(1) ?: "")
+                            .put("mime", c.getString(2) ?: "")
+                            .put("date", if (taken > 0) taken else c.getLong(3) * 1000)
+                            .put("size", c.getLong(4))
+                            .put("w", c.getInt(5)).put("h", c.getInt(6))
+                            .put("video", c.getInt(7) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO)
+                            .put("duration", c.getLong(9)))
+                    } while (arr.length() < limit && c.moveToNext())
+                }
+            }
+        } catch (e: Exception) { android.util.Log.w("SymbianBridge", "Gallery query failed", e) }
+        return JSONObject().put("items", arr).put("total", total).put("permission", true)
+    }
+
+    private fun mediaUri(id: Long, video: Boolean): Uri = android.content.ContentUris.withAppendedId(
+        if (video) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+
+    private val thumbCache = object : android.util.LruCache<Long, ByteArray>(6 * 1024 * 1024) {
+        override fun sizeOf(key: Long, value: ByteArray) = value.size
+    }
+
+    fun thumbnail(id: Long, video: Boolean): ByteArray? {
+        if (!hasMedia()) return null
+        thumbCache.get(id)?.let { return it }
+        return try {
+            val bmp = if (Build.VERSION.SDK_INT >= 29) {
+                context.contentResolver.loadThumbnail(mediaUri(id, video), android.util.Size(360, 360), null)
+            } else {
+                @Suppress("DEPRECATION")
+                if (video) MediaStore.Video.Thumbnails.getThumbnail(context.contentResolver, id, MediaStore.Video.Thumbnails.MINI_KIND, null)
+                else MediaStore.Images.Thumbnails.getThumbnail(context.contentResolver, id, MediaStore.Images.Thumbnails.MINI_KIND, null)
+            } ?: return null
+            ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray().also { thumbCache.put(id, it) }
+        } catch (_: Exception) { null }
+    }
+
+    data class MediaFile(val input: InputStream, val length: Long, val mime: String, val name: String)
+
+    fun openMedia(id: Long, video: Boolean): MediaFile? {
+        if (!hasMedia()) return null
+        return try {
+            val uri = mediaUri(id, video)
+            var name = "file"; var size = -1L; var mime = if (video) "video/mp4" else "image/jpeg"
+            context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.MIME_TYPE), null, null, null)?.use { c ->
+                if (c.moveToFirst()) { name = c.getString(0) ?: name; size = c.getLong(1); mime = c.getString(2) ?: mime }
+            }
+            val input = context.contentResolver.openInputStream(uri) ?: return null
+            MediaFile(input, size, mime, name)
+        } catch (_: Exception) { null }
     }
 
     // ───────────────────────────── Tools ─────────────────────────────

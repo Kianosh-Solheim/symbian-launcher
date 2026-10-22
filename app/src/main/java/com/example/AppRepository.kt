@@ -734,31 +734,30 @@ class AppRepository(private val context: Context) {
     )
     data class WeatherResult(val info: String, val locationName: String?, val hourly: List<WeatherForecast> = emptyList(), val daily: List<WeatherForecast> = emptyList(), val currentTemp: Double = 0.0, val currentSymbol: String = "", val feelsLike: Double? = null, val humidity: Double? = null, val precipitation: Double? = null, val windSpeed: Double? = null)
 
-    suspend fun getWeather(isFahrenheit: Boolean, useGps: Boolean, queryCity: String? = null, is24Hour: Boolean = false): WeatherResult? = withContext(Dispatchers.IO) {
+    suspend fun getWeather(isFahrenheit: Boolean, useGps: Boolean, queryCity: String? = null, is24Hour: Boolean = false, openMeteo: Boolean = false): WeatherResult? = withContext(Dispatchers.IO) {
         try {
             var lat: Double? = null
             var lon: Double? = null
             var locationName: String? = null
 
             if (queryCity != null) {
+                // Android's geocoder first; the free Open-Meteo geocoder when the phone has none.
                 try {
-                    val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
-                    val addresses = geocoder.getFromLocationName(queryCity, 1)
-                    if (!addresses.isNullOrEmpty()) {
-                        lat = addresses[0].latitude
-                        lon = addresses[0].longitude
-                        val specific = addresses[0].subLocality ?: addresses[0].thoroughfare
-                        val city = addresses[0].locality ?: addresses[0].subAdminArea
-                        locationName = if (specific != null && city != null && specific != city) {
-                            "$specific, $city"
-                        } else {
-                            city ?: addresses[0].adminArea ?: queryCity
+                    if (android.location.Geocoder.isPresent()) {
+                        @Suppress("DEPRECATION")
+                        val addresses = android.location.Geocoder(context, java.util.Locale.getDefault()).getFromLocationName(queryCity, 1)
+                        if (!addresses.isNullOrEmpty()) {
+                            lat = addresses[0].latitude
+                            lon = addresses[0].longitude
+                            locationName = addresses[0].locality ?: addresses[0].subAdminArea ?: addresses[0].adminArea ?: queryCity
                         }
-                    } else {
-                        return@withContext null // city not found
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                } catch (e: Exception) { android.util.Log.w("SymbianWeather", "Geocoder failed", e) }
+                if (lat == null) {
+                    geocodeOnline(queryCity)?.let { (la, lo, name) -> lat = la; lon = lo; locationName = name }
+                }
+                if (lat == null) {
+                    android.util.Log.w("SymbianWeather", "Place not found: $queryCity")
                     return@withContext null
                 }
             } else if (useGps) {
@@ -827,6 +826,11 @@ class AppRepository(private val context: Context) {
                 }
             }
             weatherPrefs.edit().putFloat("lat", lat!!.toFloat()).putFloat("lon", lon!!.toFloat()).apply()
+
+            if (openMeteo) {
+                return@withContext openMeteoWeather(lat!!, lon!!, locationName ?: weatherPrefs.getString("name", null), isFahrenheit, is24Hour)
+                    ?.also { r -> r.locationName?.let { weatherPrefs.edit().putString("name", it).apply() } }
+            }
 
             // Call MET Norway
             // https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={lat}&lon={lon}
@@ -1082,6 +1086,103 @@ class AppRepository(private val context: Context) {
             android.util.Log.w("SymbianWeather", "Weather fetch failed", e)
             null
         }
+    }
+
+    /** Place name → coordinates via Open-Meteo's free geocoder (no key needed). */
+    fun geocodeOnline(query: String): Triple<Double, Double, String>? = try {
+        val lang = if (java.util.Locale.getDefault().language == "nb" || java.util.Locale.getDefault().language == "no") "nb" else "en"
+        val url = java.net.URL("https://geocoding-api.open-meteo.com/v1/search?count=1&language=$lang&name=" + java.net.URLEncoder.encode(query, "UTF-8"))
+        val c = url.openConnection() as java.net.HttpURLConnection
+        c.connectTimeout = 6000; c.readTimeout = 6000
+        val j = c.inputStream.bufferedReader().use { org.json.JSONObject(it.readText()) }
+        j.optJSONArray("results")?.optJSONObject(0)?.let { r ->
+            Triple(r.getDouble("latitude"), r.getDouble("longitude"), r.optString("name").ifEmpty { query })
+        }
+    } catch (e: Exception) {
+        android.util.Log.w("SymbianWeather", "Online geocoding failed", e); null
+    }
+
+    /** WMO weather code → MET Norway symbol code, so icons work the same for both providers. */
+    private fun wmoToMet(code: Int, isDay: Boolean): String {
+        val dn = if (isDay) "_day" else "_night"
+        return when (code) {
+            0 -> "clearsky$dn"; 1 -> "fair$dn"; 2 -> "partlycloudy$dn"; 3 -> "cloudy"
+            45, 48 -> "fog"
+            51, 53, 55 -> "lightrain"; 56, 57 -> "lightsleet"
+            61 -> "lightrain"; 63 -> "rain"; 65 -> "heavyrain"; 66, 67 -> "sleet"
+            71 -> "lightsnow"; 73, 77 -> "snow"; 75 -> "heavysnow"
+            80 -> "lightrainshowers$dn"; 81 -> "rainshowers$dn"; 82 -> "heavyrainshowers$dn"
+            85 -> "lightsnowshowers$dn"; 86 -> "heavysnowshowers$dn"
+            95 -> "rainandthunder"; 96, 99 -> "heavyrainandthunder"
+            else -> "cloudy"
+        }
+    }
+
+    private fun displaySymbol(raw: String) =
+        raw.replace("_", " ").replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+
+    /** Forecast from Open-Meteo, shaped exactly like the MET Norway result. */
+    private fun openMeteoWeather(lat: Double, lon: Double, knownName: String?, isFahrenheit: Boolean, is24Hour: Boolean): WeatherResult? = try {
+        val url = java.net.URL(
+            "https://api.open-meteo.com/v1/forecast?latitude=" + String.format(java.util.Locale.US, "%.4f", lat) +
+            "&longitude=" + String.format(java.util.Locale.US, "%.4f", lon) +
+            "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day" +
+            "&hourly=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day" +
+            "&timezone=auto&forecast_days=9&wind_speed_unit=ms" + if (isFahrenheit) "&temperature_unit=fahrenheit" else ""
+        )
+        val c = url.openConnection() as java.net.HttpURLConnection
+        c.connectTimeout = 6000; c.readTimeout = 8000
+        c.setRequestProperty("User-Agent", "SymbianLauncher/2.0")
+        val j = c.inputStream.bufferedReader().use { org.json.JSONObject(it.readText()) }
+        val cur = j.getJSONObject("current")
+        val curSym = wmoToMet(cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1)
+        val temp = cur.getDouble("temperature_2m")
+        val h = j.getJSONObject("hourly")
+        val times = h.getJSONArray("time"); val temps = h.getJSONArray("temperature_2m"); val codes = h.getJSONArray("weather_code")
+        val hums = h.getJSONArray("relative_humidity_2m"); val precs = h.getJSONArray("precipitation")
+        val winds = h.getJSONArray("wind_speed_10m"); val days = h.getJSONArray("is_day")
+        val parse = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm", java.util.Locale.US)
+        val outTime = java.text.SimpleDateFormat(if (is24Hour) "HH:mm" else "hh:mm a", java.util.Locale.getDefault())
+        val now = System.currentTimeMillis() - 3_600_000L
+        val hourly = mutableListOf<WeatherForecast>()
+        data class Bucket(val key: String, val date: Long, val t: MutableList<Double> = mutableListOf(), val hum: MutableList<Double> = mutableListOf(),
+                          val wind: MutableList<Double> = mutableListOf(), var prec: Double = 0.0, val sym: Array<String?> = arrayOfNulls(4))
+        val buckets = linkedMapOf<String, Bucket>()
+        for (i in 0 until times.length()) {
+            val ts = times.getString(i); val date = parse.parse(ts) ?: continue
+            val sym = wmoToMet(codes.optInt(i), days.optInt(i, 1) == 1)
+            val t = temps.optDouble(i); val hu = hums.optDouble(i); val pr = precs.optDouble(i, 0.0); val wi = winds.optDouble(i)
+            if (date.time >= now) hourly += WeatherForecast(time = outTime.format(date).lowercase(), temperature = t, symbolCode = displaySymbol(sym),
+                humidity = hu, dateMillis = date.time, windSpeed = wi, precipitation = pr)
+            val key = ts.substring(0, 10)
+            val b = buckets.getOrPut(key) { Bucket(key, date.time) }
+            b.t += t; if (!hu.isNaN()) b.hum += hu; if (!wi.isNaN()) b.wind += wi; b.prec += pr
+            when (ts.substring(11, 13).toInt()) { 3 -> b.sym[0] = sym; 9 -> b.sym[1] = sym; 15 -> b.sym[2] = sym; 21 -> b.sym[3] = sym }
+        }
+        val todayKey = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        val nowHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val daily = buckets.values.filter { it.key >= todayKey }.take(8).map { b ->
+            val rep = b.sym[2] ?: b.sym[1] ?: b.sym[3] ?: b.sym[0] ?: ""
+            val today = b.key == todayKey
+            WeatherForecast(time = b.key, temperature = 0.0, symbolCode = rep, lowTemp = b.t.minOrNull(), highTemp = b.t.maxOrNull(),
+                humidity = b.hum.maxOrNull(), nightSymbol = if (today && nowHour >= 6) null else b.sym[0] ?: rep,
+                morningSymbol = if (today && nowHour >= 12) null else b.sym[1] ?: rep, afternoonSymbol = if (today && nowHour >= 18) null else b.sym[2] ?: rep,
+                eveningSymbol = b.sym[3] ?: rep, precipitation = b.prec, windSpeed = b.wind.maxOrNull(), isToday = today, dateMillis = b.date)
+        }
+        var name = knownName
+        if (name == null) try {
+            @Suppress("DEPRECATION")
+            name = android.location.Geocoder(context, java.util.Locale.getDefault()).getFromLocation(lat, lon, 1)?.firstOrNull()?.let { it.locality ?: it.subAdminArea }
+        } catch (_: Exception) { }
+        val unit = if (isFahrenheit) "°F" else "°C"
+        WeatherResult(
+            info = "${kotlin.math.round(temp).toInt()}$unit ${displaySymbol(curSym)}", locationName = name,
+            hourly = hourly.take(48), daily = daily, currentTemp = temp, currentSymbol = displaySymbol(curSym),
+            feelsLike = cur.optDouble("apparent_temperature").takeIf { !it.isNaN() }, humidity = cur.optDouble("relative_humidity_2m").takeIf { !it.isNaN() },
+            precipitation = cur.optDouble("precipitation").takeIf { !it.isNaN() }, windSpeed = cur.optDouble("wind_speed_10m").takeIf { !it.isNaN() }
+        )
+    } catch (e: Exception) {
+        android.util.Log.w("SymbianWeather", "Open-Meteo failed", e); null
     }
 
     /** Approximate location from the public IP. Tries HTTPS providers before the HTTP-only one. */

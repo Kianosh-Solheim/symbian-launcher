@@ -225,6 +225,7 @@ fun SettingsRootView(state: LauncherState, haptic: androidx.compose.ui.hapticfee
             SettingsMenuItem("Global Settings", Icons.Default.ChevronRight, haptic, isFirst = true) { onNavigate(Screen.SETTINGS_GLOBAL) }
             SettingsMenuItem("Home Screen", Icons.Default.ChevronRight, haptic) { onNavigate(Screen.SETTINGS_HOME_SCREEN) }
             SettingsMenuItem("Desktop Mode", Icons.Default.ChevronRight, haptic) { onNavigate(Screen.SETTINGS_DESKTOP) }
+            SettingsMenuItem("Backup & Restore", Icons.Default.ChevronRight, haptic) { onNavigate(Screen.SETTINGS_BACKUP) }
             SettingsMenuItem("Android System Settings", Icons.Default.Settings, haptic) {
                 val intent = Intent(Settings.ACTION_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -263,14 +264,46 @@ fun SettingsWeather(state: LauncherState, viewModel: LauncherViewModel, haptic: 
             SettingsToggleItem("Show weather", state.showWeather, haptic, isFirst = true) { checked -> viewModel.updateState { it.copy(showWeather = checked) } }
             if (state.showWeather) {
                 SettingsSectionHeader("Location")
-                SettingsMenuItem("Location method: ${state.locationMethod.name}", null, haptic) { 
+                var showPlaceDialog by remember { mutableStateOf(false) }
+                val methodLabel = when (state.locationMethod) {
+                    LocationMethod.GPS -> "Phone location"
+                    LocationMethod.IP -> "Approximate (internet)"
+                    LocationMethod.MANUAL -> "Fixed place"
+                }
+                SettingsMenuItem("Location method: $methodLabel", null, haptic) { 
                     val next = LocationMethod.values()[(state.locationMethod.ordinal + 1) % LocationMethod.values().size]
                     viewModel.updateState { it.copy(locationMethod = next) }
+                    if (next == LocationMethod.MANUAL && state.manualLocationSearch.isBlank()) showPlaceDialog = true else viewModel.loadWeather()
                 }
                 if (state.locationMethod == LocationMethod.MANUAL) {
-                    SettingsMenuItem("Manual location search", null, haptic) {
-                        // In a real app this would open a dialog or another screen to input search query
-                    }
+                    SettingsMenuItem("Place: ${state.manualLocationSearch.ifBlank { "not set" }}", null, haptic) { showPlaceDialog = true }
+                }
+                if (showPlaceDialog) {
+                    var text by remember { mutableStateOf(state.manualLocationSearch) }
+                    val fieldFocus = remember { FocusRequester() }
+                    LaunchedEffect(Unit) { try { fieldFocus.requestFocus() } catch (_: Exception) { } }
+                    AlertDialog(
+                        onDismissRequest = { showPlaceDialog = false },
+                        title = { Text("Weather place") },
+                        text = {
+                            Column {
+                                Text("Town or city, e.g. Bergen or Voss", fontSize = 14.sp)
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = text, onValueChange = { text = it }, singleLine = true,
+                                    modifier = Modifier.fillMaxWidth().focusRequester(fieldFocus)
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                viewModel.updateState { it.copy(manualLocationSearch = text.trim(), locationMethod = LocationMethod.MANUAL) }
+                                viewModel.loadWeather()
+                                showPlaceDialog = false
+                            }) { Text("Save") }
+                        },
+                        dismissButton = { TextButton(onClick = { showPlaceDialog = false }) { Text("Cancel") } }
+                    )
                 }
                 val locName = state.weatherLocationName ?: "Unknown"
                 SettingsMenuItem("Current weather location: $locName", null, haptic) {
@@ -294,10 +327,12 @@ fun SettingsWeather(state: LauncherState, viewModel: LauncherViewModel, haptic: 
                 SettingsMenuItem("Weather provider: ${if(state.weatherProvider == WeatherProvider.MET_NORWAY) "MET Norway" else "Open-Meteo"}", null, haptic) { 
                     val next = WeatherProvider.values()[(state.weatherProvider.ordinal + 1) % WeatherProvider.values().size]
                     viewModel.updateState { it.copy(weatherProvider = next) }
+                    viewModel.loadWeather()
                 }
                 SettingsMenuItem("Temperature unit: ${if(state.tempUnit == TempUnit.CELSIUS) "Celsius" else "Fahrenheit"}", null, haptic) { 
                     val next = if(state.tempUnit == TempUnit.CELSIUS) TempUnit.FAHRENHEIT else TempUnit.CELSIUS
                     viewModel.updateState { it.copy(tempUnit = next) }
+                    viewModel.loadWeather()
                 }
                 SettingsMenuItem("Wind unit: ${state.windSpeedUnit.name}", null, haptic) { 
                     val next = WindSpeedUnit.values()[(state.windSpeedUnit.ordinal + 1) % WindSpeedUnit.values().size]
