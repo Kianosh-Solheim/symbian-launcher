@@ -46,7 +46,16 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        run: gradle assembleRelease --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle assembleRelease 2>&1 | tee build.log
+
+      - name: Report compile errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "^e: |error:|What went wrong" -A3 build.log | head -60 | while IFS= read -r l; do echo "::error::$l"; done
 
       - name: Collect APK
         run: |
