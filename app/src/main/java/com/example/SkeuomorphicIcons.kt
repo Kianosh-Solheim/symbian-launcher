@@ -168,6 +168,7 @@ fun SkeuomorphicEmailIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicCalendarIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("cal", modifier); return }
     val textMeasurer = rememberTextMeasurer()
     val dayOfMonth = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
     
@@ -251,6 +252,7 @@ fun SkeuomorphicCalendarIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicContactsIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("person", modifier.size(32.dp)); return }
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
         val h = size.height
@@ -395,6 +397,7 @@ fun SkeuomorphicNotificationsIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicAppsIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("apps", modifier.size(32.dp)); return }
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
         val h = size.height
@@ -450,6 +453,7 @@ fun SkeuomorphicAppsIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicSettingsIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("settings", modifier); return }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -507,6 +511,7 @@ fun SkeuomorphicSettingsIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicUsageIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("usage", modifier); return }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -568,6 +573,7 @@ fun SkeuomorphicUsageIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicWalletIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("card", modifier); return }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -659,6 +665,7 @@ fun SkeuomorphicWalletIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicCalculatorIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("calc", modifier); return }
     val textMeasurer = rememberTextMeasurer()
     Canvas(modifier = modifier) {
         val w = size.width
@@ -819,6 +826,7 @@ fun SkeuomorphicCalculatorIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicClockIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("clock", modifier); return }
     val currentTimeMillis = rememberTickingTime(1_000L)
 
     val calendar = remember(currentTimeMillis) {
@@ -992,6 +1000,7 @@ fun SkeuomorphicClockIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicBatterySaverIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("battery", modifier.size(36.dp)); return }
     Canvas(modifier = modifier.size(36.dp)) {
         val w = size.width
         val h = size.height
@@ -1090,6 +1099,7 @@ fun SkeuomorphicBatterySaverIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicPhoneIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("call", modifier.size(36.dp)); return }
     Canvas(modifier = modifier.size(36.dp)) {
         val w = size.width
         val h = size.height
@@ -1159,6 +1169,7 @@ fun SkeuomorphicPhoneIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicCameraIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("camera", modifier.size(36.dp)); return }
     Canvas(modifier = modifier.size(36.dp)) {
         val w = size.width
         val h = size.height
@@ -1245,6 +1256,7 @@ fun SkeuomorphicCameraIcon(modifier: Modifier = Modifier) {
 /** Desktop Mode: a glossy monitor; a green light shows when Desktop Mode is running. */
 @Composable
 fun SkeuomorphicDesktopIcon(modifier: Modifier = Modifier, active: Boolean = false) {
+    if (LocalWin95.current) { Win95PixelIcon("desktop", modifier); return }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
