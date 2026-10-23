@@ -302,6 +302,11 @@ fun SymbianTopBar(state: LauncherState, batteryInfo: BatteryInfo, signalLevel: I
                                 symbolCode = weatherSymbol,
                                 size = 22.dp
                             )
+                            state.weatherWarnings.firstOrNull()?.let { w ->
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("⚠", color = warningColor(w.color), fontSize = 18.sp, fontWeight = FontWeight.Bold,
+                                    style = TextStyle(shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 2f)))
+                            }
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = temp, 
@@ -602,4 +607,12 @@ fun BottomBarButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onClick() }
             .padding(horizontal = 8.dp, vertical = 4.dp)
     )
+}
+
+
+/** MET Norway warning level colour. */
+fun warningColor(level: String): Color = when (level.lowercase()) {
+    "red" -> Color(0xFFFF3B30)
+    "orange" -> Color(0xFFFF9500)
+    else -> Color(0xFFFFD60A)
 }

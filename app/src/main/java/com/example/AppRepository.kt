@@ -1088,6 +1088,42 @@ class AppRepository(private val context: Context) {
         }
     }
 
+    data class WeatherWarning(
+        val id: String, val title: String, val event: String, val color: String, val area: String,
+        val description: String, val instruction: String, val consequences: String,
+        val start: Long, val end: Long, val web: String
+    )
+
+    /** Official MET Norway warnings (farevarsler) covering a location. Empty outside Norway. */
+    suspend fun getWeatherWarnings(lat: Double, lon: Double, norwegian: Boolean): List<WeatherWarning>? = withContext(Dispatchers.IO) {
+        try {
+            val url = java.net.URL("https://api.met.no/weatherapi/metalerts/2.0/current.json?lang=${if (norwegian) "no" else "en"}" +
+                "&lat=" + String.format(java.util.Locale.US, "%.4f", lat) + "&lon=" + String.format(java.util.Locale.US, "%.4f", lon))
+            val c = url.openConnection() as java.net.HttpURLConnection
+            c.connectTimeout = 6000; c.readTimeout = 8000
+            c.setRequestProperty("User-Agent", "SymbianLauncher/2.0 github.com/Kianosh-Solheim/symbian-launcher")
+            val j = c.inputStream.bufferedReader().use { org.json.JSONObject(it.readText()) }
+            val iso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US)
+            val features = j.optJSONArray("features") ?: return@withContext emptyList()
+            (0 until features.length()).mapNotNull { i ->
+                val f = features.optJSONObject(i) ?: return@mapNotNull null
+                val p = f.optJSONObject("properties") ?: return@mapNotNull null
+                if (p.optString("status").equals("Test", true)) return@mapNotNull null
+                val interval = f.optJSONObject("when")?.optJSONArray("interval")
+                fun t(k: Int) = try { iso.parse(interval?.optString(k) ?: "")?.time ?: 0L } catch (_: Exception) { 0L }
+                WeatherWarning(
+                    id = p.optString("id"), title = p.optString("title"),
+                    event = p.optString("eventAwarenessName").ifBlank { p.optString("event") },
+                    color = p.optString("riskMatrixColor").ifBlank { p.optString("awareness_level").split(";").getOrNull(1)?.trim() ?: "Yellow" },
+                    area = p.optString("area"), description = p.optString("description"), instruction = p.optString("instruction"),
+                    consequences = p.optString("consequences"), start = t(0), end = t(1), web = p.optString("web")
+                )
+            }.sortedByDescending { listOf("yellow", "orange", "red").indexOf(it.color.lowercase()) }
+        } catch (e: Exception) {
+            android.util.Log.w("SymbianWeather", "Warnings fetch failed", e); null
+        }
+    }
+
     /** Place name → coordinates via Open-Meteo's free geocoder (no key needed). */
     fun geocodeOnline(query: String): Triple<Double, Double, String>? = try {
         val lang = if (java.util.Locale.getDefault().language == "nb" || java.util.Locale.getDefault().language == "no") "nb" else "en"

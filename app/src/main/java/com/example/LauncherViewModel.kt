@@ -132,6 +132,7 @@ data class LauncherState(
     val weatherDailyLanguage: WeatherDailyLanguage = WeatherDailyLanguage.NORWEGIAN,
     val favoriteLocations: List<String> = emptyList(),
     val hourlyForecast: List<AppRepository.WeatherForecast> = emptyList(),
+    val weatherWarnings: List<AppRepository.WeatherWarning> = emptyList(),
     val dailyForecast: List<AppRepository.WeatherForecast> = emptyList(),
     val tempUnit: TempUnit = TempUnit.CELSIUS,
     val showWeather: Boolean = true,
@@ -461,8 +462,18 @@ _state.update {
         weatherWindSpeed = weatherData?.windSpeed
     ) 
 }
+            fetchWarnings()
             publishWeather()
             true
+    }
+
+    private suspend fun fetchWarnings() {
+        val wp = getApplication<Application>().getSharedPreferences("weather_cache", Context.MODE_PRIVATE)
+        if (!wp.contains("lat")) return
+        val no = _state.value.weatherDailyLanguage == WeatherDailyLanguage.NORWEGIAN
+        repository.getWeatherWarnings(wp.getFloat("lat", 0f).toDouble(), wp.getFloat("lon", 0f).toDouble(), no)?.let { list ->
+            _state.update { it.copy(weatherWarnings = list) }
+        }
     }
 
     /** Shares the current forecast with Desktop Mode. */
@@ -485,6 +496,13 @@ _state.update {
             .put("updated", st.weatherLastUpdated ?: 0L)
             .put("hourly", org.json.JSONArray().apply { st.hourlyForecast.take(24).forEach { put(fc(it)) } })
             .put("daily", org.json.JSONArray().apply { st.dailyForecast.take(10).forEach { put(fc(it)) } })
+            .put("warnings", org.json.JSONArray().apply {
+                st.weatherWarnings.forEach { w ->
+                    put(org.json.JSONObject().put("event", w.event).put("title", w.title).put("color", w.color).put("area", w.area)
+                        .put("description", w.description).put("instruction", w.instruction).put("consequences", w.consequences)
+                        .put("start", w.start).put("end", w.end).put("web", w.web))
+                }
+            })
     }
 
     fun updateSearchQuery(query: String) {

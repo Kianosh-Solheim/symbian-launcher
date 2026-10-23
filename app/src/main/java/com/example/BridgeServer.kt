@@ -40,7 +40,7 @@ class BridgeServer(
     private var failedPairs = 0
     private var lockedUntil = 0L
 
-    private class SseClient(val socket: Socket, val out: OutputStream) {
+    private class SseClient(val socket: Socket, val out: OutputStream, val token: String) {
         @Synchronized fun send(text: String): Boolean = try {
             out.write(text.toByteArray(Charsets.UTF_8)); out.flush(); true
         } catch (_: Exception) { false }
@@ -91,6 +91,10 @@ class BridgeServer(
         thread(name = "bridge-heartbeat", isDaemon = true) {
             while (running) {
                 try { Thread.sleep(20_000) } catch (_: InterruptedException) { break }
+                // Disconnect browsers that were forgotten on the phone.
+                clients.filter { !BridgeState.isValidToken(context, it.token) }.forEach { c ->
+                    clients.remove(c); sseSlots.release(); try { c.socket.close() } catch (_: Exception) { }
+                }
                 broadcastRaw(": ping\n\n")
             }
         }
@@ -203,12 +207,25 @@ class BridgeServer(
             "GET" to "theme" -> data.theme()
             "GET" to "weather" -> data.weather() ?: JSONObject()
             "GET" to "contacts" -> data.contacts()
+            "POST" to "contacts" -> when (seg.getOrNull(1)) {
+                "delete" -> data.deleteContact(req.json().optString("id"))
+                else -> data.saveContact(req.json())
+            }
             "GET" to "photo" -> return bytes(out, data.contactPhoto(req.query["id"] ?: ""), "image/jpeg")
             "GET" to "icon" -> return bytes(out, data.appIcon(req.query["pkg"] ?: ""), "image/png")
             "GET" to "threads" -> data.smsThreads()
+            "GET" to "search" -> data.searchMessages(req.query["q"] ?: "")
             "GET" to "messages" -> data.smsMessages(req.query["thread"]?.toLongOrNull() ?: -1)
             "GET" to "mmspart" -> return data.mmsPart(req.query["id"]?.toLongOrNull() ?: -1).let { bytes(out, it?.first, it?.second ?: "application/octet-stream") }
             "POST" to "sms" -> req.json().let { data.sendSms(it.optString("to"), it.optString("body")) }
+            "POST" to "mms" -> {
+                if (req.contentLength > 20_000_000) BridgeData.fail("Image is larger than 20 MB")
+                else {
+                    val img = if (req.contentLength > 0) req.body(20_000_000) else null
+                    val err = MmsSender.send(context, req.query["to"] ?: "", req.query["text"], img)
+                    if (err == null) BridgeData.ok() else BridgeData.fail(err)
+                }
+            }
             "GET" to "calls" -> data.callLog()
             "POST" to "call" -> when (seg.getOrNull(1)) {
                 "answer" -> data.answerCall()
@@ -289,7 +306,15 @@ class BridgeServer(
         if (code.isNotEmpty() && code == BridgeState.pairingCode.value) {
             failedPairs = 0
             val ua = req.headers["user-agent"] ?: "Browser"
-            val label = Regex("(Firefox|Edg|Chrome|Safari|Vivaldi)").find(ua)?.value ?: "Browser"
+            val browser = when {
+                ua.contains("Vivaldi") -> "Vivaldi"; ua.contains("Edg/") -> "Edge"; ua.contains("OPR/") -> "Opera"
+                ua.contains("Firefox") -> "Firefox"; ua.contains("Chrome") -> "Chrome"; ua.contains("Safari") -> "Safari"; else -> "Browser"
+            }
+            val os = when {
+                ua.contains("Windows") -> "Windows"; ua.contains("Mac OS") -> "Mac"; ua.contains("Android") -> "Android"
+                ua.contains("CrOS") -> "ChromeOS"; ua.contains("Linux") -> "Linux"; else -> ""
+            }
+            val label = if (os.isEmpty()) browser else "$browser on $os"
             json(out, BridgeData.ok().put("token", BridgeState.issueToken(context, label)))
         } else {
             failedPairs++
@@ -311,7 +336,7 @@ class BridgeServer(
             "Cache-Control: no-cache\r\nConnection: keep-alive\r\nX-Accel-Buffering: no\r\n\r\n").toByteArray())
         out.write("retry: 3000\n\n".toByteArray())
         out.flush()
-        val client = SseClient(socket, out)
+        val client = SseClient(socket, out, req.token ?: "")
         clients += client
         onClientsChanged(clients.size)
         client.send("event: status\ndata: ${data.status()}\n\n")

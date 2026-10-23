@@ -115,9 +115,132 @@ class BridgeData(private val context: Context) {
                 .put("org", c.organization?.company ?: "")
                 .put("numbers", JSONArray().apply { c.phoneNumbers.forEach { put(JSONObject().put("number", it.number).put("label", it.label)) } })
                 .put("emails", JSONArray().apply { c.emails.forEach { put(JSONObject().put("address", it.address).put("label", it.label)) } })
-                .put("birthday", c.birthday ?: ""))
+                .put("birthday", c.birthday ?: "")
+                .put("notes", c.notes.joinToString("\n")))
         }
         return arr
+    }
+
+    // ───── Contact editing ─────
+
+    private fun phoneType(label: String): Pair<Int, String?> = when (label.trim().lowercase()) {
+        "mobile", "mobil", "cell" -> ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE to null
+        "home", "hjem", "privat" -> ContactsContract.CommonDataKinds.Phone.TYPE_HOME to null
+        "work", "jobb", "arbeid" -> ContactsContract.CommonDataKinds.Phone.TYPE_WORK to null
+        "", "other", "annet" -> ContactsContract.CommonDataKinds.Phone.TYPE_OTHER to null
+        else -> ContactsContract.CommonDataKinds.Phone.TYPE_CUSTOM to label.trim()
+    }
+
+    private fun emailType(label: String): Pair<Int, String?> = when (label.trim().lowercase()) {
+        "home", "hjem", "privat" -> ContactsContract.CommonDataKinds.Email.TYPE_HOME to null
+        "work", "jobb", "arbeid" -> ContactsContract.CommonDataKinds.Email.TYPE_WORK to null
+        "", "other", "annet" -> ContactsContract.CommonDataKinds.Email.TYPE_OTHER to null
+        else -> ContactsContract.CommonDataKinds.Email.TYPE_CUSTOM to label.trim()
+    }
+
+    /** The Google account most contacts live in, so new contacts sync like the rest. */
+    private fun defaultContactAccount(): Pair<String?, String?> {
+        val counts = HashMap<Pair<String, String>, Int>()
+        try {
+            context.contentResolver.query(ContactsContract.RawContacts.CONTENT_URI,
+                arrayOf(ContactsContract.RawContacts.ACCOUNT_TYPE, ContactsContract.RawContacts.ACCOUNT_NAME),
+                "${ContactsContract.RawContacts.DELETED} = 0", null, null)?.use { c ->
+                while (c.moveToNext()) {
+                    val t = c.getString(0) ?: continue; val n = c.getString(1) ?: continue
+                    counts[t to n] = (counts[t to n] ?: 0) + 1
+                }
+            }
+        } catch (_: Exception) { }
+        val best = counts.entries.filter { it.key.first == "com.google" }.maxByOrNull { it.value }
+            ?: counts.entries.maxByOrNull { it.value }
+        return best?.key?.first to best?.key?.second
+    }
+
+    private fun rawContactFor(contactId: String): Long? {
+        try {
+            context.contentResolver.query(ContactsContract.RawContacts.CONTENT_URI, arrayOf(ContactsContract.RawContacts._ID, ContactsContract.RawContacts.ACCOUNT_TYPE),
+                "${ContactsContract.RawContacts.CONTACT_ID} = ? AND ${ContactsContract.RawContacts.DELETED} = 0", arrayOf(contactId), null)?.use { c ->
+                var first: Long? = null
+                while (c.moveToNext()) { if (first == null) first = c.getLong(0); if (c.getString(1) == "com.google") return c.getLong(0) }
+                return first
+            }
+        } catch (_: Exception) { }
+        return null
+    }
+
+    /** Creates or updates a contact: name, phone numbers, e-mails, birthday, company and notes. */
+    fun saveContact(j: JSONObject): JSONObject {
+        if (!has(android.Manifest.permission.WRITE_CONTACTS)) return fail("Contacts write permission not granted on the phone")
+        val name = j.optString("name").trim()
+        if (name.isEmpty()) return fail("Give the contact a name")
+        val ops = ArrayList<android.content.ContentProviderOperation>()
+        val existing = j.optString("id").trim()
+        val rawId: Long?
+        if (existing.isNotEmpty()) {
+            rawId = rawContactFor(existing) ?: return fail("Contact not found")
+            val managed = listOf(
+                ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
+                ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE,
+                ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE
+            )
+            ops += android.content.ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                .withSelection("${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} IN (${managed.joinToString(",") { "?" }})",
+                    arrayOf(rawId.toString()) + managed).build()
+            ops += android.content.ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                .withSelection("${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ? AND ${ContactsContract.CommonDataKinds.Event.TYPE} = ?",
+                    arrayOf(rawId.toString(), ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE, ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY.toString())).build()
+        } else {
+            rawId = null
+            val (type, acct) = defaultContactAccount()
+            ops += android.content.ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, type)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, acct).build()
+        }
+        fun data(mime: String): android.content.ContentProviderOperation.Builder {
+            val b = android.content.ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValue(ContactsContract.Data.MIMETYPE, mime)
+            return if (rawId != null) b.withValue(ContactsContract.Data.RAW_CONTACT_ID, rawId) else b.withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+        }
+        ops += data(ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name).build()
+        j.optJSONArray("numbers")?.let { a ->
+            for (i in 0 until a.length()) {
+                val o = a.optJSONObject(i) ?: continue; val num = o.optString("number").trim(); if (num.isEmpty()) continue
+                val (t, l) = phoneType(o.optString("label"))
+                ops += data(ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, num)
+                    .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, t).withValue(ContactsContract.CommonDataKinds.Phone.LABEL, l).build()
+            }
+        }
+        j.optJSONArray("emails")?.let { a ->
+            for (i in 0 until a.length()) {
+                val o = a.optJSONObject(i) ?: continue; val addr = o.optString("address").trim(); if (addr.isEmpty()) continue
+                val (t, l) = emailType(o.optString("label"))
+                ops += data(ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.Email.ADDRESS, addr)
+                    .withValue(ContactsContract.CommonDataKinds.Email.TYPE, t).withValue(ContactsContract.CommonDataKinds.Email.LABEL, l).build()
+            }
+        }
+        j.optString("birthday").trim().takeIf { it.isNotEmpty() }?.let { b ->
+            ops += data(ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.Event.START_DATE, b)
+                .withValue(ContactsContract.CommonDataKinds.Event.TYPE, ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY).build()
+        }
+        j.optString("org").trim().takeIf { it.isNotEmpty() }?.let { o ->
+            ops += data(ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, o).build()
+        }
+        j.optString("notes").trim().takeIf { it.isNotEmpty() }?.let { n ->
+            ops += data(ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.Note.NOTE, n).build()
+        }
+        return try {
+            context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
+            invalidateContacts(); ok()
+        } catch (e: Exception) { fail("Could not save: ${e.message}") }
+    }
+
+    fun deleteContact(id: String): JSONObject {
+        if (!has(android.Manifest.permission.WRITE_CONTACTS)) return fail("Contacts write permission not granted on the phone")
+        return try {
+            val n = context.contentResolver.delete(ContactsContract.Contacts.CONTENT_URI, "${ContactsContract.Contacts._ID} = ?", arrayOf(id))
+            invalidateContacts(); if (n > 0) ok() else fail("Contact not found")
+        } catch (e: Exception) { fail("Could not delete: ${e.message}") }
     }
 
     fun contactPhoto(id: String): ByteArray? {
@@ -213,6 +336,24 @@ class BridgeData(private val context: Context) {
                 }
                 rows += mmsMessages(thread)
                 rows.sortedBy { it.optLong("date") }.takeLast(400).forEach { arr.put(it) }
+            }
+        } catch (_: Exception) { }
+        return arr
+    }
+
+    /** Full-text search through SMS bodies, newest first. */
+    fun searchMessages(q: String): JSONArray {
+        val arr = JSONArray()
+        if (!has(android.Manifest.permission.READ_SMS) || q.trim().length < 2) return arr
+        val like = "%" + q.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        try {
+            context.contentResolver.query(Uri.parse("content://sms"), arrayOf("thread_id", "address", "body", "date", "type"),
+                "body LIKE ? ESCAPE '\\'", arrayOf(like), "date DESC")?.use { c ->
+                while (c.moveToNext() && arr.length() < 40) {
+                    val address = c.getString(1) ?: ""
+                    arr.put(JSONObject().put("thread", c.getLong(0)).put("address", address).put("name", nameFor(address))
+                        .put("body", (c.getString(2) ?: "").take(300)).put("date", c.getLong(3)).put("outgoing", c.getInt(4) != 1))
+                }
             }
         } catch (_: Exception) { }
         return arr

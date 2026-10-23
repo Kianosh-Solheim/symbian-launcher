@@ -49,6 +49,7 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
             add(android.Manifest.permission.CALL_PHONE)
             add(android.Manifest.permission.READ_CALL_LOG)
             add(android.Manifest.permission.READ_CONTACTS)
+            add(android.Manifest.permission.WRITE_CONTACTS)
             add(android.Manifest.permission.READ_CALENDAR)
             add(android.Manifest.permission.WRITE_CALENDAR)
             add(android.Manifest.permission.READ_PHONE_STATE)
@@ -153,7 +154,13 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                     )
                 }
-                SettingsMenuItem("Forget paired browsers ($paired)", null, haptic) { BridgeState.forgetAll(context) }
+                val browsers = remember(tick) { BridgeState.pairedBrowsers(context) }
+                if (browsers.isEmpty()) Hint("No browsers paired yet.")
+                browsers.forEach { b ->
+                    val used = if (b.lastUsed > 0) android.text.format.DateUtils.getRelativeTimeSpanString(b.lastUsed, System.currentTimeMillis(), 60_000L).toString() else "never"
+                    SettingsMenuItem("Forget ${b.label} · used $used", null, haptic) { BridgeState.forget(context, b.id) }
+                }
+                if (browsers.size > 1) SettingsMenuItem("Forget all browsers ($paired)", null, haptic) { BridgeState.forgetAll(context) }
 
                 SettingsSectionHeader("Reliability")
                 val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager

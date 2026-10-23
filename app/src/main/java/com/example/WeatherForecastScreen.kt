@@ -191,6 +191,33 @@ fun WeatherForecastScreen(
             .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
             .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
     ) {
+        // Official MET warnings (farevarsler): one line each, press to read the advice.
+        if (state.weatherWarnings.isNotEmpty()) {
+            var expanded by remember { mutableStateOf<String?>(null) }
+            state.weatherWarnings.forEach { w ->
+                val src = remember { MutableInteractionSource() }
+                val foc by src.collectIsFocusedAsState()
+                val fmt = Formatters.get("EEE HH:mm")
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                        .symbianHighlight(foc, unfocusedColor = warningColor(w.color).copy(alpha = 0.25f))
+                        .clickable(interactionSource = src, indication = LocalIndication.current) { expanded = if (expanded == w.id) null else w.id }
+                        .padding(8.dp)
+                ) {
+                    Text("⚠ ${w.event}", color = if (foc) Color.Black else warningColor(w.color), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("${w.area} · ${if (w.start > 0) fmt.format(w.start) else ""}–${if (w.end > 0) fmt.format(w.end) else ""}",
+                        color = if (foc) Color.Black else Color.White, fontSize = 12.sp)
+                    if (expanded == w.id) {
+                        listOf(w.description, w.consequences, w.instruction).filter { it.isNotBlank() }.forEach {
+                            Text(it, color = if (foc) Color.Black else Color.White, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
+                }
+            }
+        }
+
         // Top row with Tabs and Settings
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),

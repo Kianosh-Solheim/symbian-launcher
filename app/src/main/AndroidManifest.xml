@@ -33,6 +33,7 @@
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Instant clipboard sharing; both are granted once over USB (adb) -->
     <uses-permission android:name="android.permission.READ_LOGS" tools:ignore="ProtectedPermissions" />
@@ -86,6 +87,16 @@
             android:noHistory="true"
             android:taskAffinity=""
             android:theme="@style/Theme.ClipboardGrab" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.mmsfiles"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/mms_paths" />
+        </provider>
 
         <service
             android:name=".BridgeService"

@@ -58,14 +58,54 @@ object BridgeState {
         return token
     }
 
+    private val lastUsedMem = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
     fun isValidToken(context: Context, token: String?): Boolean {
         if (token.isNullOrBlank()) return false
         val arr = tokensJson(context)
         for (i in 0 until arr.length()) {
             val stored = arr.getJSONObject(i).getString("token")
-            if (java.security.MessageDigest.isEqual(stored.toByteArray(), token.toByteArray())) return true
+            if (java.security.MessageDigest.isEqual(stored.toByteArray(), token.toByteArray())) {
+                touch(context, stored)
+                return true
+            }
         }
         return false
+    }
+
+    /** Remembers when each browser was last used (written to storage at most every 5 minutes). */
+    private fun touch(context: Context, token: String) {
+        val now = System.currentTimeMillis()
+        val prev = lastUsedMem.put(token, now)
+        if (prev != null && now - prev < 300_000) return
+        synchronized(this) {
+            val arr = tokensJson(context)
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                if (o.getString("token") == token) { o.put("lastUsed", now); break }
+            }
+            prefs(context).edit().putString("tokens", arr.toString()).apply()
+        }
+    }
+
+    data class PairedBrowser(val id: String, val label: String, val created: Long, val lastUsed: Long)
+
+    fun pairedBrowsers(context: Context): List<PairedBrowser> {
+        val arr = tokensJson(context)
+        return (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i); val t = o.getString("token")
+            PairedBrowser(t.take(10), o.optString("label", "Browser"), o.optLong("created"),
+                maxOf(o.optLong("lastUsed", o.optLong("created")), lastUsedMem[t] ?: 0L))
+        }.sortedByDescending { it.lastUsed }
+    }
+
+    /** Revokes one browser; it must enter a new pairing code to connect again. */
+    fun forget(context: Context, id: String) {
+        synchronized(this) {
+            val arr = tokensJson(context); val keep = JSONArray()
+            for (i in 0 until arr.length()) { val o = arr.getJSONObject(i); if (!o.getString("token").startsWith(id)) keep.put(o) else lastUsedMem.remove(o.getString("token")) }
+            prefs(context).edit().putString("tokens", keep.toString()).apply()
+        }
     }
 
     fun pairedCount(context: Context) = tokensJson(context).length()

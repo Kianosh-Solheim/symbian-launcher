@@ -245,6 +245,25 @@ textarea.note { width: 100%; min-height: 80px; padding: 8px; border-radius: 6px;
 .clipnow { background: rgba(255,255,255,.93); color: #111; border-radius: 8px; padding: 12px; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; font-size: 15px; }
 code.cmd { display: block; background: rgba(0,0,0,.45); padding: 6px 8px; border-radius: 4px; font-size: 12px; margin: 4px 0; user-select: all; word-break: break-all; }
 
+/* ── Warnings, attachments, search ─────────── */
+.warn { border-left: 6px solid var(--wc); background: color-mix(in srgb, var(--wc) 22%, transparent); padding: 8px 10px; margin: 0 0 8px; cursor: pointer; }
+.warn b { display: block; }
+.warn .more { display: none; white-space: pre-wrap; font-size: 13px; margin-top: 6px; color: inherit; }
+.warn.open .more { display: block; }
+.attach { display: flex; align-items: center; gap: 8px; padding: 6px 14px 0; }
+.attach img { max-height: 70px; max-width: 120px; border-radius: 4px; border: 2px solid var(--hl); }
+.convo.dragover .bubbles { outline: 3px dashed var(--hl); outline-offset: -8px; }
+.palette { width: min(640px, 94vw); }
+.palette .in { padding: 10px; gap: 6px; }
+.palette input { font-size: 18px; padding: 10px 12px; width: 100%; border-radius: 6px; border: 1px solid rgba(0,0,0,.4); background: #fff; color: #000; }
+.palette .res { max-height: 60vh; overflow-y: auto; }
+.palette .grp { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); padding: 8px 10px 2px; }
+.palette .row { padding: 6px 10px; }
+.palette .row .ic { width: 26px; text-align: center; flex: none; font-size: 16px; }
+.palette mark { background: var(--hl); color: #000; border-radius: 2px; }
+body.win95 .palette mark { background: #ffff00; color: #000; }
+.kbd { font-size: 11px; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; color: var(--muted); }
+
 /* ── Calendar ─────────────────────────────── */
 .calbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px dashed var(--line); flex-wrap: wrap; }
 .calbar .label { font-weight: bold; font-size: 18px; text-shadow: var(--shadow); min-width: 220px; }
@@ -431,7 +450,7 @@ body.win95 ::-webkit-scrollbar-button:single-button { background: #c0c0c0; box-s
   </div>
   <footer class="softkeys">
     <button id="skL">Options</button>
-    <span class="c" id="skC">Alt+0–9 sections · / search · Esc back</span>
+    <span class="c" id="skC">Ctrl+K search · Alt+0–9 sections · Esc back</span>
     <button id="skR" class="r">Exit</button>
   </footer>
 </div>
@@ -498,6 +517,12 @@ const dur = s => s >= 3600 ? `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) %
 const initials = n => (String(n || "?").trim().split(/\s+/).map(w => w[0]).filter(c => /\p{L}/u.test(c)).slice(0, 2).join("") || "#").toUpperCase();
 function hue(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
 const avatar = (name, img) => `<span class="avatar" style="background-color:hsl(${hue(name)} 45% 40%);${img ? `background-image:url('${img}')` : ""}">${img ? "" : esc(initials(name))}</span>`;
+const warnColor = c => ({ red: "#ff3b30", orange: "#ff9500" })[String(c).toLowerCase()] || "#ffd60a";
+function warningsHtml(list) {
+  return (list || []).map(x => `<div class="warn" style="--wc:${warnColor(x.color)}" data-warn="1"><b>⚠ ${esc(x.event)}</b>
+    <span class="note-sm">${esc(x.area)}${x.start ? " · " + esc(new Date(x.start).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })) : ""}${x.end ? " – " + esc(new Date(x.end).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })) : ""}</span>
+    <div class="more">${esc([x.description, x.consequences, x.instruction].filter(Boolean).join("\n\n"))}${x.web ? `\n<a href="${esc(x.web)}" target="_blank" rel="noopener">More at met.no</a>` : ""}</div></div>`).join("");
+}
 function wxIcon(sym) {
   sym = String(sym || "").toLowerCase().replace(/ /g, "_");
   const night = sym.includes("night");
@@ -608,7 +633,8 @@ function renderStatus() {
     renderCall(st.call);
   }
   const w = S.weather;
-  $("#wxmini").innerHTML = w && w.symbol ? `${wxIcon(w.symbol)} <b>${Math.round(w.temp)}°</b>` : "";
+  const wn = w && w.warnings && w.warnings[0];
+  $("#wxmini").innerHTML = (wn ? `<span title="${esc(wn.event)}" style="color:${warnColor(wn.color)};font-weight:bold">⚠</span> ` : "") + (w && w.symbol ? `${wxIcon(w.symbol)} <b>${Math.round(w.temp)}°</b>` : "");
   const l = $("#link"); l.textContent = S.online ? "Connected" : "Reconnecting…"; l.classList.toggle("off", !S.online);
 }
 
@@ -642,6 +668,7 @@ const VIEWS = {
         <div class="bigdate">${esc(d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }))}</div>
       </div></div>
       <div class="card"><h3>Weather${w && w.location ? " · " + esc(w.location) : ""}</h3><div class="in">
+        ${w ? warningsHtml(w.warnings) : ""}
         ${w && w.symbol ? `<div class="wxnow"><span class="ic">${wxIcon(w.symbol)}</span><span class="temp">${Math.round(w.temp)}°${esc(w.unit || "")}</span>
           <div class="kv">${w.feelsLike != null ? `<span>Feels like</span><span>${Math.round(w.feelsLike)}°</span>` : ""}
           ${w.wind != null ? `<span>Wind</span><span>${w.wind} m/s</span>` : ""}${w.humidity != null ? `<span>Humidity</span><span>${Math.round(w.humidity)}%</span>` : ""}
@@ -732,14 +759,14 @@ const VIEWS = {
     const c = S.contact ? S.contacts.find(x => x.id === S.contact) : null;
     setSoftkeys(c && c.numbers[0] ? "Call" : "", c && c.numbers[0] ? () => act("call", { number: c.numbers[0].number }, "Calling…") : null);
     return `<div class="view split ${c ? "detailopen" : ""}">
-      <div class="pane list"><div class="title">${icon("person").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Contacts</span><span class="sub" style="font-size:13px;color:var(--muted)">${S.contacts.length}</span></div>
+      <div class="pane list"><div class="title">${icon("person").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Contacts</span><span class="sub" style="font-size:13px;color:var(--muted)">${S.contacts.length}</span><button class="btn small" data-newcontact="1">New</button></div>
         <div class="toolbar"><input class="search" id="search" placeholder="Search contacts" value="${esc(S.q)}"></div>
         ${list.length ? list.map(x => `<button class="row ${S.contact === x.id ? "active" : ""}" data-contact="${esc(x.id)}">
           ${avatar(x.name, x.photo ? `/api/photo?id=${q(x.id)}&token=${q(token)}` : "")}
           <span class="main"><span class="name">${esc(x.name)}</span><span class="sub">${esc(x.numbers[0]?.number || x.org || "")}</span></span></button>`).join("") : `<div class="empty">No contacts</div>`}
       </div>
       <div class="pane detail ${c ? "open" : ""}">${c ? `
-        <div class="title"><span class="grow">${esc(c.name)}</span></div>
+        <div class="title"><span class="grow">${esc(c.name)}</span><button class="btn small" data-editcontact="${esc(c.id)}">Edit</button></div>
         <div style="display:grid;justify-items:center;padding:20px;gap:8px">
           <span style="transform:scale(2.3);margin:24px">${avatar(c.name, c.photo ? `/api/photo?id=${q(c.id)}&token=${q(token)}` : "")}</span>
           <b style="font-size:22px;text-shadow:var(--shadow)">${esc(c.name)}</b>${c.org ? `<span style="color:var(--muted)">${esc(c.org)}</span>` : ""}
@@ -840,7 +867,8 @@ function conversation() {
     <div class="title">${avatar(t.name)}<span class="grow">${esc(t.name)}<div style="font-size:12px;font-weight:normal;color:var(--muted)">${esc(t.address)}</div></span>
       <button class="btn small good" data-callnum="${esc(t.address)}">Call</button></div>
     <div class="bubbles" id="bubbles">${bubbles || `<div class="empty">Loading…</div>`}</div>
-    <div class="compose"><textarea id="reply" placeholder="Text message" rows="1"></textarea><span class="counter" id="counter"></span><button class="btn" data-sendsms="1">Send</button></div>
+    ${attachHtml()}
+    <div class="compose"><button class="btn" data-attach="1" title="Attach a photo (or paste / drop one)">📎</button><textarea id="reply" placeholder="Text message" rows="1"></textarea><span class="counter" id="counter"></span><button class="btn" data-sendsms="1">Send</button></div>
   </div>`;
 }
 function mediaHtml(list) {
@@ -855,7 +883,8 @@ function newMessage() {
   return `<div class="convo">
     <div class="title"><span class="grow">New message</span></div>
     <div class="recipient"><input class="search" id="to" placeholder="To: name or number" autocomplete="off" value="${esc(S.to || "")}"><div class="suggest hidden" id="suggest"></div></div>
-    <div class="compose" style="border-top:0;align-self:end"><textarea id="reply" placeholder="Text message" rows="3"></textarea><span class="counter" id="counter"></span><button class="btn" data-sendnew="1">Send</button></div>
+    <div style="align-self:end">${attachHtml()}
+    <div class="compose" style="border-top:0"><button class="btn" data-attach="1" title="Attach a photo">📎</button><textarea id="reply" placeholder="Text message" rows="3"></textarea><span class="counter" id="counter"></span><button class="btn" data-sendnew="1">Send</button></div></div>
   </div>`;
 }
 function chatView(n) {
@@ -945,6 +974,19 @@ function wire(m) {
     drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); upload([...e.dataTransfer.files]); };
   }
   wireCalendar(m);
+  m.querySelectorAll("[data-warn]").forEach(x => x.onclick = e => { if (!e.target.closest("a")) x.classList.toggle("open"); });
+  m.querySelectorAll("[data-newcontact]").forEach(b => b.onclick = () => contactDialog(null));
+  m.querySelectorAll("[data-editcontact]").forEach(b => b.onclick = () => contactDialog(S.contacts.find(c => c.id === b.dataset.editcontact)));
+  m.querySelectorAll("[data-attach]").forEach(b => b.onclick = () => { const i = document.createElement("input"); i.type = "file"; i.accept = "image/*"; i.onchange = () => setAttachment(i.files[0]); i.click(); });
+  m.querySelectorAll("[data-unattach]").forEach(b => b.onclick = () => { URL.revokeObjectURL(attachment.url); attachment = null; render(); });
+  const convo = $(".convo", m);
+  if (convo && S.view === "messages") {
+    convo.ondragover = e => { if ([...e.dataTransfer.items].some(i => i.kind === "file")) { e.preventDefault(); convo.classList.add("dragover"); } };
+    convo.ondragleave = e => { if (!convo.contains(e.relatedTarget)) convo.classList.remove("dragover"); };
+    convo.ondrop = e => { e.preventDefault(); convo.classList.remove("dragover"); const f = e.dataTransfer.files[0]; if (f) setAttachment(f); };
+    const ta = $("#reply", m);
+    if (ta) ta.addEventListener("paste", e => { const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith("image/")); if (f) { e.preventDefault(); setAttachment(f); } });
+  }
   wirePhotos(m);
   wireWallet(m);
   wireClipboard(m);
@@ -976,8 +1018,29 @@ function startText(number) {
   if (t) { openThread(t.thread, t); } else { S.newMsg = true; S.thread = null; S.to = number; render(); $("#reply")?.focus(); }
   renderNav();
 }
+let attachment = null; // { file, url }
+function attachHtml() {
+  return attachment ? `<div class="attach"><img src="${attachment.url}" alt=""><span class="note-sm">${esc(attachment.file.name || "Photo")} · sent as a picture message (MMS)</span><button class="btn small" data-unattach="1">✕</button></div>` : "";
+}
+function setAttachment(file) {
+  if (!file || !file.type.startsWith("image/")) return toast("Only photos can be sent as picture messages");
+  if (attachment) URL.revokeObjectURL(attachment.url);
+  attachment = { file, url: URL.createObjectURL(file) }; render(); $("#reply")?.focus();
+}
+async function sendMms(to, text) {
+  try {
+    const r = await (await fetch(`/api/mms?to=${q(to)}&text=${q(text)}&token=${q(token)}`, { method: "POST", headers: { "Content-Type": attachment.file.type }, body: attachment.file })).json();
+    if (!r.ok) { toast(r.error || "Couldn't send the picture"); return false; }
+    URL.revokeObjectURL(attachment.url); attachment = null; toast("Sending picture… (needs mobile data on the phone)"); return true;
+  } catch { toast("Phone not reachable"); return false; }
+}
 async function sendSms(to) {
   const body = ($("#reply")?.value || "").trim();
+  if (attachment) {
+    if (!to) return toast("Enter a recipient");
+    if (await sendMms(to, body)) { S.drafts[draftKey()] = ""; if ($("#reply")) $("#reply").value = ""; render(); }
+    return;
+  }
   if (!to || !body) return toast("Enter a recipient and a message");
   const r = await act("sms", { to, body });
   if (r.ok) {
@@ -1554,6 +1617,114 @@ document.addEventListener("paste", e => {
 });
 window.addEventListener("focus", () => { if (S.clip?.sync && !silentRead) setupClipPoll(); });
 
+// ───────────── Contact editor ─────────────
+function contactDialog(c) {
+  const bday = c && c.birthday ? String(c.birthday) : "";
+  const noYear = /^--/.test(bday);
+  const dateVal = noYear ? "2000-" + bday.slice(2) : (/^\d{4}-\d{2}-\d{2}$/.test(bday) ? bday : "");
+  const row = (a, b, cls, ph1, ph2) => `<div class="fr ${cls}"><input class="fv" value="${esc(a)}" placeholder="${ph1}"><input class="fl" value="${esc(b)}" placeholder="${ph2}" list="labels"><button class="btn small" data-rmfield="1">✕</button></div>`;
+  const o = dialog(`<h2>${c ? "Edit " + esc(c.name) : "New contact"}</h2><div class="in" style="max-height:78vh;overflow-y:auto">
+    <datalist id="labels"><option>Mobile</option><option>Home</option><option>Work</option><option>Other</option></datalist>
+    <div class="form">
+      <label>Name</label><input id="ct-name" value="${esc(c ? c.name : "")}" placeholder="First and last name">
+      <label>Phone</label><div class="fieldrows" id="ct-phones">${(c && c.numbers.length ? c.numbers : [{ number: "", label: "Mobile" }]).map(n => row(n.number, n.label, "cph", "Number", "Label")).join("")}<button class="btn small" data-addph="1" style="justify-self:start">+ Add number</button></div>
+      <label>E-mail</label><div class="fieldrows" id="ct-emails">${(c ? c.emails : []).map(e => row(e.address, e.label, "cem", "Address", "Label")).join("")}<button class="btn small" data-addem="1" style="justify-self:start">+ Add e-mail</button></div>
+      <label>Birthday</label><span class="pair"><input type="date" id="ct-bday" value="${esc(dateVal)}"><label style="display:flex;gap:6px;align-items:center;white-space:nowrap;color:inherit"><input type="checkbox" id="ct-noyear" ${noYear ? "checked" : ""}> Year unknown</label></span>
+      <label>Company</label><input id="ct-org" value="${esc(c ? c.org : "")}">
+      <label>Notes</label><textarea id="ct-notes" rows="3">${esc(c ? c.notes || "" : "")}</textarea>
+    </div>
+    <div class="err" id="ct-err"></div>
+    <div class="row2">${c ? `<button class="btn bad" id="ct-del">Delete</button><span style="flex:1"></span>` : ""}<button class="btn" id="ct-cancel">Cancel</button><button class="btn good" id="ct-save">Save</button></div></div>`, true);
+  const wireRows = () => {
+    o.querySelectorAll("[data-rmfield]").forEach(b => b.onclick = () => b.closest(".fr").remove());
+    o.querySelector("[data-addph]").onclick = e => { e.target.insertAdjacentHTML("beforebegin", row("", "Mobile", "cph", "Number", "Label")); wireRows(); e.target.previousElementSibling.querySelector(".fv").focus(); };
+    o.querySelector("[data-addem]").onclick = e => { e.target.insertAdjacentHTML("beforebegin", row("", "Home", "cem", "Address", "Label")); wireRows(); e.target.previousElementSibling.querySelector(".fv").focus(); };
+  };
+  wireRows();
+  setTimeout(() => $("#ct-name", o).focus(), 30);
+  $("#ct-cancel", o).onclick = () => o.remove();
+  const del = $("#ct-del", o);
+  if (del) del.onclick = async () => {
+    if (!del.dataset.sure) { del.dataset.sure = "1"; del.textContent = "Delete from the phone?"; return; }
+    const r = await act("contacts/delete", { id: c.id }, "Contact deleted");
+    if (r.ok) { o.remove(); S.contact = null; await refresh("contacts!"); refresh("birthdays"); }
+  };
+  $("#ct-save", o).onclick = async () => {
+    const d = $("#ct-bday", o).value;
+    const body = {
+      id: c ? c.id : "", name: $("#ct-name", o).value, org: $("#ct-org", o).value, notes: $("#ct-notes", o).value,
+      birthday: d ? ($("#ct-noyear", o).checked ? "--" + d.slice(5) : d) : "",
+      numbers: [...o.querySelectorAll(".fr.cph")].map(r => ({ number: r.querySelector(".fv").value, label: r.querySelector(".fl").value })),
+      emails: [...o.querySelectorAll(".fr.cem")].map(r => ({ address: r.querySelector(".fv").value, label: r.querySelector(".fl").value })),
+    };
+    if (!body.name.trim()) { $("#ct-err", o).textContent = "Give the contact a name"; return; }
+    const r = await act("contacts", body, c ? "Contact updated" : "Contact added");
+    if (r.ok) {
+      o.remove(); await refresh("contacts!"); refresh("birthdays");
+      const hit = S.contacts.find(x => x.name === body.name.trim()); if (hit) { S.contact = hit.id; if (S.view !== "contacts") go("contacts"); else render(); }
+    } else $("#ct-err", o).textContent = r.error || "Couldn't save";
+  };
+}
+
+// ───────────── Search everything (Ctrl+K) ─────────────
+let paletteEvents = null;
+async function openPalette() {
+  if ($(".palette")) return;
+  const o = dialog(`<div class="in"><input id="pk-q" placeholder="Search messages, contacts, calendar, wallet…" autocomplete="off">
+    <div class="res" id="pk-res"></div><div class="note-sm"><span class="kbd">↑</span> <span class="kbd">↓</span> to move · <span class="kbd">Enter</span> to open · <span class="kbd">Esc</span> to close</div></div>`);
+  o.querySelector(".dialog").classList.add("palette");
+  if (!S.contacts.length) refresh("contacts");
+  if (!S.wallet.length) refresh("wallet");
+  if (!S.birthdays.length) refresh("birthdays");
+  if (!paletteEvents) { const a = Date.now() - 30 * DAY, b = Date.now() + 180 * DAY; api(`calendar?from=${a}&to=${b}`).then(r => paletteEvents = r).catch(() => {}); }
+  const input = $("#pk-q", o), res = $("#pk-res", o);
+  let items = [], sel = 0, timer = null, remote = [];
+  const mark = (t, qq) => { const s = esc(t); if (!qq) return s; const i = s.toLowerCase().indexOf(esc(qq).toLowerCase()); return i < 0 ? s : s.slice(0, i) + "<mark>" + s.slice(i, i + esc(qq).length) + "</mark>" + s.slice(i + esc(qq).length); };
+  const paint = () => {
+    const qq = input.value.trim(), ql = qq.toLowerCase(), has = x => String(x || "").toLowerCase().includes(ql);
+    const groups = [];
+    groups.push(["Go to", SECTIONS.filter(([id, l]) => !qq || has(l)).slice(0, qq ? 5 : 12).map(([id, l]) => ({ ic: "➜", t: l, s: "", run: () => go(id) }))]);
+    if (qq) {
+      groups.push(["Contacts", S.contacts.filter(c => has(c.name) || c.numbers.some(n => n.number.replace(/\s/g, "").includes(ql.replace(/\s/g, ""))) || has(c.org)).slice(0, 6)
+        .map(c => ({ ic: "👤", t: c.name, s: c.numbers[0]?.number || c.org || "", run: () => { S.contact = c.id; go("contacts"); } }))]);
+      groups.push(["Conversations", S.threads.filter(t => has(t.name) || has(t.address)).slice(0, 5)
+        .map(t => ({ ic: "💬", t: t.name, s: t.snippet, run: () => { go("messages"); openThread(t.thread, t); } }))]);
+      groups.push(["In messages", remote.slice(0, 8).map(m => ({ ic: "✉", t: m.name, s: m.body, run: () => { const t = S.threads.find(x => x.thread === m.thread) || { thread: m.thread, name: m.name, address: m.address }; go("messages"); openThread(m.thread, t); } }))]);
+      groups.push(["Chats & notifications", S.notifs.filter(n => has(n.title) || has(n.text) || has(n.app)).slice(0, 5)
+        .map(n => ({ ic: "🔔", t: n.title || n.app, s: n.app + " · " + n.text, run: () => { if (n.canReply || n.messaging) { S.chat = n.key; go("chats"); } else go("notifications"); } }))]);
+      groups.push(["Calendar", (paletteEvents || []).filter(e => has(e.title) || has(e.location)).slice(0, 6)
+        .map(e => ({ ic: "📅", t: e.title, s: new Date(e.start).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: e.allDay ? undefined : "2-digit", minute: e.allDay ? undefined : "2-digit" }) + (e.location ? " · " + e.location : ""), run: () => { S.cal.date = new Date(e.start); go("calendar"); setTimeout(() => eventDialog(e), 300); } }))]);
+      groups.push(["Birthdays", S.birthdays.filter(b => has(b.name)).slice(0, 3).map(b => ({ ic: "🎂", t: b.name, s: b.date + " · " + daysText(b.days), run: () => { go("birthdays"); setTimeout(() => greetDialog(b.id), 200); } }))]);
+      groups.push(["Wallet", S.wallet.filter(w => has(w.organizationName) || has(w.description)).slice(0, 4).map(w => ({ ic: "💳", t: w.organizationName, s: KINDS[w.type] || "", run: () => { go("wallet"); setTimeout(() => walletDetail(w.id), 300); } }))]);
+    }
+    items = []; let html = "";
+    for (const [g, list] of groups) {
+      if (!list.length) continue;
+      html += `<div class="grp">${g}</div>`;
+      for (const it of list) { html += `<button class="row ${items.length === sel ? "active" : ""}" data-i="${items.length}"><span class="ic">${it.ic}</span><span class="main"><span class="name">${mark(it.t, qq)}</span>${it.s ? `<span class="sub">${mark(it.s, qq)}</span>` : ""}</span></button>`; items.push(it); }
+    }
+    res.innerHTML = html || `<div class="empty">Nothing found</div>`;
+    res.querySelectorAll("[data-i]").forEach(b => b.onclick = () => choose(Number(b.dataset.i)));
+    res.querySelector(".row.active")?.scrollIntoView({ block: "nearest" });
+  };
+  const choose = i => { const it = items[i]; if (it) { o.remove(); it.run(); } };
+  input.oninput = () => {
+    sel = 0; paint(); clearTimeout(timer);
+    const qq = input.value.trim();
+    if (qq.length >= 2) timer = setTimeout(async () => { try { remote = await api("search?q=" + q(qq)); } catch { remote = []; } if (input.value.trim() === qq) paint(); }, 250);
+    else remote = [];
+  };
+  input.onkeydown = e => {
+    if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); paint(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(0, sel - 1); paint(); }
+    if (e.key === "Enter") { e.preventDefault(); choose(sel); }
+  };
+  paint(); setTimeout(() => input.focus(), 20);
+}
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && !$("#app").classList.contains("hidden")) { e.preventDefault(); openPalette(); }
+});
+
 // ───────────── Dialogs ─────────────
 function dialog(html, wide) {
   $(".overlay.dlg:not([data-keep])")?.remove();
@@ -1703,7 +1874,7 @@ function connect() {
   es.addEventListener("notifications", () => refresh("notifications"));
   es.addEventListener("wallet", () => { if (S.view === "wallet") refresh("wallet"); });
   es.addEventListener("clipboard", e => onPhoneClip(JSON.parse(e.data)));
-  es.addEventListener("calendar", () => { refresh("agenda"); if (S.view === "calendar") loadCal(true); });
+  es.addEventListener("calendar", () => { paletteEvents = null; refresh("agenda"); if (S.view === "calendar") loadCal(true); });
 }
 function alertPrefs() {
   let p = {}; try { p = JSON.parse(store.get("symbian.alerts") || "{}"); } catch {}

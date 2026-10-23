@@ -717,6 +717,18 @@ fun WalletPassDetailScreen(
     val context = LocalContext.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
+    // Full screen brightness while a barcode is on screen, so scanners read it first time.
+    if (pass.barcode != null) {
+        DisposableEffect(pass.id) {
+            val window = (context as? android.app.Activity)?.window
+            val previous = window?.attributes?.screenBrightness
+            window?.let { w -> w.attributes = w.attributes.apply { screenBrightness = 1f } }
+            onDispose {
+                window?.let { w -> w.attributes = w.attributes.apply { screenBrightness = previous ?: -1f } }
+            }
+        }
+    }
+
     val cardBg = Color(pass.backgroundColor)
     val cardFg = Color(pass.foregroundColor)
     val cardLabel = Color(pass.labelColor)
