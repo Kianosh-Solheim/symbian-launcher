@@ -164,7 +164,9 @@ fun HubView(
     
     val messagingApps = state.messagingApps
     
-    val displayNotifs = state.activeNotifications.filter { 
+    // Read notifications here (not via LauncherState), so a new notification only redraws the hub.
+    val liveNotifs by NotificationStore.notifications.collectAsState()
+    val displayNotifs = liveNotifs.filter { 
         isValidUserNotification(it) 
     }
     val msgNotifs = displayNotifs.filter { MessagingUtils.isMessageNotification(it, messagingApps) }

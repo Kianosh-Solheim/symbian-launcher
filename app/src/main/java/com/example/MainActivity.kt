@@ -180,6 +180,9 @@ fun Modifier.symbianHighlight(
 }
 
 class MainActivity : ComponentActivity() {
+    override fun onStart() { super.onStart(); AppVisibility.visible = true }
+    override fun onStop() { AppVisibility.visible = false; super.onStop() }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         // Coming back to the home screen after copying something: share it with the desktop.

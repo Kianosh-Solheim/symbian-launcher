@@ -88,4 +88,7 @@ dependencies {
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.zxing.core)
+  // Installs the ahead-of-time compilation profiles that ship inside Compose, so a sideloaded
+  // APK starts and scrolls as smoothly as a Play Store install.
+  implementation(libs.androidx.profileinstaller)
 }

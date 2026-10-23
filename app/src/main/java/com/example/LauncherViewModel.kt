@@ -95,7 +95,6 @@ data class LauncherState(
     val pinnedApps: List<AppInfo> = emptyList(),
     val contacts: List<ContactInfo> = emptyList(),
     val todayEvents: List<CalendarEvent> = emptyList(),
-    val activeNotifications: List<StatusBarNotification> = emptyList(),
     val searchQuery: String = "",
     val t9Query: String = "",
     val t9SearchMode: T9SearchMode = T9SearchMode.APPS,
@@ -223,11 +222,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             )
         } catch (_: Exception) { }
         
-        viewModelScope.launch {
-            NotificationStore.notifications.collect { notifs ->
-                _state.update { it.copy(activeNotifications = notifs) }
-            }
-        }
 
         viewModelScope.launch {
             walletRepository.passes.collect { passes ->
@@ -343,10 +337,21 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun reloadContacts() {
+    @Volatile private var contactsDirty = false
+
+    /** Called by the launcher when it comes to the front: catch up on anything deferred. */
+    fun onLauncherVisible() {
+        if (contactsDirty) { contactsDirty = false; reloadContacts(immediate = true) }
+        refreshWeatherIfStale()
+    }
+
+    private fun reloadContacts(immediate: Boolean = false) {
+        // Sync adapters change contacts in bursts; while the launcher is in the background we
+        // only note it and reload once when it's visible again.
+        if (!immediate && !AppVisibility.visible) { contactsDirty = true; return }
         contactsReloadJob?.cancel()
         contactsReloadJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(2_000)
+            kotlinx.coroutines.delay(if (immediate) 300 else 8_000)
             val fetchedContacts = repository.getContacts()
             _state.update { it.copy(contacts = fetchedContacts) }
         }
@@ -416,7 +421,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             var failures = 0
             while (true) {
                 // "Only when clicked" still loads once at start-up so the home screen isn't blank.
-                val ok = if (!_state.value.weatherUpdateOnlyWhenClicked || first) fetchWeather() else true
+                val pm = getApplication<Application>().getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+                val someoneLooking = pm.isInteractive || BridgeState.connectedClients.value > 0
+                // With the screen off nobody sees the forecast: skip, and catch up when the launcher is shown.
+                val ok = if (first || (!_state.value.weatherUpdateOnlyWhenClicked && someoneLooking)) fetchWeather() else true
                 first = false
                 val interval = _state.value.weatherUpdateInterval.minutes * 60 * 1000L
                 // On failure (offline, tunnel, flight mode) retry after 5 minutes instead of a full interval.

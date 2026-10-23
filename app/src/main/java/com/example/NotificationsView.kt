@@ -177,8 +177,9 @@ fun NotificationsView(
         try { firstItemFocusRequester.requestFocus() } catch(e: Exception) {}
     }
     
-    val displayNotifications = remember(state.activeNotifications, filter) {
-        state.activeNotifications.filter { 
+    val liveNotifs by NotificationStore.notifications.collectAsState()
+    val displayNotifications = remember(liveNotifs, filter) {
+        liveNotifs.filter { 
             isValidUserNotification(it) && filter(it)
         }
     }

@@ -70,6 +70,7 @@ class BridgeService : Service() {
     private val batteryReceiver = object : BroadcastReceiver() {
         private var last = ""
         override fun onReceive(c: Context, i: Intent) {
+            if (BridgeState.connectedClients.value == 0) return // nobody watching: skip the work
             val status = data.status()
             val key = "${status.opt("battery")}|${status.opt("charging")}"
             if (key != last) { last = key; server?.broadcast("status", status) }
@@ -136,7 +137,7 @@ class BridgeService : Service() {
         try {
             @Suppress("DEPRECATION")
             (getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager)
-                .listen(phoneListener, PhoneStateListener.LISTEN_CALL_STATE or PhoneStateListener.LISTEN_SIGNAL_STRENGTHS)
+                .listen(phoneListener, PhoneStateListener.LISTEN_CALL_STATE)
         } catch (_: Exception) { }
         try {
             val msm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
@@ -146,7 +147,6 @@ class BridgeService : Service() {
         } catch (_: Exception) { }
 
         scope.launch { NotificationStore.notifications.drop(1).collectLatest { server?.broadcast("notifications", JSONObject()) } }
-        ClipboardHub.startInstantWatcher(applicationContext)
         scope.launch {
             ClipboardHub.events.collect { c ->
                 server?.broadcast("clipboard", JSONObject().put("text", c.text).put("source", c.source).put("time", c.time)
@@ -203,9 +203,26 @@ class BridgeService : Service() {
         main.postDelayed({ mediaPending = false; server?.broadcast("media", data.media()) }, 300)
     }
 
+    private var watching = false
+
+    /**
+     * Expensive live sources (signal strength callbacks, the clipboard log watcher, the Wi-Fi
+     * lock) run only while at least one browser is connected; idle Desktop Mode costs ~nothing.
+     */
     private fun onClients(n: Int) {
         BridgeState.connectedClients.value = n
         if (n > 0) acquireWifi() else releaseWifi()
+        main.post {
+            val want = n > 0
+            if (want == watching) return@post
+            watching = want
+            try {
+                @Suppress("DEPRECATION")
+                (getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager).listen(phoneListener,
+                    if (want) PhoneStateListener.LISTEN_CALL_STATE or PhoneStateListener.LISTEN_SIGNAL_STRENGTHS else PhoneStateListener.LISTEN_CALL_STATE)
+            } catch (_: Exception) { }
+            if (want) ClipboardHub.startInstantWatcher(applicationContext) else ClipboardHub.stopInstantWatcher()
+        }
         main.post { updateNotification() }
     }
 

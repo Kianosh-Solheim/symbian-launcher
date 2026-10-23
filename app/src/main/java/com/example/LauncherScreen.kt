@@ -280,7 +280,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 viewModel.loadCalendarData()
-                viewModel.refreshWeatherIfStale()
+                viewModel.onLauncherVisible()
                 SymbianNotificationService.ensureConnected(context)
                 val window = (context as? ComponentActivity)?.window
                 if (window != null) {
@@ -587,7 +587,8 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
         }
         Screen.MESSAGES -> {
             val messagingApps = state.messagingApps
-            val msgNotifs = state.activeNotifications.filter { isValidUserNotification(it) && MessagingUtils.isMessageNotification(it, messagingApps) }
+            val liveMsg by NotificationStore.notifications.collectAsState()
+            val msgNotifs = liveMsg.filter { isValidUserNotification(it) && MessagingUtils.isMessageNotification(it, messagingApps) }
             leftSoftKeyText = if (msgNotifs.isNotEmpty()) "Clear All" else "Settings"
             onLeftSoftKeyClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -607,7 +608,8 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
         }
         Screen.EMAILS -> {
             val emailApps = state.emailApps
-            val emailNotifs = state.activeNotifications.filter { isValidUserNotification(it) && MessagingUtils.isEmailNotification(it, emailApps) }
+            val liveMail by NotificationStore.notifications.collectAsState()
+            val emailNotifs = liveMail.filter { isValidUserNotification(it) && MessagingUtils.isEmailNotification(it, emailApps) }
             leftSoftKeyText = if (emailNotifs.isNotEmpty()) "Clear All" else "Settings"
             onLeftSoftKeyClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
