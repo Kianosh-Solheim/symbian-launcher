@@ -400,6 +400,15 @@ fun HubRow(text: String, font: FontFamily, onClick: () -> Unit, modifier: Modifi
 
 @Composable
 fun DashedDivider() {
+    if (LocalWin95.current) {
+        // Etched Windows 95 separator: dark line over a white one.
+        Canvas(modifier = Modifier.fillMaxWidth().height(2.dp)) {
+            val px = 1.dp.toPx().coerceAtLeast(1f)
+            drawRect(Color(0xFF808080), size = androidx.compose.ui.geometry.Size(size.width, px))
+            drawRect(Color.White, topLeft = Offset(0f, px), size = androidx.compose.ui.geometry.Size(size.width, px))
+        }
+        return
+    }
     val dividerColor = MaterialTheme.colorScheme.primary
     Canvas(modifier = Modifier.fillMaxWidth().height(1.dp)) {
         drawLine(

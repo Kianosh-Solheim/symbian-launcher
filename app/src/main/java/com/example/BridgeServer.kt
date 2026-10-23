@@ -227,6 +227,7 @@ class BridgeServer(
                 }
             }
             "GET" to "calls" -> data.callLog()
+            "GET" to "recordings" -> data.callRecordings()
             "POST" to "call" -> when (seg.getOrNull(1)) {
                 "answer" -> data.answerCall()
                 "end" -> data.endCall()
@@ -368,7 +369,7 @@ class BridgeServer(
     }
 
     private fun streamMedia(out: OutputStream, req: Request) {
-        val f = data.openMedia(req.query["id"]?.toLongOrNull() ?: -1, req.query["video"] == "1")
+        val f = data.openMedia(req.query["id"]?.toLongOrNull() ?: -1, req.query["video"] == "1", req.query["audio"] == "1")
             ?: return send(out, 404, "text/plain", ByteArray(0))
         f.input.use { input ->
             val disposition = if (req.query["download"] == "1") "attachment" else "inline"

@@ -329,6 +329,7 @@ body.win95 .link-state.off { color: #ffff00; }
 body.win95 nav { background: #c0c0c0; border-right: 0; box-shadow: var(--raised); padding: 4px; }
 body.win95 nav button { font-weight: normal; font-size: 13px; padding: 6px 8px; color: #000; border-radius: 0; }
 body.win95 nav button svg { fill: #000080; filter: none; width: 20px; height: 20px; }
+nav button img.pix { width: 20px; height: 20px; image-rendering: pixelated; flex: none; }
 body.win95 .sel, body.win95 nav button.active, body.win95 nav button:focus-visible, body.win95 .row:focus-visible, body.win95 .row.active {
   background: #000080; color: #fff; border-radius: 0; outline: 1px dotted #ffff80; outline-offset: -2px;
 }
@@ -538,6 +539,25 @@ function wxIcon(sym) {
   return "🌡️";
 }
 const icon = id => `<svg><use href="#i-${id}"/></svg>`;
+// Windows 95 pixel icons (same 16×16 art as the phone), used in the sidebar when that theme is on.
+const PIX = {
+  mail: "................|................|................|KKKKKKKKKKKKKKK.|KWKWWWWWWWWWKWKD|KWWKWWWWWWWKWWWD|KWWWKWWWWWKWWWKD|KWWWWKWWWKWWWWKD|KWWWWWKWKWWWWWKD|KWWWWKWKWKWWWWKD|KWWWKWWWWWKWWWKD|KWWKWWWWWWWKWWKD|KWKWWWWWWWWWKWKD|KKKKKKKKKKKKKKKD|.DDDDDDDDDDDDDDD|................",
+  msg: "................|...KKKKKKKKKK...|..KWWWWWWWWWWK..|.KWWWWWWWWWWWWK.|KWWNNNNNNNNNWWWK|KWWWWWWWWWWWWWWK|KWWNNNNNNNWWWWWK|KWWWWWWWWWWWWWWK|KWWNNNNNNNNNNWWK|.KWWWWWWWWWWWWKD|..KKWWWKKKKKKKD.|...KWWKDDDDDDD..|...KWKD.........|...KKD..........|...KD...........|................",
+  chat: "................|KKKKKKKKKK......|KWWWWWWWWK......|KWNNNNNNWK......|KWWWWWWWWK......|KWNNNNWKKKKKKKKK|KWWWWWWKCCCCCCCK|KKWKKKKKCTTTTTCK|.KKK...KCCCCCCCK|.KK....KCTTTTCCK|.K.....KCCCCCCCK|.......KKKKKKCKK|............KKK.|.............KK.|..............K.|................",
+  bell: "................|.KKKKKKKKKKKKK..|KYYYYYYYYYYYYYK.|KYYYYYKKKYYYYYKD|KYYYYYKKKYYYYYKD|KYYYYYKKKYYYYYKD|KYYYYYKKKYYYYYKD|KYYYYYYKYYYYYYKD|KYYYYYYYYYYYYYKD|KYYYYYKKKYYYYYKD|KYYYYYKKKYYYYYKD|.KKKYYKKKKKKKKKD|...KYKDDDDDDDDD.|...KKD..........|...KD...........|................"
+};
+const PAL95 = { K: "#000", W: "#fff", G: "#c0c0c0", D: "#808080", Y: "#ff0", O: "#808000", B: "#00f", N: "#000080", R: "#f00", M: "#800000", C: "#0ff", T: "#008080", L: "#0f0", E: "#008000" };
+const PIX_FOR = { msg: "msg", chat: "chat", bell: "bell" };
+const pixCache = {};
+function pixIcon(name) {
+  if (!pixCache[name]) {
+    let rects = "";
+    PIX[name].split("|").forEach((row, y) => [...row].forEach((c, x) => { if (PAL95[c]) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${PAL95[c]}"/>`; }));
+    pixCache[name] = "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">${rects}</svg>`);
+  }
+  return `<img class="pix" src="${pixCache[name]}" alt="">`;
+}
+const navIcon = id => document.body.classList.contains("win95") && PIX_FOR[id] ? pixIcon(PIX_FOR[id]) : icon(id);
 
 // ───────────── Navigation ─────────────
 const SECTIONS = [
@@ -554,7 +574,7 @@ function badges() {
 function renderNav() {
   const b = badges();
   $("#nav").innerHTML = SECTIONS.map(([id, label, ic], i) =>
-    `<button data-go="${id}" class="${S.view === id ? "active" : ""}" title="${label}${i < 10 ? ` (Alt+${(i + 1) % 10})` : ""}">${icon(ic)}<span class="lbl">${label}</span>${b[id] ? `<span class="badge">${b[id]}</span>` : ""}</button>`).join("");
+    `<button data-go="${id}" class="${S.view === id ? "active" : ""}" title="${label}${i < 10 ? ` (Alt+${(i + 1) % 10})` : ""}">${navIcon(ic)}<span class="lbl">${label}</span>${b[id] ? `<span class="badge">${b[id]}</span>` : ""}</button>`).join("");
 }
 function go(view) {
   S.view = view; S.q = "";
@@ -566,7 +586,7 @@ function load(view) {
   if (view === "home") { refresh("notifications"); refresh("threads"); refresh("agenda"); refresh("media"); refresh("calls"); }
   if (view === "messages") { refresh("threads"); if (S.thread) openThread(S.thread.thread, S.thread); }
   if (view === "chats" || view === "notifications") refresh("notifications");
-  if (view === "calls") { refresh("calls"); refresh("contacts"); }
+  if (view === "calls") { refresh("calls"); refresh("contacts"); if (S.callTab === "rec") refresh("recordings"); }
   if (view === "contacts") { refresh("contacts"); refresh("birthdays"); }
   if (view === "calendar") { loadCalendars(); loadCal(); }
   if (view === "birthdays") refresh("birthdays");
@@ -580,6 +600,7 @@ async function refresh(what) {
     if (what === "threads") S.threads = await api("threads");
     if (what === "notifications") { const fresh = await api("notifications"); announceNew(fresh); S.notifs = fresh; }
     if (what === "calls") S.calls = await api("calls");
+    if (what === "recordings") S.recordings = await api("recordings");
     if (what === "contacts" && !S.contacts.length) S.contacts = await api("contacts");
     if (what === "contacts!") S.contacts = await api("contacts");
     if (what === "agenda") S.agenda = await api("agenda");
@@ -733,13 +754,15 @@ const VIEWS = {
   calls() {
     setSoftkeys("Call", () => dial());
     return `<div class="view split">
-      <div class="pane list"><div class="title">${icon("call").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Call log</span></div>
+      <div class="pane list"><div class="title">${icon("call").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">${S.callTab === "rec" ? "Recordings" : "Call log"}</span>
+        <span class="seg"><button class="${S.callTab !== "rec" ? "on" : ""}" data-calltab="log">Log</button><button class="${S.callTab === "rec" ? "on" : ""}" data-calltab="rec">Recordings</button></span></div>
+        ${S.callTab === "rec" ? recordingsList() : `
         ${S.status?.permissions && !S.status.permissions.calls ? `<div class="empty">Call log access is off on the phone.</div>` : ""}
         ${S.calls.length ? S.calls.map(c => `<button class="row" data-dial="${esc(c.number)}">
           ${avatar(c.name)}
           <span class="main"><span class="name" style="${c.type === "missed" ? "color:var(--bad-text)" : ""}">${esc(c.name)}</span>
             <span class="sub">${{ incoming: "↙ Incoming", outgoing: "↗ Outgoing", missed: "✕ Missed", rejected: "⊘ Rejected", blocked: "⊘ Blocked" }[c.type] || "Call"}${c.duration ? " · " + dur(c.duration) : ""}</span></span>
-          <span class="meta">${when(c.date)}</span></button>`).join("") : `<div class="empty">No calls</div>`}
+          <span class="meta">${when(c.date)}</span></button>`).join("") : `<div class="empty">No calls</div>`}`}
       </div>
       <div class="pane"><div class="title"><span class="grow">Dialler</span></div>
         <div class="dialer">
@@ -917,7 +940,39 @@ async function openThread(id, meta) {
 function dial() { const n = ($("#dialnum")?.value || S.dial || "").trim(); if (n) act("call", { number: n }, "Calling " + n + "…"); }
 
 // ───────────── Events ─────────────
+function recordingsList() {
+  const R = S.recordings;
+  if (!R) return `<div class="empty">Loading…</div>`;
+  if (!R.permission) return `<div class="empty">Allow "Music and audio" for the launcher on the phone (Settings › Desktop Mode › Permissions) to see call recordings.</div>`;
+  if (!R.items.length) return `<div class="empty">No call recordings yet.<br><br>Record during a call with the phone's own dialler: in the call screen, open ⋮ (or More) and choose <b>Record call</b>. Recordings appear here afterwards.</div>`;
+  return R.items.map(r => {
+    const src = `/api/media-file?id=${r.id}&audio=1&token=${q(token)}`;
+    return `<div class="row" style="cursor:default;flex-wrap:wrap">
+      ${avatar(r.contact || r.number || "?")}
+      <span class="main"><span class="name">${esc(r.contact || r.number || r.name)}</span>
+        <span class="sub">${r.duration ? dur(Math.round(r.duration / 1000)) + " · " : ""}${esc(r.name)}</span></span>
+      <span class="meta">${when(r.date)}</span>
+      <span class="actions" style="flex-basis:100%;margin-top:6px;padding-left:52px">
+        <button class="btn small" data-playrec="${esc(src)}" data-title="${esc(r.contact || r.number || r.name)}">▶ Play</button>
+        <a class="btn small" href="${src}&download=1">Download</a></span></div>`;
+  }).join("");
+}
+// One player that lives outside the page content, so live updates don't stop playback.
+function playRecording(src, title) {
+  let box = document.getElementById("recplayer");
+  if (!box) {
+    box = document.createElement("div"); box.id = "recplayer"; box.className = "card";
+    box.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:60;width:340px;padding:8px";
+    box.innerHTML = `<h3 style="display:flex;align-items:center"><span class="grow" id="rp-title" style="flex:1"></span><button class="btn small" id="rp-close">✕</button></h3><audio id="rp-audio" controls autoplay style="width:100%"></audio>`;
+    document.body.appendChild(box);
+    box.querySelector("#rp-close").onclick = () => { box.querySelector("#rp-audio").pause(); box.remove(); };
+  }
+  box.querySelector("#rp-title").textContent = title;
+  const a = box.querySelector("#rp-audio"); a.src = src; a.play().catch(() => { });
+}
 function wire(m) {
+  m.querySelectorAll("[data-playrec]").forEach(b => b.onclick = () => playRecording(b.dataset.playrec, b.dataset.title));
+  m.querySelectorAll("[data-calltab]").forEach(b => b.onclick = () => { S.callTab = b.dataset.calltab; if (S.callTab === "rec") refresh("recordings"); render(); });
   m.querySelectorAll("[data-thread]").forEach(b => b.onclick = () => { if (S.view !== "messages") { S.view = "messages"; } openThread(Number(b.dataset.thread)); });
   m.querySelectorAll("[data-new]").forEach(b => b.onclick = () => { S.view = "messages"; S.newMsg = true; S.thread = null; render(); refresh("contacts"); $("#to")?.focus(); });
   m.querySelectorAll("[data-contact]").forEach(b => b.onclick = () => { S.contact = b.dataset.contact; render(); });
@@ -1919,7 +1974,11 @@ function announceNew(list) {
 function confirmOnce(btn, msg) { return window.confirm(msg); }
 
 function applyTheme(t) {
-  if (t.style) { store.set("symbian.style", t.style); document.body.classList.toggle("win95", t.style === "win95"); }
+  if (t.style) {
+    const was = document.body.classList.contains("win95");
+    store.set("symbian.style", t.style); document.body.classList.toggle("win95", t.style === "win95");
+    if (was !== (t.style === "win95")) try { renderNav(); } catch (_) { }
+  }
   const r = document.documentElement.style;
   if (t.background) r.setProperty("--bg", t.background);
   if (t.surface) r.setProperty("--surface", t.surface);

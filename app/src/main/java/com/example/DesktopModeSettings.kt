@@ -58,6 +58,7 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
                 add(android.Manifest.permission.POST_NOTIFICATIONS)
                 add(android.Manifest.permission.READ_MEDIA_IMAGES)
                 add(android.Manifest.permission.READ_MEDIA_VIDEO)
+                add(android.Manifest.permission.READ_MEDIA_AUDIO)
             } else add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
         }
     }

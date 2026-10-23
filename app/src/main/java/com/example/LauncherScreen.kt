@@ -805,6 +805,14 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                 },
                 label = "ScreenTransition"
             ) { targetScreen ->
+                val win95Title = if (LocalWin95.current) when {
+                    targetScreen.name.startsWith("SETTINGS") -> "Settings"
+                    targetScreen == Screen.NOTIFICATIONS -> "Notifications"
+                    targetScreen == Screen.MESSAGES -> "Messages"
+                    targetScreen == Screen.EMAILS -> "Inbox"
+                    else -> null
+                } else null
+                Win95Frame(win95Title) {
                 when (targetScreen) {
                     Screen.MAIN -> {
                         if (state.isExtremeBatterySaver) {
@@ -1147,6 +1155,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                     }
                 }
             }
+                }
             }
         }
     }

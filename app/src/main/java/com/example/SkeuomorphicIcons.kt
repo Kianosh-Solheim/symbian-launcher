@@ -31,6 +31,7 @@ import java.util.Calendar
 
 @Composable
 fun SkeuomorphicMessageIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("msg", modifier); return }
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
         val h = size.height
@@ -93,6 +94,7 @@ fun SkeuomorphicMessageIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicEmailIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("mail", modifier); return }
     val textMeasurer = rememberTextMeasurer()
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
@@ -322,6 +324,7 @@ fun SkeuomorphicContactsIcon(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeuomorphicNotificationsIcon(modifier: Modifier = Modifier) {
+    if (LocalWin95.current) { Win95PixelIcon("bell", modifier); return }
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
         val h = size.height

@@ -946,8 +946,44 @@ class BridgeData(private val context: Context) {
         return JSONObject().put("items", arr).put("total", total).put("permission", true)
     }
 
-    private fun mediaUri(id: Long, video: Boolean): Uri = android.content.ContentUris.withAppendedId(
-        if (video) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+    private fun mediaUri(id: Long, video: Boolean, audio: Boolean = false): Uri = android.content.ContentUris.withAppendedId(
+        when { audio -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI; video -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI; else -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI }, id)
+
+    private fun hasAudio() = if (Build.VERSION.SDK_INT >= 33) has(android.Manifest.permission.READ_MEDIA_AUDIO)
+        else has(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+
+    private val numberInName = Regex("""\+?\d[\d ]{4,}\d""")
+
+    /** Call recordings made by the phone's own dialer (any audio file in a "call" folder), newest first. */
+    fun callRecordings(): JSONObject {
+        val arr = JSONArray()
+        if (!hasAudio()) return JSONObject().put("items", arr).put("permission", false)
+        try {
+            val sel = if (Build.VERSION.SDK_INT >= 29) "lower(${MediaStore.MediaColumns.RELATIVE_PATH}) LIKE '%call%' OR lower(${MediaStore.MediaColumns.DISPLAY_NAME}) LIKE '%call%'"
+                else "lower(${MediaStore.MediaColumns.DATA}) LIKE '%call%'"
+            context.contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DISPLAY_NAME, MediaStore.Audio.Media.DATE_ADDED,
+                    MediaStore.Audio.Media.DURATION, MediaStore.Audio.Media.SIZE, MediaStore.Audio.Media.MIME_TYPE),
+                sel, null, "${MediaStore.Audio.Media.DATE_ADDED} DESC"
+            )?.use { c ->
+                while (c.moveToNext() && arr.length() < 500) {
+                    val name = c.getString(1) ?: ""
+                    // File names usually hold the number plus a date/time; skip the date-like parts.
+                    val number = numberInName.findAll(name).map { it.value.replace(" ", "") }
+                        .filterNot { Regex("""(19|20)\d{6}\d*""").matches(it) || it.length == 6 }
+                        .sortedByDescending { it.startsWith("+") }.firstOrNull()
+                    arr.put(JSONObject()
+                        .put("id", c.getLong(0)).put("name", name)
+                        .put("date", c.getLong(2) * 1000).put("duration", c.getLong(3))
+                        .put("size", c.getLong(4)).put("mime", c.getString(5) ?: "audio/mp4")
+                        .put("number", number ?: "")
+                        .put("contact", if (number != null) nameFor(number) else ""))
+                }
+            }
+        } catch (e: Exception) { android.util.Log.w("SymbianBridge", "Recordings query failed", e) }
+        return JSONObject().put("items", arr).put("permission", true)
+    }
 
     private val thumbCache = object : android.util.LruCache<Long, ByteArray>(6 * 1024 * 1024) {
         override fun sizeOf(key: Long, value: ByteArray) = value.size
@@ -970,11 +1006,11 @@ class BridgeData(private val context: Context) {
 
     data class MediaFile(val input: InputStream, val length: Long, val mime: String, val name: String)
 
-    fun openMedia(id: Long, video: Boolean): MediaFile? {
-        if (!hasMedia()) return null
+    fun openMedia(id: Long, video: Boolean, audio: Boolean = false): MediaFile? {
+        if (if (audio) !hasAudio() else !hasMedia()) return null
         return try {
-            val uri = mediaUri(id, video)
-            var name = "file"; var size = -1L; var mime = if (video) "video/mp4" else "image/jpeg"
+            val uri = mediaUri(id, video, audio)
+            var name = "file"; var size = -1L; var mime = when { audio -> "audio/mp4"; video -> "video/mp4"; else -> "image/jpeg" }
             context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.MIME_TYPE), null, null, null)?.use { c ->
                 if (c.moveToFirst()) { name = c.getString(0) ?: name; size = c.getLong(1); mime = c.getString(2) ?: mime }
             }

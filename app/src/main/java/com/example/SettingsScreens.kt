@@ -48,6 +48,7 @@ fun SettingsMenuItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val focusRequester = remember { FocusRequester() }
+    val win95 = LocalWin95.current
     
     LaunchedEffect(Unit) {
         if (isFirst) {
@@ -59,7 +60,7 @@ fun SettingsMenuItem(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (isFirst) Modifier.focusRequester(focusRequester) else Modifier)
-            .symbianHighlight(isFocused)
+            .then(if (win95) Modifier.win95ListHighlight(isFocused) else Modifier.symbianHighlight(isFocused))
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                 onClick()
@@ -70,17 +71,17 @@ fun SettingsMenuItem(
     ) {
         Text(
             text = title,
-            color = if (isFocused) Color.Black else Color.White,
+            color = if (win95) (if (isFocused) Color.White else Color.Black) else if (isFocused) Color.Black else Color.White,
             fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = if (win95) FontWeight.Normal else FontWeight.Bold,
             modifier = Modifier.weight(1f),
-            style = TextStyle(shadow = if (isFocused) Shadow.None else Shadow(color = Color.Black.copy(alpha=0.8f), offset = Offset(1.5f, 1.5f), blurRadius = 2f))
+            style = TextStyle(shadow = if (isFocused || win95) Shadow.None else Shadow(color = Color.Black.copy(alpha=0.8f), offset = Offset(1.5f, 1.5f), blurRadius = 2f))
         )
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (isFocused) Color.Black else Color.White
+                tint = if (win95) (if (isFocused) Color.White else Color.Black) else if (isFocused) Color.Black else Color.White
             )
         }
     }
@@ -149,6 +150,7 @@ fun SettingsToggleItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val focusRequester = remember { FocusRequester() }
+    val win95 = LocalWin95.current
     
     LaunchedEffect(Unit) {
         if (isFirst) {
@@ -160,7 +162,7 @@ fun SettingsToggleItem(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (isFirst) Modifier.focusRequester(focusRequester) else Modifier)
-            .symbianHighlight(isFocused)
+            .then(if (win95) Modifier.win95ListHighlight(isFocused) else Modifier.symbianHighlight(isFocused))
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                 onCheckedChange(!checked)
@@ -176,15 +178,15 @@ fun SettingsToggleItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = if (isFocused) Color.Black else Color.White,
+                color = if (win95) (if (isFocused) Color.White else Color.Black) else if (isFocused) Color.Black else Color.White,
                 fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                style = TextStyle(shadow = if (isFocused) Shadow.None else Shadow(color = Color.Black.copy(alpha=0.8f), offset = Offset(1.5f, 1.5f), blurRadius = 2f))
+                fontWeight = if (win95) FontWeight.Normal else FontWeight.Bold,
+                style = TextStyle(shadow = if (isFocused || win95) Shadow.None else Shadow(color = Color.Black.copy(alpha=0.8f), offset = Offset(1.5f, 1.5f), blurRadius = 2f))
             )
             if (subtitle != null && subtitle.isNotBlank()) {
                 Text(
                     text = subtitle,
-                    color = if (isFocused) Color(0xFF333333) else Color(0xFFAAAAAA),
+                    color = if (win95) (if (isFocused) Color(0xFFDFDFDF) else Color(0xFF404040)) else if (isFocused) Color(0xFF333333) else Color(0xFFAAAAAA),
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -192,7 +194,7 @@ fun SettingsToggleItem(
             }
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Switch(
+        if (win95) Win95Checkbox(checked) else Switch(
             checked = checked,
             onCheckedChange = null,
             colors = SwitchDefaults.colors(
@@ -210,7 +212,7 @@ fun SettingsToggleItem(
 fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
-        color = Color(0xFFAAAAAA),
+        color = if (LocalWin95.current) Color(0xFF000080) else Color(0xFFAAAAAA),
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
@@ -447,7 +449,7 @@ fun SettingsCalendar(state: LauncherState, viewModel: LauncherViewModel, haptic:
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "No calendars found on device",
-                        color = Color.White,
+                        color = win95Fg(),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -723,8 +725,8 @@ fun SettingsMessages(
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
+                            focusedTextColor = win95Fg(),
+                            unfocusedTextColor = win95Fg(),
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
                             focusedContainerColor = Color.Black.copy(alpha = 0.3f),
@@ -1382,7 +1384,7 @@ fun SettingsIconPack(state: LauncherState, viewModel: LauncherViewModel, haptic:
                 contentAlignment = Alignment.Center
             ) {
                 androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Visual Preview", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
+                    Text("Visual Preview", color = win95Fg(), fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
                     
                     androidx.compose.foundation.layout.Row(
@@ -1432,7 +1434,7 @@ fun SettingsIconPack(state: LauncherState, viewModel: LauncherViewModel, haptic:
                 ) {
                     Text(
                         packName, 
-                        color = if (isFoc) Color.Black else Color.White,
+                        color = if (isFoc) Color.Black else win95Fg(),
                         fontFamily = state.currentFont.toFontFamily(),
                         fontSize = 18.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
@@ -1441,7 +1443,7 @@ fun SettingsIconPack(state: LauncherState, viewModel: LauncherViewModel, haptic:
                         androidx.compose.material3.Icon(
                             imageVector = androidx.compose.material.icons.Icons.Default.Check,
                             contentDescription = "Selected",
-                            tint = if (isFoc) Color.Black else Color.White,
+                            tint = if (isFoc) Color.Black else win95Fg(),
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1473,7 +1475,7 @@ fun SettingsIconPack(state: LauncherState, viewModel: LauncherViewModel, haptic:
             ) {
                 Text(
                     "Apply Settings", 
-                    color = if (applyFoc) Color.Black else Color.White, 
+                    color = if (applyFoc) Color.Black else win95Fg(), 
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                     fontFamily = state.currentFont.toFontFamily()

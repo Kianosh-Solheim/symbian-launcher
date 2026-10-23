@@ -386,11 +386,12 @@ fun NotificationsView(
                 ?: sbn.notification.extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString()
                 ?: ""
             
+            val w95 = LocalWin95.current
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier)
-                    .symbianHighlight(isFocused)
+                    .then(if (w95) Modifier.win95ListHighlight(isFocused) else Modifier.symbianHighlight(isFocused))
                     .combinedClickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
@@ -411,14 +412,13 @@ fun NotificationsView(
                     modifier = Modifier
                         .padding(top = 2.dp)
                         .size(38.dp)
-                        .background(Color(0xFF1E293B).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                        .border(
+                        .then(if (w95) Modifier else Modifier.background(Color(0xFF1E293B).copy(alpha = 0.5f), RoundedCornerShape(8.dp)).border(
                             BorderStroke(
                                 1.dp,
                                 if (isFocused) Color.Black.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.15f)
                             ),
                             RoundedCornerShape(8.dp)
-                        ),
+                        )),
                     contentAlignment = Alignment.Center
                 ) {
                     if (appIconBitmap != null) {
@@ -433,7 +433,7 @@ fun NotificationsView(
                         Icon(
                             imageVector = Icons.Default.Notifications,
                             contentDescription = null,
-                            tint = if (isFocused) Color.Black else Color.White,
+                            tint = if (w95) (if (isFocused) Color.White else Color.Black) else if (isFocused) Color.Black else Color.White,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -452,7 +452,7 @@ fun NotificationsView(
                             fontFamily = state.currentFont.toFontFamily(),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isFocused) Color(0xFF1E3A8A) else Color(0xFF93C5FD),
+                            color = if (w95) (if (isFocused) Color(0xFFDFDFDF) else Color(0xFF000080)) else if (isFocused) Color(0xFF1E3A8A) else Color(0xFF93C5FD),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -467,7 +467,7 @@ fun NotificationsView(
                                 text = timeStr,
                                 fontFamily = state.currentFont.toFontFamily(),
                                 fontSize = 11.sp,
-                                color = if (isFocused) Color.DarkGray else Color.LightGray
+                                color = if (w95) (if (isFocused) Color(0xFFDFDFDF) else Color(0xFF404040)) else if (isFocused) Color.DarkGray else Color.LightGray
                             )
                         }
                     }
@@ -479,8 +479,8 @@ fun NotificationsView(
                         fontFamily = state.currentFont.toFontFamily(),
                         fontWeight = FontWeight.Bold, 
                         fontSize = 16.sp,
-                        color = if (isFocused) Color.Black else Color.White,
-                        style = TextStyle(shadow = if (isFocused) Shadow.None else Shadow(color = Color.Black.copy(alpha=0.8f), offset = Offset(1.5f, 1.5f), blurRadius = 2f)),
+                        color = if (w95) (if (isFocused) Color.White else Color.Black) else if (isFocused) Color.Black else Color.White,
+                        style = TextStyle(shadow = if (isFocused || w95) Shadow.None else Shadow(color = Color.Black.copy(alpha=0.8f), offset = Offset(1.5f, 1.5f), blurRadius = 2f)),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -491,7 +491,7 @@ fun NotificationsView(
                             text = text, 
                             fontFamily = state.currentFont.toFontFamily(),
                             fontSize = 13.sp,
-                            color = if (isFocused) Color.DarkGray else Color.LightGray,
+                            color = if (w95) (if (isFocused) Color(0xFFDFDFDF) else Color(0xFF404040)) else if (isFocused) Color.DarkGray else Color.LightGray,
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis
                         )
