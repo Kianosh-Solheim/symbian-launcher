@@ -120,6 +120,8 @@ fun ContactDetailScreen(
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val w95 = LocalWin95.current
+    fun k(c: Color): Color = if (w95) win95Color(c) else c
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -145,8 +147,8 @@ fun ContactDetailScreen(
                     .fillMaxWidth()
                     .wrapContentHeight()
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF0F172A))
-                    .border(2.dp, Color(0xFF64B5F6), RoundedCornerShape(24.dp))
+                    .background(k(Color(0xFF0F172A)))
+                    .border(2.dp, k(Color(0xFF64B5F6)), RoundedCornerShape(24.dp))
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -160,7 +162,7 @@ fun ContactDetailScreen(
                     ) {
                         Text(
                             text = contact.name,
-                            color = Color.White,
+                            color = k(Color.White),
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             maxLines = 1
@@ -169,7 +171,7 @@ fun ContactDetailScreen(
                             onClick = { showFullPhotoDialog = false },
                             modifier = Modifier.size(32.dp)
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = k(Color.White))
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -181,7 +183,7 @@ fun ContactDetailScreen(
                             .fillMaxWidth()
                             .heightIn(max = 360.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color.Black)
+                            .background(k(Color.Black))
                     )
                 }
             }
@@ -191,7 +193,7 @@ fun ContactDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F172A).copy(alpha = 0.65f))
+            .background(if (w95) Win95.Face else Color(0xFF0F172A).copy(alpha = 0.65f))
     ) {
         // Retro Top Bar
         Box(
@@ -237,7 +239,7 @@ fun ContactDetailScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = if (isBackFocused) Color.Black else Color.White
+                            tint = if (isBackFocused) k(Color.Black) else k(Color.White)
                         )
                     }
                     Spacer(modifier = Modifier.width(6.dp))
@@ -259,21 +261,21 @@ fun ContactDetailScreen(
                                         modifier = Modifier
                                             .size(28.dp)
                                             .clip(CircleShape)
-                                            .border(1.dp, Color(0xFF64B5F6), CircleShape)
+                                            .border(1.dp, k(Color(0xFF64B5F6)), CircleShape)
                                     )
                                 } else {
                                     Box(
                                         modifier = Modifier
                                             .size(28.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFF1E293B))
-                                            .border(1.dp, Color(0xFF64B5F6), CircleShape),
+                                            .background(k(Color(0xFF1E293B)))
+                                            .border(1.dp, k(Color(0xFF64B5F6)), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             Icons.Default.Person,
                                             contentDescription = null,
-                                            tint = Color(0xFF90CAF9),
+                                            tint = k(Color(0xFF90CAF9)),
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -282,7 +284,7 @@ fun ContactDetailScreen(
                                 Column {
                                     Text(
                                         text = contact.name.ifBlank { "Contact Details" },
-                                        color = Color.White,
+                                        color = k(Color.White),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 15.sp,
                                         maxLines = 1,
@@ -292,13 +294,13 @@ fun ContactDetailScreen(
                                         Icon(
                                             Icons.Default.ArrowUpward,
                                             contentDescription = null,
-                                            tint = Color(0xFF64B5F6),
+                                            tint = k(Color(0xFF64B5F6)),
                                             modifier = Modifier.size(11.dp)
                                         )
                                         Spacer(modifier = Modifier.width(2.dp))
                                         Text(
                                             text = "Tap to view photo",
-                                            color = Color(0xFF64B5F6),
+                                            color = k(Color(0xFF64B5F6)),
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium
                                         )
@@ -308,10 +310,10 @@ fun ContactDetailScreen(
                         } else {
                             Text(
                                 text = "Contact Details",
-                                color = Color.White,
+                                color = k(Color.White),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
-                                style = TextStyle(shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 2f))
+                                style = TextStyle(shadow = Shadow(color = k(Color.Black), offset = Offset(1f, 1f), blurRadius = 2f))
                             )
                         }
                     }
@@ -354,7 +356,7 @@ fun ContactDetailScreen(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit Contact",
-                        tint = if (isEditFocused) Color.Black else Color.White
+                        tint = if (isEditFocused) k(Color.Black) else k(Color.White)
                     )
                 }
             }
@@ -387,9 +389,9 @@ fun ContactDetailScreen(
                                 .size(144.dp)
                                 .symbianHighlight(isPhotoFocused, RoundedCornerShape(22.dp))
                                 .clip(RoundedCornerShape(22.dp))
-                                .background(Color(0xFF1E293B))
+                                .background(k(Color(0xFF1E293B)))
                                 .border(
-                                    BorderStroke(2.5.dp, if (isPhotoFocused) Color.Yellow else Color(0xFF64B5F6)),
+                                    BorderStroke(2.5.dp, if (isPhotoFocused) k(Color.Yellow) else k(Color(0xFF64B5F6))),
                                     RoundedCornerShape(22.dp)
                                 )
                                 .clickable(
@@ -418,7 +420,7 @@ fun ContactDetailScreen(
                                     Icon(
                                         imageVector = Icons.Default.Person,
                                         contentDescription = null,
-                                        tint = Color(0xFF90CAF9),
+                                        tint = k(Color(0xFF90CAF9)),
                                         modifier = Modifier.size(76.dp)
                                     )
                                 }
@@ -429,17 +431,17 @@ fun ContactDetailScreen(
 
                         Text(
                             text = contact.name.ifBlank { "Unknown Contact" },
-                            color = Color.White,
+                            color = k(Color.White),
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            style = TextStyle(shadow = Shadow(color = Color.Black, offset = Offset(1.5f, 1.5f), blurRadius = 3f))
+                            style = TextStyle(shadow = Shadow(color = k(Color.Black), offset = Offset(1.5f, 1.5f), blurRadius = 3f))
                         )
 
                         if (contact.nicknames.isNotEmpty()) {
                             Text(
                                 text = "\"${contact.nicknames.first()}\"",
-                                color = Color(0xFF81D4FA),
+                                color = k(Color(0xFF81D4FA)),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(top = 2.dp)
@@ -460,13 +462,13 @@ fun ContactDetailScreen(
                                     Icon(
                                         imageVector = Icons.Default.Business,
                                         contentDescription = null,
-                                        tint = Color.LightGray,
+                                        tint = k(Color.LightGray),
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = orgText,
-                                        color = Color.LightGray,
+                                        color = k(Color.LightGray),
                                         fontSize = 14.sp
                                     )
                                 }
@@ -500,13 +502,13 @@ fun ContactDetailScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
-                                        .background(Color(0xFF2E7D32), CircleShape),
+                                        .win95OrBackground(Color(0xFF2E7D32), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.Call, contentDescription = "Call", tint = Color.White)
+                                    if (w95) Win95PixelIcon("call", Modifier.size(28.dp)) else Icon(Icons.Default.Call, contentDescription = "Call", tint = Color.White)
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Call", color = Color.White, fontSize = 12.sp)
+                                Text("Call", color = k(Color.White), fontSize = 12.sp)
                             }
 
                             // Quick SMS
@@ -526,13 +528,13 @@ fun ContactDetailScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
-                                        .background(Color(0xFF0288D1), CircleShape),
+                                        .win95OrBackground(Color(0xFF0288D1), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.Message, contentDescription = "Message", tint = Color.White)
+                                    if (w95) Win95PixelIcon("msg", Modifier.size(28.dp)) else Icon(Icons.Default.Message, contentDescription = "Message", tint = Color.White)
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Message", color = Color.White, fontSize = 12.sp)
+                                Text("Message", color = k(Color.White), fontSize = 12.sp)
                             }
                         }
 
@@ -554,13 +556,13 @@ fun ContactDetailScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
-                                        .background(Color(0xFFF57C00), CircleShape),
+                                        .win95OrBackground(Color(0xFFF57C00), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.Email, contentDescription = "Email", tint = Color.White)
+                                    if (w95) Win95PixelIcon("mail", Modifier.size(28.dp)) else Icon(Icons.Default.Email, contentDescription = "Email", tint = Color.White)
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Email", color = Color.White, fontSize = 12.sp)
+                                Text("Email", color = k(Color.White), fontSize = 12.sp)
                             }
                         }
 
@@ -591,13 +593,13 @@ fun ContactDetailScreen(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .background(Color(0xFF455A64), CircleShape),
+                                    .win95OrBackground(Color(0xFF455A64), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                                Icon(Icons.Default.Share, contentDescription = "Share", tint = k(Color.White))
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("Share", color = Color.White, fontSize = 12.sp)
+                            Text("Share", color = k(Color.White), fontSize = 12.sp)
                         }
                     }
                 }
@@ -613,11 +615,11 @@ fun ContactDetailScreen(
                             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Phone, contentDescription = null, tint = Color(0xFF64B5F6), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Phone, contentDescription = null, tint = k(Color(0xFF64B5F6)), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Phone Numbers",
-                            color = Color(0xFF90CAF9),
+                            color = k(Color(0xFF90CAF9)),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -632,20 +634,20 @@ fun ContactDetailScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                             .symbianHighlight(isRowFocused, RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.dp))
+                            .background(k(Color.White.copy(alpha = 0.05f)), RoundedCornerShape(6.dp))
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = phone.number,
-                                color = if (isRowFocused) Color.Black else Color.White,
+                                color = if (isRowFocused) k(Color.Black) else k(Color.White),
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
                                 text = phone.label.ifBlank { "Mobile" },
-                                color = if (isRowFocused) Color.DarkGray else Color.LightGray,
+                                color = if (isRowFocused) k(Color.DarkGray) else k(Color.LightGray),
                                 fontSize = 13.sp
                             )
                         }
@@ -664,7 +666,7 @@ fun ContactDetailScreen(
                                 .size(40.dp)
                                 .symbianHighlight(isCallFocused, CircleShape)
                         ) {
-                            Icon(Icons.Default.Call, contentDescription = "Call", tint = Color(0xFF4CAF50))
+                            Icon(Icons.Default.Call, contentDescription = "Call", tint = k(Color(0xFF4CAF50)))
                         }
 
                         // SMS button
@@ -681,7 +683,7 @@ fun ContactDetailScreen(
                                 .size(40.dp)
                                 .symbianHighlight(isSmsFocused, CircleShape)
                         ) {
-                            Icon(Icons.Default.Message, contentDescription = "SMS", tint = Color(0xFF29B6F6))
+                            Icon(Icons.Default.Message, contentDescription = "SMS", tint = k(Color(0xFF29B6F6)))
                         }
 
                         // Copy button
@@ -698,7 +700,7 @@ fun ContactDetailScreen(
                                 .size(40.dp)
                                 .symbianHighlight(isCopyFocused, CircleShape)
                         ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy Number", tint = Color.LightGray)
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy Number", tint = k(Color.LightGray))
                         }
                     }
                 }
@@ -715,11 +717,11 @@ fun ContactDetailScreen(
                             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Email, contentDescription = null, tint = Color(0xFFFFB74D), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Email, contentDescription = null, tint = k(Color(0xFFFFB74D)), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Email Addresses",
-                            color = Color(0xFFFFCC80),
+                            color = k(Color(0xFFFFCC80)),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -734,7 +736,7 @@ fun ContactDetailScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                             .symbianHighlight(isEmailFocused, RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.dp))
+                            .background(k(Color.White.copy(alpha = 0.05f)), RoundedCornerShape(6.dp))
                             .clickable(interactionSource = emailSource, indication = LocalIndication.current) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val intent = Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:${email.address}"))
@@ -746,20 +748,20 @@ fun ContactDetailScreen(
                         Icon(
                             Icons.Default.Email,
                             contentDescription = null,
-                            tint = if (isEmailFocused) Color.Black else Color(0xFFFFB74D),
+                            tint = if (isEmailFocused) k(Color.Black) else k(Color(0xFFFFB74D)),
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = email.address,
-                                color = if (isEmailFocused) Color.Black else Color.White,
+                                color = if (isEmailFocused) k(Color.Black) else k(Color.White),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
                                 text = email.label.ifBlank { "Email" },
-                                color = if (isEmailFocused) Color.DarkGray else Color.LightGray,
+                                color = if (isEmailFocused) k(Color.DarkGray) else k(Color.LightGray),
                                 fontSize = 13.sp
                             )
                         }
@@ -771,7 +773,7 @@ fun ContactDetailScreen(
                             },
                             modifier = Modifier.size(36.dp * state.iconScale)
                         ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy Email", tint = Color.LightGray)
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy Email", tint = k(Color.LightGray))
                         }
                     }
                 }
@@ -788,11 +790,11 @@ fun ContactDetailScreen(
                             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Cake, contentDescription = null, tint = Color(0xFFF48FB1), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Cake, contentDescription = null, tint = k(Color(0xFFF48FB1)), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Birthday & Important Dates",
-                            color = Color(0xFFF8BBD0),
+                            color = k(Color(0xFFF8BBD0)),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -809,17 +811,17 @@ fun ContactDetailScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 4.dp)
                                 .symbianHighlight(isBdayFocused, RoundedCornerShape(8.dp))
-                                .background(Color(0xFF880E4F).copy(alpha = 0.25f), RoundedCornerShape(8.dp))
-                                .border(1.dp, Color(0xFFF48FB1).copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .background(k(Color(0xFF880E4F).copy(alpha = 0.25f)), RoundedCornerShape(8.dp))
+                                .border(1.dp, k(Color(0xFFF48FB1).copy(alpha = 0.4f)), RoundedCornerShape(8.dp))
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Cake, contentDescription = "Birthday", tint = Color(0xFFF48FB1), modifier = Modifier.size(26.dp))
+                            Icon(Icons.Default.Cake, contentDescription = "Birthday", tint = k(Color(0xFFF48FB1)), modifier = Modifier.size(26.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = bdayInfo?.naturalDate ?: contact.birthday,
-                                    color = if (isBdayFocused) Color.Black else Color.White,
+                                    color = if (isBdayFocused) k(Color.Black) else k(Color.White),
                                     fontSize = 17.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -829,14 +831,14 @@ fun ContactDetailScreen(
                                 ) {
                                     Text(
                                         text = bdayInfo?.countdownText ?: "Birthday",
-                                        color = if (isBdayFocused) Color.DarkGray else Color(0xFFFF80AB),
+                                        color = if (isBdayFocused) k(Color.DarkGray) else k(Color(0xFFFF80AB)),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     bdayInfo?.ageText?.let { age ->
                                         Text(
                                             text = " • $age",
-                                            color = if (isBdayFocused) Color.DarkGray else Color(0xFFF8BBD0),
+                                            color = if (isBdayFocused) k(Color.DarkGray) else k(Color(0xFFF8BBD0)),
                                             fontSize = 13.sp
                                         )
                                     }
@@ -855,16 +857,16 @@ fun ContactDetailScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                             .symbianHighlight(isEvtFocused, RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+                            .background(k(Color.White.copy(alpha = 0.05f)), RoundedCornerShape(8.dp))
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Event, contentDescription = null, tint = Color(0xFFCE93D8), modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.Event, contentDescription = null, tint = k(Color(0xFFCE93D8)), modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = evtInfo?.naturalDate ?: event.date,
-                                color = if (isEvtFocused) Color.Black else Color.White,
+                                color = if (isEvtFocused) k(Color.Black) else k(Color.White),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -874,13 +876,13 @@ fun ContactDetailScreen(
                             ) {
                                 Text(
                                     text = event.label.ifBlank { "Special Event" },
-                                    color = if (isEvtFocused) Color.DarkGray else Color.LightGray,
+                                    color = if (isEvtFocused) k(Color.DarkGray) else k(Color.LightGray),
                                     fontSize = 13.sp
                                 )
                                 if (evtInfo != null && evtInfo.daysRemaining >= 0) {
                                     Text(
                                         text = " • ${evtInfo.countdownText}",
-                                        color = if (isEvtFocused) Color.DarkGray else Color(0xFFE1BEE7),
+                                        color = if (isEvtFocused) k(Color.DarkGray) else k(Color(0xFFE1BEE7)),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -902,11 +904,11 @@ fun ContactDetailScreen(
                             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFFFFE082), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Description, contentDescription = null, tint = k(Color(0xFFFFE082)), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Notes",
-                            color = Color(0xFFFFECB3),
+                            color = k(Color(0xFFFFECB3)),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -921,15 +923,15 @@ fun ContactDetailScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                             .symbianHighlight(isNoteFocused, RoundedCornerShape(6.dp))
-                            .background(Color(0xFF3E2723).copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                            .border(1.dp, Color(0xFFFFD54F).copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                            .background(k(Color(0xFF3E2723).copy(alpha = 0.3f)), RoundedCornerShape(6.dp))
+                            .border(1.dp, k(Color(0xFFFFD54F).copy(alpha = 0.4f)), RoundedCornerShape(6.dp))
                             .padding(12.dp),
                         verticalAlignment = Alignment.Top
                     ) {
                         Icon(
                             imageVector = Icons.Default.Description,
                             contentDescription = null,
-                            tint = Color(0xFFFFD54F),
+                            tint = k(Color(0xFFFFD54F)),
                             modifier = Modifier
                                 .padding(top = 2.dp)
                                 .size(20.dp)
@@ -937,7 +939,7 @@ fun ContactDetailScreen(
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = note,
-                            color = if (isNoteFocused) Color.Black else Color(0xFFFFF8E1),
+                            color = if (isNoteFocused) k(Color.Black) else k(Color(0xFFFFF8E1)),
                             fontSize = 15.sp,
                             modifier = Modifier.weight(1f),
                             lineHeight = 20.sp
@@ -950,7 +952,7 @@ fun ContactDetailScreen(
                             },
                             modifier = Modifier.size(32.dp)
                         ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy Note", tint = Color(0xFFFFD54F), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy Note", tint = k(Color(0xFFFFD54F)), modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -967,11 +969,11 @@ fun ContactDetailScreen(
                             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Place, contentDescription = null, tint = Color(0xFF80CBC4), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Place, contentDescription = null, tint = k(Color(0xFF80CBC4)), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Addresses",
-                            color = Color(0xFFB2DFDB),
+                            color = k(Color(0xFFB2DFDB)),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -986,7 +988,7 @@ fun ContactDetailScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                             .symbianHighlight(isAddrFocused, RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.dp))
+                            .background(k(Color.White.copy(alpha = 0.05f)), RoundedCornerShape(6.dp))
                             .clickable(interactionSource = addrSource, indication = LocalIndication.current) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val uri = android.net.Uri.parse("geo:0,0?q=${android.net.Uri.encode(addr.formattedAddress)}")
@@ -996,18 +998,18 @@ fun ContactDetailScreen(
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Place, contentDescription = null, tint = Color(0xFF80CBC4), modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.Place, contentDescription = null, tint = k(Color(0xFF80CBC4)), modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = addr.formattedAddress,
-                                color = if (isAddrFocused) Color.Black else Color.White,
+                                color = if (isAddrFocused) k(Color.Black) else k(Color.White),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
                                 text = addr.label.ifBlank { "Address" },
-                                color = if (isAddrFocused) Color.DarkGray else Color.LightGray,
+                                color = if (isAddrFocused) k(Color.DarkGray) else k(Color.LightGray),
                                 fontSize = 13.sp
                             )
                         }
@@ -1026,11 +1028,11 @@ fun ContactDetailScreen(
                             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Language, contentDescription = null, tint = Color(0xFF80DEEA), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Language, contentDescription = null, tint = k(Color(0xFF80DEEA)), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Websites",
-                            color = Color(0xFFB2EBF2),
+                            color = k(Color(0xFFB2EBF2)),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -1045,7 +1047,7 @@ fun ContactDetailScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                             .symbianHighlight(isSiteFocused, RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.dp))
+                            .background(k(Color.White.copy(alpha = 0.05f)), RoundedCornerShape(6.dp))
                             .clickable(interactionSource = siteSource, indication = LocalIndication.current) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val url = if (!site.startsWith("http://") && !site.startsWith("https://")) "https://$site" else site
@@ -1055,11 +1057,11 @@ fun ContactDetailScreen(
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Language, contentDescription = null, tint = Color(0xFF80DEEA), modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.Language, contentDescription = null, tint = k(Color(0xFF80DEEA)), modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = site,
-                            color = if (isSiteFocused) Color.Black else Color(0xFF80DEEA),
+                            color = if (isSiteFocused) k(Color.Black) else k(Color(0xFF80DEEA)),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.weight(1f)
@@ -1083,13 +1085,13 @@ fun ContactDetailScreen(
                         Icon(
                             imageVector = Icons.Default.History,
                             contentDescription = null,
-                            tint = Color(0xFFA7FFEB),
+                            tint = k(Color(0xFFA7FFEB)),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Call History",
-                            color = Color(0xFFA7FFEB),
+                            color = k(Color(0xFFA7FFEB)),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
@@ -1098,7 +1100,7 @@ fun ContactDetailScreen(
                     if (callLogs != null) {
                         Text(
                             text = "${callLogs?.size ?: 0} calls",
-                            color = Color.LightGray,
+                            color = k(Color.LightGray),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -1118,13 +1120,13 @@ fun ContactDetailScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
-                                color = Color(0xFFA7FFEB),
+                                color = k(Color(0xFFA7FFEB)),
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = "Loading call logs...",
-                                color = Color.LightGray,
+                                color = k(Color.LightGray),
                                 fontSize = 14.sp
                             )
                         }
@@ -1141,13 +1143,13 @@ fun ContactDetailScreen(
                         Icon(
                             imageVector = Icons.Default.PhoneCallback,
                             contentDescription = null,
-                            tint = Color.Gray,
+                            tint = k(Color.Gray),
                             modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "No call history with this contact",
-                            color = Color.Gray,
+                            color = k(Color.Gray),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -1173,13 +1175,13 @@ fun ContactDetailScreen(
                     }
 
                     val badgeColor = when {
-                        isIncoming -> Color(0xFF4CAF50)
-                        isOutgoing -> Color(0xFF29B6F6)
-                        isMissed -> Color(0xFFE53935)
-                        isRejected -> Color(0xFFFF7043)
-                        isVoicemail -> Color(0xFFFFB300)
-                        isBlocked -> Color(0xFF9E9E9E)
-                        else -> Color(0xFFB0BEC5)
+                        isIncoming -> k(Color(0xFF4CAF50))
+                        isOutgoing -> k(Color(0xFF29B6F6))
+                        isMissed -> k(Color(0xFFE53935))
+                        isRejected -> k(Color(0xFFFF7043))
+                        isVoicemail -> k(Color(0xFFFFB300))
+                        isBlocked -> k(Color(0xFF9E9E9E))
+                        else -> k(Color(0xFFB0BEC5))
                     }
 
                     val typeLabel = when {
@@ -1200,7 +1202,7 @@ fun ContactDetailScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 3.dp)
                             .symbianHighlight(isLogFocused, RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(6.dp))
+                            .background(k(Color.White.copy(alpha = 0.04f)), RoundedCornerShape(6.dp))
                             .clickable(interactionSource = logSource, indication = LocalIndication.current) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val intent = Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${entry.number}"))
@@ -1230,14 +1232,14 @@ fun ContactDetailScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = typeLabel,
-                                    color = if (isLogFocused) Color.Black else if (isMissed) Color(0xFFFF8A80) else Color.White,
+                                    color = if (isLogFocused) k(Color.Black) else if (isMissed) k(Color(0xFFFF8A80)) else k(Color.White),
                                     fontSize = 15.sp,
                                     fontWeight = if (isMissed) FontWeight.Bold else FontWeight.SemiBold
                                 )
                                 if (entry.number.isNotBlank()) {
                                     Text(
                                         text = " (${entry.number})",
-                                        color = if (isLogFocused) Color.DarkGray else Color.Gray,
+                                        color = if (isLogFocused) k(Color.DarkGray) else k(Color.Gray),
                                         fontSize = 12.sp,
                                         maxLines = 1
                                     )
@@ -1245,7 +1247,7 @@ fun ContactDetailScreen(
                             }
                             Text(
                                 text = entry.getFormattedDate(),
-                                color = if (isLogFocused) Color.DarkGray else Color.LightGray,
+                                color = if (isLogFocused) k(Color.DarkGray) else k(Color.LightGray),
                                 fontSize = 12.sp
                             )
                         }
@@ -1254,7 +1256,7 @@ fun ContactDetailScreen(
 
                         Text(
                             text = entry.getFormattedDuration(),
-                            color = if (isLogFocused) Color.Black else if (isMissed || isRejected) Color(0xFFFF8A80) else Color(0xFF81C784),
+                            color = if (isLogFocused) k(Color.Black) else if (isMissed || isRejected) k(Color(0xFFFF8A80)) else k(Color(0xFF81C784)),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
                         )

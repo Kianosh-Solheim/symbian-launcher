@@ -20,6 +20,9 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -569,4 +572,33 @@ fun win95Fg(): Color = if (LocalWin95.current) Color.Black else Color.White
 @Composable
 fun Win95Frame(title: String?, content: @Composable () -> Unit) {
     if (title == null) content() else Win95Window(title) { content() }
+}
+
+/**
+ * Turns a colour made for the dark wallpaper themes into one that reads on Windows 95 grey:
+ * white text becomes black, pale accents become dark ones, dark panels become white,
+ * see-through tints disappear (focus is shown by the raised bevel instead).
+ */
+fun win95Color(c: Color): Color {
+    if (c.alpha < 0.7f) return Color.Transparent
+    when (c) {
+        Color.Black, Color.DarkGray -> return c
+        Color.White -> return Color.Black
+        Color.LightGray, Color.Gray -> return Color(0xFF404040)
+        Color.Yellow -> return Win95.Navy
+    }
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(c.toArgb(), hsv)
+    val lum = c.luminance()
+    if (lum < 0.2f && hsv[1] < 0.7f) return Color.White
+    if (lum > 0.35f) {
+        hsv[1] = maxOf(hsv[1], 0.7f); hsv[2] = 0.5f
+        return Color(android.graphics.Color.HSVToColor(hsv))
+    }
+    return c
+}
+
+/** A coloured round button face normally; a raised grey Windows 95 button in that theme. */
+fun Modifier.win95OrBackground(color: Color, shape: Shape): Modifier = composed {
+    if (LocalWin95.current) win95Bevel() else background(color, shape)
 }

@@ -810,6 +810,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                     targetScreen == Screen.NOTIFICATIONS -> "Notifications"
                     targetScreen == Screen.MESSAGES -> "Messages"
                     targetScreen == Screen.EMAILS -> "Inbox"
+                    targetScreen == Screen.CONTACT_DETAIL -> "Contact"
                     else -> null
                 } else null
                 Win95Frame(win95Title) {
