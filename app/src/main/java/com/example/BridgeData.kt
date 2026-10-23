@@ -601,9 +601,29 @@ class BridgeData(private val context: Context) {
                     .put("messaging", messages.length() > 0 || n.category == Notification.CATEGORY_MESSAGE)
                     .put("messages", messages)
                     .put("canReply", canReply)
-                    .put("actions", actions))
+                    .put("actions", actions)
+                    .put("url", findUrl(extras) ?: ""))
             }
         return arr
+    }
+
+    private val urlRegex = Regex("""https?://[^\s"'<>]+""")
+
+    /** Looks through a notification's extras for a web link (news apps often include one). */
+    private fun findUrl(extras: Bundle, depth: Int = 0): String? {
+        if (depth > 2) return null
+        for (k in extras.keySet()) {
+            @Suppress("DEPRECATION")
+            val v = try { extras.get(k) } catch (_: Exception) { null } ?: continue
+            val found = when (v) {
+                is android.net.Uri -> v.toString().takeIf { it.startsWith("http") }
+                is CharSequence -> urlRegex.find(v)?.value
+                is Bundle -> findUrl(v, depth + 1)
+                else -> null
+            }
+            if (found != null) return found.trimEnd('.', ',', ')')
+        }
+        return null
     }
 
     private fun findNotification(key: String) = NotificationStore.notifications.value.firstOrNull { it.key == key }

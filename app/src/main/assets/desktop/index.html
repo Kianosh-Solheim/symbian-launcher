@@ -836,8 +836,17 @@ function agendaRow(e) {
   return `<div class="row" style="cursor:default"><span class="meta" style="min-width:90px;text-align:left;font-size:14px;color:var(--text)">${e.allDay ? "All day" : hm(e.start) + "–" + hm(e.end)}</span>
     <span class="main"><span class="name">${esc(e.title)}</span></span></div>`;
 }
+// Where clicking a notification goes: its own link, or (for Google app news/weather cards, which
+// carry no link) a Google search for the headline.
+function notifLink(n) {
+  if (n.url) return n.url;
+  if (n.pkg === "com.google.android.googlequicksearchbox" && (n.text || n.title))
+    return "https://www.google.com/search?q=" + encodeURIComponent(((n.text || "") + " " + (n.title || "")).trim());
+  return "";
+}
 function notifRow(n, compact) {
-  return `<div class="row" style="cursor:default;align-items:flex-start">
+  const link = notifLink(n);
+  return `<div class="row" ${link ? `data-nopen="${esc(link)}" title="Open in browser" style="cursor:pointer;align-items:flex-start"` : `style="cursor:default;align-items:flex-start"`}>
     <img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&token=${q(token)}" alt="">
     <span class="main"><span class="name">${esc(n.title || n.app)}</span>
       <span class="sub" style="white-space:${compact ? "nowrap" : "pre-wrap"}">${esc(n.text)}</span>
@@ -1065,6 +1074,8 @@ function upload(list) {
 
 document.addEventListener("click", e => {
   const g = e.target.closest("#nav [data-go]"); if (g) go(g.dataset.go);
+  const o = e.target.closest("[data-nopen]");
+  if (o && !e.target.closest("button,a,input,textarea")) window.open(o.dataset.nopen, "_blank", "noopener");
   const c = e.target.closest("[data-call]");
   if (c) { const k = c.dataset.call; act(k === "speaker" ? "call/speaker" : "call/" + k, k === "speaker" ? { on: !S.speaker } : {}); if (k === "speaker") S.speaker = !S.speaker; }
 });
