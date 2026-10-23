@@ -75,7 +75,6 @@ private val PinkScheme = lightColorScheme(
     secondary = PinkHighlight
 )
 
-@Composable
 /** Classic 1995 desktop: teal background, navy title bars, grey 3-D chrome. */
 private val Win95Scheme = lightColorScheme(
     background = Color(0xFF008080),
