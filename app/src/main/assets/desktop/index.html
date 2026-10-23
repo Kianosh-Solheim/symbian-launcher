@@ -248,7 +248,7 @@ code.cmd { display: block; background: rgba(0,0,0,.45); padding: 6px 8px; border
 /* ── Warnings, attachments, search ─────────── */
 .warn { border-left: 6px solid var(--wc); background: color-mix(in srgb, var(--wc) 22%, transparent); padding: 8px 10px; margin: 0 0 8px; cursor: pointer; }
 .warn b { display: block; }
-.warn .more { display: none; white-space: pre-wrap; font-size: 13px; margin-top: 6px; color: inherit; }
+.warn .more { display: none; white-space: pre-wrap; font-size: 13px; margin-top: 6px; color: inherit; max-height: 180px; overflow-y: auto; padding-right: 6px; overscroll-behavior: contain; }
 .warn.open .more { display: block; }
 .attach { display: flex; align-items: center; gap: 8px; padding: 6px 14px 0; }
 .attach img { max-height: 70px; max-width: 120px; border-radius: 4px; border: 2px solid var(--hl); }

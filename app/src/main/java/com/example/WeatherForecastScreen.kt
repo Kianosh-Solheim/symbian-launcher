@@ -78,6 +78,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Brush
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.foundation.gestures.animateScrollBy
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -198,10 +200,24 @@ fun WeatherForecastScreen(
                 val src = remember { MutableInteractionSource() }
                 val foc by src.collectIsFocusedAsState()
                 val fmt = Formatters.get("EEE HH:mm")
+                val textScroll = rememberScrollState()
+                val scope = rememberCoroutineScope()
+                val isOpen = expanded == w.id
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 4.dp)
+                        // While a warning is open, Up/Down scroll its text; at either end focus moves on as normal.
+                        .onPreviewKeyEvent { e ->
+                            if (!isOpen || e.nativeKeyEvent.action != android.view.KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
+                            when (e.nativeKeyEvent.keyCode) {
+                                android.view.KeyEvent.KEYCODE_DPAD_DOWN -> if (textScroll.value < textScroll.maxValue) {
+                                    scope.launch { textScroll.animateScrollBy(140f) }; true } else false
+                                android.view.KeyEvent.KEYCODE_DPAD_UP -> if (textScroll.value > 0) {
+                                    scope.launch { textScroll.animateScrollBy(-140f) }; true } else false
+                                else -> false
+                            }
+                        }
                         .symbianHighlight(foc, unfocusedColor = warningColor(w.color).copy(alpha = 0.25f))
                         .clickable(interactionSource = src, indication = LocalIndication.current) { expanded = if (expanded == w.id) null else w.id }
                         .padding(8.dp)
@@ -209,9 +225,30 @@ fun WeatherForecastScreen(
                     Text("⚠ ${w.event}", color = if (foc) Color.Black else warningColor(w.color), fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text("${w.area} · ${if (w.start > 0) fmt.format(w.start) else ""}–${if (w.end > 0) fmt.format(w.end) else ""}",
                         color = if (foc) Color.Black else Color.White, fontSize = 12.sp)
-                    if (expanded == w.id) {
-                        listOf(w.description, w.consequences, w.instruction).filter { it.isNotBlank() }.forEach {
-                            Text(it, color = if (foc) Color.Black else Color.White, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                    if (isOpen) {
+                        Box(modifier = Modifier.fillMaxWidth().heightIn(max = 170.dp)) {
+                            Column(modifier = Modifier.verticalScroll(textScroll).padding(end = 6.dp)) {
+                                listOf(w.description, w.consequences, w.instruction).filter { it.isNotBlank() }.forEach {
+                                    Text(it, color = if (foc) Color.Black else Color.White, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                                }
+                            }
+                            // Scroll indicator, shown only when there's more text than fits.
+                            if (textScroll.maxValue > 0) {
+                                val frac = textScroll.value.toFloat() / textScroll.maxValue
+                                Box(
+                                    modifier = Modifier.align(Alignment.TopEnd).fillMaxHeight().width(3.dp)
+                                        .background(Color.White.copy(alpha = 0.15f))
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f)
+                                            .offset(y = (170.dp * 0.7f) * frac)
+                                            .background(if (foc) Color.Black else Color.White)
+                                    )
+                                }
+                            }
+                        }
+                        if (textScroll.maxValue > 0 && textScroll.value < textScroll.maxValue) {
+                            Text("▼ more", color = if (foc) Color.Black else Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
                         }
                     }
                 }
