@@ -76,6 +76,17 @@ private val PinkScheme = lightColorScheme(
 )
 
 @Composable
+/** Classic 1995 desktop: teal background, navy title bars, grey 3-D chrome. */
+private val Win95Scheme = lightColorScheme(
+    background = Color(0xFF008080),
+    surface = Color(0xFF000080),
+    onBackground = Color.White,
+    onSurface = Color.White,
+    primary = Color(0xFFC0C0C0),
+    secondary = Color(0xFFC0C0C0)
+)
+
+@Composable
 fun MyApplicationTheme(
     state: LauncherState,
     content: @Composable () -> Unit
@@ -88,6 +99,7 @@ fun MyApplicationTheme(
         AppTheme.GREEN -> GreenScheme
         AppTheme.YELLOW -> YellowScheme
         AppTheme.PINK -> PinkScheme
+        AppTheme.WIN95 -> Win95Scheme
         AppTheme.CUSTOM -> lightColorScheme(
             background = state.customBgColor?.let { Color(it) } ?: DefaultBackground,
             surface = state.customBarColor?.let { Color(it) } ?: state.customBgColor?.let { Color(it).copy(alpha=0.7f) } ?: DefaultSurface,

@@ -73,6 +73,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Brush
@@ -114,6 +115,26 @@ import kotlinx.coroutines.delay
 
 val LocalSymbianSoundsEnabled = androidx.compose.runtime.staticCompositionLocalOf { true }
 
+/** True when the Windows 95 theme is active: highlights become grey 3-D buttons. */
+val LocalWin95 = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** Windows 95 bevel: grey face, white/light top-left edges, dark/black bottom-right (reversed when sunken). */
+fun Modifier.win95Bevel(sunken: Boolean = false): Modifier = this.drawBehind {
+    val face = Color(0xFFC0C0C0)
+    val light = Color.White; val light2 = Color(0xFFDFDFDF)
+    val dark = Color(0xFF808080); val darkest = Color.Black
+    val px = 1.dp.toPx().coerceAtLeast(1f)
+    drawRect(face)
+    val (tl1, tl2, br1, br2) = if (sunken) listOf(darkest, dark, light, light2) else listOf(light, light2, darkest, dark)
+    val w = size.width; val h = size.height
+    // outer
+    drawRect(tl1, topLeft = Offset(0f, 0f), size = Size(w, px)); drawRect(tl1, topLeft = Offset(0f, 0f), size = Size(px, h))
+    drawRect(br1, topLeft = Offset(0f, h - px), size = Size(w, px)); drawRect(br1, topLeft = Offset(w - px, 0f), size = Size(px, h))
+    // inner
+    drawRect(tl2, topLeft = Offset(px, px), size = Size(w - 2 * px, px)); drawRect(tl2, topLeft = Offset(px, px), size = Size(px, h - 2 * px))
+    drawRect(br2, topLeft = Offset(px, h - 2 * px), size = Size(w - 2 * px, px)); drawRect(br2, topLeft = Offset(w - 2 * px, px), size = Size(px, h - 2 * px))
+}
+
 
 fun Modifier.symbianGrayscale(enabled: Boolean = true): Modifier = if (enabled) {
     val colorMatrix = ColorMatrix().apply { setToSaturation(0f) }
@@ -135,12 +156,15 @@ fun Modifier.symbianHighlight(
     unfocusedColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Transparent
 ): Modifier = this.composed {
     val soundsEnabled = LocalSymbianSoundsEnabled.current
+    val win95 = LocalWin95.current
     androidx.compose.runtime.LaunchedEffect(isFocused) {
         if (isFocused && soundsEnabled) {
             com.example.SymbianSoundManager.playClick()
         }
     }
-    if (isFocused) {
+    if (isFocused && win95) {
+        this.win95Bevel()
+    } else if (isFocused) {
         val baseColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary
         val topColor = androidx.compose.ui.graphics.lerp(baseColor, androidx.compose.ui.graphics.Color.White, 0.4f)
         val brush = androidx.compose.ui.graphics.Brush.verticalGradient(
@@ -210,16 +234,18 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme(state = state) {
                 // Share the active theme with Desktop Mode so the browser page matches the phone.
                 val cs = androidx.compose.material3.MaterialTheme.colorScheme
-                LaunchedEffect(cs.background, cs.surface, cs.primary, cs.secondary, cs.onBackground, state.currentFont) {
+                LaunchedEffect(cs.background, cs.surface, cs.primary, cs.secondary, cs.onBackground, state.currentFont, state.currentTheme) {
                     fun hex(c: androidx.compose.ui.graphics.Color) = String.format("#%06X", 0xFFFFFF and c.toArgb())
                     BridgeState.theme.value = mapOf(
                         "background" to hex(cs.background), "surface" to hex(cs.surface), "text" to hex(cs.onBackground),
-                        "accent" to hex(cs.primary), "highlight" to hex(cs.secondary), "font" to state.currentFont.name
+                        "accent" to hex(cs.primary), "highlight" to hex(cs.secondary), "font" to state.currentFont.name,
+                        "style" to if (state.currentTheme == AppTheme.WIN95) "win95" else "symbian"
                     )
                 }
                 val currentDensity = androidx.compose.ui.platform.LocalDensity.current
                 androidx.compose.runtime.CompositionLocalProvider(
                     LocalSymbianSoundsEnabled provides state.symbianSoundsEnabled,
+                    LocalWin95 provides (state.currentTheme == AppTheme.WIN95),
                     androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(
                         density = currentDensity.density,
                         fontScale = currentDensity.fontScale * state.textScale

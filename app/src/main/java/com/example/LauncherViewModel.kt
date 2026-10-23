@@ -25,6 +25,7 @@ enum class AppTheme(val displayName: String) {
     GREEN("Emerald Green"),
     YELLOW("Amber Gold"),
     PINK("Hot Pink"),
+    WIN95("Windows 95"),
     CUSTOM("Custom Theme")
 }
 

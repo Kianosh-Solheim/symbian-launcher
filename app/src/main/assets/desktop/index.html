@@ -291,6 +291,100 @@ code.cmd { display: block; background: rgba(0,0,0,.45); padding: 6px 8px; border
 .dialog.wide { width: min(560px, 94vw); }
 .note-sm { font-size: 13px; color: var(--muted); }
 
+/* ══════════════ Windows 95 theme (follows the phone's theme) ══════════════ */
+body.win95 {
+  --bg: #008080; --surface: #c0c0c0; --text: #000; --muted: #404040; --line: #808080; --hl: #000080; --hl-top: #000080;
+  --accent: #000080; --bad: #c00000; --bad-text: #a00000; --good: #008000; --panel: #c0c0c0;
+  --raised: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  --sunken: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000;
+  --font: "MS Sans Serif", "Microsoft Sans Serif", "Pixelated MS Sans Serif", Tahoma, Arial, sans-serif;
+  background: #008080; font-size: 13px; color: #000;
+}
+body.win95 * { text-shadow: none !important; }
+body.win95 a { color: #000080; }
+body.win95 .status { --text: #fff; background: #000080; color: #fff; border: 0; padding: 4px 10px; }
+body.win95 .status .clock { font-size: 15px; }
+body.win95 .battery .fill { background: #fff; }
+body.win95 .link-state { color: #c0c0c0; }
+body.win95 .link-state.off { color: #ffff00; }
+body.win95 nav { background: #c0c0c0; border-right: 0; box-shadow: var(--raised); padding: 4px; }
+body.win95 nav button { font-weight: normal; font-size: 13px; padding: 6px 8px; color: #000; border-radius: 0; }
+body.win95 nav button svg { fill: #000080; filter: none; width: 20px; height: 20px; }
+body.win95 .sel, body.win95 nav button.active, body.win95 nav button:focus-visible, body.win95 .row:focus-visible, body.win95 .row.active {
+  background: #000080; color: #fff; border-radius: 0; outline: 1px dotted #ffff80; outline-offset: -2px;
+}
+body.win95 nav button.active svg, body.win95 .row.active svg { fill: #fff; }
+body.win95 .badge { background: #c00000; border-radius: 0; }
+body.win95 main { background: #008080; }
+body.win95 .pane { background: #c0c0c0; }
+body.win95 .pane.list, body.win95 .bubbles, body.win95 .wscroll, body.win95 .month { background: #fff; box-shadow: var(--sunken); }
+body.win95 .title { background: #c0c0c0; border-bottom: 1px solid #808080; font-size: 14px; color: #000; padding: 6px 10px; }
+body.win95 .toolbar, body.win95 .calbar { background: #c0c0c0; border-bottom: 1px solid #808080; }
+body.win95 .row { color: #000; border-bottom: 1px dotted #c0c0c0; }
+body.win95 .row .sub, body.win95 .row .meta { color: #404040; }
+body.win95 .row.active .sub, body.win95 .row.active .meta { color: #dfdfdf; }
+body.win95 .empty { color: #404040; }
+body.win95 .btn, body.win95 .softkeys button, body.win95 .seg button {
+  background: #c0c0c0; color: #000; border: 0; border-radius: 0; box-shadow: var(--raised); font-weight: normal; padding: 4px 14px;
+}
+body.win95 .btn:hover { background: #c0c0c0; color: #000; }
+body.win95 .btn:active, body.win95 .seg button.on, body.win95 .softkeys button:active { box-shadow: var(--sunken); background: #c0c0c0; }
+body.win95 .seg button.on { background: repeating-conic-gradient(#c0c0c0 0 25%, #fff 0 50%) 0 0 / 2px 2px; color: #000; }
+body.win95 .btn:focus-visible { outline: 1px dotted #000; outline-offset: -5px; background: #c0c0c0; color: #000; }
+body.win95 .btn.good, body.win95 .btn.bad { font-weight: bold; }
+body.win95 .btn.good { color: #006000; } body.win95 .btn.bad { color: #a00000; }
+body.win95 .seg { border: 0; gap: 2px; }
+body.win95 .card { background: #c0c0c0; border: 0; border-radius: 0; box-shadow: var(--raised), 2px 2px 0 rgba(0,0,0,.35); padding: 3px; }
+body.win95 .card h3, body.win95 .dialog h2 {
+  background: #000080; color: #fff; font-size: 13px; padding: 3px 6px; border: 0; display: flex; align-items: center;
+}
+body.win95 .dialog h2::after {
+  content: "✕"; margin-left: auto; width: 16px; height: 14px; font-size: 10px; line-height: 14px; text-align: center; color: #000;
+  background: #c0c0c0; box-shadow: var(--raised); font-weight: bold;
+}
+body.win95 .dialog { background: #c0c0c0; border: 0; border-radius: 0; box-shadow: var(--raised), 4px 4px 0 rgba(0,0,0,.4); padding: 3px; }
+body.win95 .overlay { background: rgba(0,0,0,.15); }
+body.win95 input:not([type=checkbox]):not([type=color]), body.win95 textarea, body.win95 select, body.win95 .search, body.win95 .code,
+body.win95 .compose textarea, body.win95 .dialer input, body.win95 textarea.note {
+  background: #fff; color: #000; border: 0; border-radius: 0; box-shadow: var(--sunken); padding: 5px 7px;
+}
+body.win95 .compose, body.win95 .recipient { background: #c0c0c0; border-top: 1px solid #fff; }
+body.win95 .bubble { border-radius: 0; box-shadow: none; border: 1px solid #000; }
+body.win95 .bubble.in { background: #fff; color: #000; }
+body.win95 .bubble.out { background: #ffffe1; color: #000; }
+body.win95 .daysep { color: #404040; }
+body.win95 .avatar { border: 1px solid #000; text-shadow: none; }
+body.win95 .softkeys { background: #c0c0c0; box-shadow: inset 0 1px #fff, inset 0 2px #dfdfdf; border-top: 1px solid #c0c0c0; padding: 3px 4px; }
+body.win95 .softkeys button { font-size: 13px; font-weight: bold; }
+body.win95 .softkeys button:first-child::before { content: "▣ "; color: #000080; }
+body.win95 .softkeys .c { color: #000; box-shadow: var(--sunken); padding: 3px 10px; font-size: 12px; }
+body.win95 .home { background: #008080; }
+body.win95 .bigdate, body.win95 .note-sm, body.win95 .kv span:nth-child(odd) { color: #404040; }
+body.win95 .meter { background: #fff; box-shadow: var(--sunken); border-radius: 0; }
+body.win95 .meter i { background: repeating-linear-gradient(90deg, #000080 0 8px, transparent 8px 10px); }
+body.win95 .month .cell { border-color: #c0c0c0; border-style: solid; }
+body.win95 .month .dow, body.win95 .whead, body.win95 .wall { background: #c0c0c0; color: #000; }
+body.win95 .month .cell.today .num { background: #000080; color: #fff; border-radius: 0; }
+body.win95 .wcol { background: repeating-linear-gradient(180deg, #fff 0 45px, #dfdfdf 45px 46px); border-left: 1px solid #c0c0c0; }
+body.win95 .wcol.today { background-color: #fff; }
+body.win95 .wev, body.win95 .chip { border-radius: 0; }
+body.win95 .dayhead { background: #c0c0c0; color: #000; border-bottom: 1px solid #808080; }
+body.win95 .toast { background: #ffffe1; color: #000; border: 1px solid #000; border-radius: 0; }
+body.win95 .callbar { background: #000080; color: #fff; }
+body.win95 .switch i { border-radius: 0; background: #fff; box-shadow: var(--sunken); border: 0; width: 18px; height: 18px; }
+body.win95 .switch i::after { display: none; }
+body.win95 .switch input:checked + i::before { content: "✔"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; color: #000; }
+body.win95 .clipnow { border-radius: 0; box-shadow: var(--sunken); }
+body.win95 code.cmd { background: #000; color: #c0c0c0; border-radius: 0; }
+body.win95 .ph { border-radius: 0; }
+body.win95 .drop, body.win95 .addcard { border-radius: 0; border-color: #000; color: #000; background: #c0c0c0; }
+body.win95 .lightbox { background: #008080; }
+body.win95 .logoprev, body.win95 .logopick button { border-radius: 0; box-shadow: var(--sunken); }
+body.win95 ::-webkit-scrollbar { width: 16px; height: 16px; }
+body.win95 ::-webkit-scrollbar-track { background: repeating-conic-gradient(#c0c0c0 0 25%, #fff 0 50%) 0 0 / 2px 2px; }
+body.win95 ::-webkit-scrollbar-thumb { background: #c0c0c0; box-shadow: var(--raised); }
+body.win95 ::-webkit-scrollbar-button:single-button { background: #c0c0c0; box-shadow: var(--raised); height: 16px; width: 16px; }
+
 @media (max-width: 900px) {
   .body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   nav { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid rgba(0,0,0,.3); padding: 0; }
@@ -1466,6 +1560,9 @@ function dialog(html, wide) {
   const o = document.createElement("div"); o.className = "overlay dlg";
   o.innerHTML = `<div class="dialog ${wide ? "wide" : ""}">${html}</div>`;
   o.onclick = e => { if (e.target === o) o.remove(); };
+  // Windows 95 title-bar ✕ (drawn in CSS at the right end of the dialog's title).
+  const h2 = o.querySelector("h2");
+  if (h2) h2.onclick = e => { if (document.body.classList.contains("win95") && e.offsetX > h2.clientWidth - 28) { const c = o.querySelector("#ls-cancel"); c ? c.click() : o.remove(); } };
   document.body.appendChild(o); return o;
 }
 const toDateInput = d => dkey(d), toTimeInput = d => pad(d.getHours()) + ":" + pad(d.getMinutes());
@@ -1640,6 +1737,7 @@ function announceNew(list) {
 function confirmOnce(btn, msg) { return window.confirm(msg); }
 
 function applyTheme(t) {
+  if (t.style) { store.set("symbian.style", t.style); document.body.classList.toggle("win95", t.style === "win95"); }
   const r = document.documentElement.style;
   if (t.background) r.setProperty("--bg", t.background);
   if (t.surface) r.setProperty("--surface", t.surface);
@@ -1663,6 +1761,7 @@ async function pair() {
     start();
   } catch { $("#pairerr").textContent = "Phone not reachable"; }
 }
+document.body.classList.toggle("win95", store.get("symbian.style") === "win95");
 $("#pairbtn").onclick = pair;
 $("#code").onkeydown = e => { if (e.key === "Enter") pair(); };
 $("#code").oninput = e => { if (e.target.value.replace(/\D/g, "").length === 6) pair(); };

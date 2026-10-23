@@ -558,11 +558,12 @@ fun SymbianBottomBar(
     rightModifier: Modifier = Modifier,
     isExtremeBatterySaver: Boolean = false
 ) {
+    val win95 = LocalWin95.current && !isExtremeBatterySaver
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isExtremeBatterySaver) Color.Black else androidx.compose.material3.MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .then(if (win95) Modifier.win95Bevel() else Modifier.background(if (isExtremeBatterySaver) Color.Black else androidx.compose.material3.MaterialTheme.colorScheme.surface))
+            .padding(horizontal = if (win95) 4.dp else 12.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         BottomBarButton(leftText, onLeftClick, leftModifier)
@@ -579,6 +580,17 @@ fun BottomBarButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
     }
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    if (LocalWin95.current) {
+        // Taskbar-style push button: raised, and pressed in while focused.
+        Text(
+            text = text, color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+            modifier = modifier
+                .win95Bevel(sunken = isFocused)
+                .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onClick() }
+                .padding(horizontal = 14.dp, vertical = 5.dp)
+        )
+        return
+    }
     Text(
         text = text, 
         color = if (isFocused) Color.Black else Color.White, 
