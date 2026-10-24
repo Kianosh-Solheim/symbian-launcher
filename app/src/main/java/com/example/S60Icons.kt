@@ -34,6 +34,27 @@ private class L(val d: String, val fill: S60Fill?, val stroke: Color?, val strok
  */
 object S60Icons {
     private val icons: Map<String, List<L>> = mapOf(
+    "posten" to listOf(
+        L("M3,26A21,21 0 1 0 45,26A21,21 0 1 0 3,26Z", S60Fill.Solid(Color(0x3F000000)), null, 0f, 1.2f, 1.6f),
+        L("M3,26A21,21 0 1 0 45,26A21,21 0 1 0 3,26Z", S60Fill.Vertical(Color(0xFFFF6A55), Color(0xFFB8140F)), Color(0xFF7A0A06), 1f, 0f, 0f),
+        L("M23.3,1.8H24.7V3.4H26.3V4.8H24.7V6.4H23.3V4.8H21.7V3.4H23.3Z", S60Fill.Vertical(Color(0xFFFFE88F), Color(0xFFD2930A)), Color(0xFF5A3A00), 0.9f, 0f, 0f),
+        L("M22.3,7.6A1.7,1.7 0 1 0 25.7,7.6A1.7,1.7 0 1 0 22.3,7.6Z", S60Fill.Vertical(Color(0xFFFFE88F), Color(0xFFD2930A)), Color(0xFF5A3A00), 0.9f, 0f, 0f),
+        L("M15.5,18.5L13.6,10.6L18,13.4L20.6,8.6L24,12L27.4,8.6L30,13.4L34.4,10.6L32.5,18.5Z", S60Fill.Vertical(Color(0xFFFFE88F), Color(0xFFD2930A)), Color(0xFF5A3A00), 0.9f, 0f, 0f),
+        L("M12.4,10.2A1.2,1.2 0 1 0 14.799999999999999,10.2A1.2,1.2 0 1 0 12.4,10.2Z", S60Fill.Vertical(Color(0xFFFFF6C8), Color(0xFFE0A51A)), Color(0xFF5A3A00), 0.6f, 0f, 0f),
+        L("M19.400000000000002,8.2A1.2,1.2 0 1 0 21.8,8.2A1.2,1.2 0 1 0 19.400000000000002,8.2Z", S60Fill.Vertical(Color(0xFFFFF6C8), Color(0xFFE0A51A)), Color(0xFF5A3A00), 0.6f, 0f, 0f),
+        L("M26.2,8.2A1.2,1.2 0 1 0 28.599999999999998,8.2A1.2,1.2 0 1 0 26.2,8.2Z", S60Fill.Vertical(Color(0xFFFFF6C8), Color(0xFFE0A51A)), Color(0xFF5A3A00), 0.6f, 0f, 0f),
+        L("M33.199999999999996,10.2A1.2,1.2 0 1 0 35.6,10.2A1.2,1.2 0 1 0 33.199999999999996,10.2Z", S60Fill.Vertical(Color(0xFFFFF6C8), Color(0xFFE0A51A)), Color(0xFF5A3A00), 0.6f, 0f, 0f),
+        L("M16.8,13A1.2,1.2 0 1 0 19.2,13A1.2,1.2 0 1 0 16.8,13Z", S60Fill.Vertical(Color(0xFFFFF6C8), Color(0xFFE0A51A)), Color(0xFF5A3A00), 0.6f, 0f, 0f),
+        L("M28.8,13A1.2,1.2 0 1 0 31.2,13A1.2,1.2 0 1 0 28.8,13Z", S60Fill.Vertical(Color(0xFFFFF6C8), Color(0xFFE0A51A)), Color(0xFF5A3A00), 0.6f, 0f, 0f),
+        L("M16.2,18H31.8A1.2,1.2 0 0 1 33,19.2V20.0A1.2,1.2 0 0 1 31.8,21.2H16.2A1.2,1.2 0 0 1 15,20.0V19.2A1.2,1.2 0 0 1 16.2,18Z", S60Fill.Vertical(Color(0xFFFFE88F), Color(0xFFD2930A)), Color(0xFF5A3A00), 0.9f, 0f, 0f),
+        L("M22.7,15.6A1.3,1.3 0 1 0 25.3,15.6A1.3,1.3 0 1 0 22.7,15.6Z", S60Fill.Vertical(Color(0xFFFF8A7A), Color(0xFFC9241A)), null, 0f, 0f, 0f),
+        L("M21.8,34.6L13.6,22.2C13,21.3 12.6,20.4 12.6,19.6L5.4,24.4C6.2,24.6 7.2,25.2 7.9,25.9L18.6,37.6Z", S60Fill.Vertical(Color(0xFFFFE88F), Color(0xFFD2930A)), Color(0xFF5A3A00), 0.9f, 0f, 0f),
+        L("M5.4,24.4C7.4,22 10.6,19.8 12.6,19.6C13.2,20.6 10.2,23.4 6.6,25.1Z", S60Fill.Vertical(Color(0xFFC88A08), Color(0xFF8A5A00)), Color(0xFF5A3A00), 0.9f, 0f, 0f),
+        L("M17,32.5A10,10 0 1 0 37,32.5A10,10 0 1 0 17,32.5ZM20.4,32.5A6.6,6.6 0 1 1 33.6,32.5A6.6,6.6 0 1 1 20.4,32.5Z", S60Fill.Vertical(Color(0xFFFFE88F), Color(0xFFD2930A)), Color(0xFF5A3A00), 0.9f, 0f, 0f),
+        L("M35.2,28.4L40.6,23.4L42.2,25L36.8,30Z", S60Fill.Vertical(Color(0xFFFFE88F), Color(0xFFD2930A)), Color(0xFF5A3A00), 0.9f, 0f, 0f),
+        L("M40.2,22.4L42.4,20.6L44.4,22.8L42.4,24.8Z", S60Fill.Vertical(Color(0xFFFFE88F), Color(0xFFD2930A)), Color(0xFF5A3A00), 0.9f, 0f, 0f),
+        L("M7,20Q24,4 41,20Q24,15 7,20Z", S60Fill.Vertical(Color(0x99FFFFFF), Color(0x00FFFFFF)), null, 0f, 0f, 0f)
+    ),
     "msg" to listOf(
         L("M10,8H38A6,6 0 0 1 44,14V28A6,6 0 0 1 38,34H22L13,42V34H10A6,6 0 0 1 4,28V14A6,6 0 0 1 10,8Z", S60Fill.Solid(Color(0x3F000000)), null, 0f, 1.2f, 1.6f),
         L("M10,8H38A6,6 0 0 1 44,14V28A6,6 0 0 1 38,34H22L13,42V34H10A6,6 0 0 1 4,28V14A6,6 0 0 1 10,8Z", S60Fill.Vertical(Color(0xFF8BE36A), Color(0xFF27962C)), Color(0xFF1B6B1F), 1.2f, 0f, 0f),

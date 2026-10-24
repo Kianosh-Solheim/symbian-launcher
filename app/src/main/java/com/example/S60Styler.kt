@@ -32,6 +32,7 @@ object S60Styler {
         "com.android.dialer" to "call", "com.google.android.dialer" to "call",
         "com.android.contacts" to "person", "com.google.android.contacts" to "person",
         "com.android.settings" to "settings",
+        "no.posten.sporing.controller" to "posten",
         "org.lineageos.aperture" to "camera", "com.android.camera2" to "camera", "com.android.camera" to "camera"
     )
 
