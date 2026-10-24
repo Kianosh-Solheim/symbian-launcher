@@ -35,7 +35,7 @@ import java.io.File
 
 /** Sharing a contact: as a QR code to scan with another phone, or as a vCard through Android's share menu. */
 object ContactShare {
-    private fun esc(s: String) = s.replace("\\", "\\\\").replace(";", "\;").replace(",", "\\,").replace("\n", "\\n")
+    private fun esc(s: String) = s.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
 
     fun vCard(c: ContactInfo): String = buildString {
         append("BEGIN:VCARD\r\nVERSION:3.0\r\n")
