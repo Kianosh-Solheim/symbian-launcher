@@ -26,7 +26,17 @@ enum class BarcodeFormatType {
     CODE_128,
     CODE_39,
     EAN_13,
+    EAN_8,
+    UPC_A,
+    UPC_E,
+    ITF,
+    CODABAR,
+    CODE_93,
+    DATA_MATRIX,
     UNKNOWN;
+
+    /** Matrix codes are square; the rest are 1D bars. */
+    val isSquare get() = this == QR_CODE || this == AZTEC || this == DATA_MATRIX
 
     companion object {
         fun fromPkPass(formatStr: String?): BarcodeFormatType {

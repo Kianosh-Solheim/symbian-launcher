@@ -91,4 +91,8 @@ dependencies {
   // Installs the ahead-of-time compilation profiles that ship inside Compose, so a sideloaded
   // APK starts and scrolls as smoothly as a Play Store install.
   implementation(libs.androidx.profileinstaller)
+  // Live camera viewfinder for scanning QR codes and barcodes into the wallet.
+  implementation(libs.androidx.camera.camera2)
+  implementation(libs.androidx.camera.lifecycle)
+  implementation(libs.androidx.camera.view)
 }

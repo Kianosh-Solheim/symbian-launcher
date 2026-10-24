@@ -162,7 +162,6 @@ fun WalletScreen(
     var showImportDialog by remember { mutableStateOf(false) }
     var showManualAddDialog by remember { mutableStateOf(false) }
     var showLoyaltyCardDialog by remember { mutableStateOf(false) }
-    var scanChooserIntent by remember { mutableStateOf<ScanIntent?>(null) }
     var activeScanIntent by remember { mutableStateOf(ScanIntent.LOYALTY_CARD) }
     var loyaltyScannedCode by remember { mutableStateOf("") }
     var loyaltyScannedFormat by remember { mutableStateOf(BarcodeFormatType.QR_CODE) }
@@ -184,91 +183,37 @@ fun WalletScreen(
         }
     }
 
-    // Camera photo capture launcher
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null) {
-            when (activeScanIntent) {
-                ScanIntent.LOYALTY_CARD -> {
-                    viewModel.decodeBarcodeFromBitmap(bitmap) { result ->
-                        if (result != null) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            loyaltyScannedCode = result.rawText
-                            loyaltyScannedFormat = result.format
-                            showLoyaltyCardDialog = true
-                            Toast.makeText(context, "Scanned: ${result.rawText.take(24)}", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "No QR or barcode detected. Try snapping closer in bright lighting.", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
-                ScanIntent.BOARDING_PASS_OR_TICKET -> {
-                    viewModel.importPassFromBitmap(bitmap, "Scanned Pass") { pass ->
-                        if (pass != null) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            Toast.makeText(context, "Scanned: ${pass.organizationName}", Toast.LENGTH_SHORT).show()
-                            onNavigateToPassDetail(pass)
-                        } else {
-                            Toast.makeText(context, "No readable barcode detected in photo. Try again with good lighting.", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Camera permission launcher
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            cameraLauncher.launch(null)
-        } else {
-            Toast.makeText(context, "Camera permission is required to scan passes", Toast.LENGTH_SHORT).show()
-        }
-    }
-
+    var liveScanner by remember { mutableStateOf<ScanIntent?>(null) }
     fun startCameraScan(intent: ScanIntent) {
         activeScanIntent = intent
-        val permission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-        if (permission == PackageManager.PERMISSION_GRANTED) {
-            cameraLauncher.launch(null)
+        liveScanner = intent
+    }
+
+    /** What happens with a scanned code: boarding passes are filed straight away, anything else becomes a card to name. */
+    fun handleScan(result: BarcodeUtils.ScannedBarcodeResult, intent: ScanIntent) {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        val raw = result.rawText.trim()
+        if (raw.startsWith("M1") || intent == ScanIntent.BOARDING_PASS_OR_TICKET) {
+            val pass = BarcodeUtils.createPassFromScannedBarcode(result, if (raw.startsWith("M1")) null else "Ticket")
+            viewModel.addWalletPass(pass)
+            Toast.makeText(context, "Added: ${pass.organizationName}", Toast.LENGTH_SHORT).show()
+            onNavigateToPassDetail(pass)
         } else {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            loyaltyScannedCode = raw
+            loyaltyScannedFormat = if (result.format == BarcodeFormatType.UNKNOWN) BarcodeFormatType.QR_CODE else result.format
+            showLoyaltyCardDialog = true
         }
     }
 
-    // Gallery / Photo picker launcher
+    // Gallery / Photo picker launcher (photos and screenshots of codes)
     val galleryImagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            when (activeScanIntent) {
-                ScanIntent.LOYALTY_CARD -> {
-                    viewModel.decodeBarcodeFromUri(uri) { result ->
-                        if (result != null) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            loyaltyScannedCode = result.rawText
-                            loyaltyScannedFormat = result.format
-                            showLoyaltyCardDialog = true
-                            Toast.makeText(context, "Scanned: ${result.rawText.take(24)}", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "No readable QR code or barcode found in photo.", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
-                ScanIntent.BOARDING_PASS_OR_TICKET -> {
-                    viewModel.importPassFromImage(uri, cardTitle = "Scanned Ticket") { pass ->
-                        if (pass != null) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            Toast.makeText(context, "Scanned: ${pass.organizationName}", Toast.LENGTH_SHORT).show()
-                            onNavigateToPassDetail(pass)
-                        } else {
-                            Toast.makeText(context, "No readable barcode detected in image.", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
+            val intent = activeScanIntent
+            viewModel.decodeBarcodeFromUri(uri) { result ->
+                if (result != null) handleScan(result, intent)
+                else Toast.makeText(context, "No QR code or barcode found in that picture.", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -291,6 +236,9 @@ fun WalletScreen(
     LaunchedEffect(Unit) {
         try { firstItemFocusRequester.requestFocus() } catch (e: Exception) {}
     }
+    // Left soft key "Add" on the wallet screen.
+    val addReq by WalletUi.addRequest.collectAsState()
+    LaunchedEffect(addReq) { if (addReq > 0) { WalletUi.addRequest.value = 0; showImportDialog = true } }
 
     Column(
         modifier = Modifier
@@ -303,12 +251,10 @@ fun WalletScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val tabs = listOf(
-                "All",
-                "Loyalty",
-                "Flights",
-                "Tickets"
-            )
+            val p = state.walletPasses
+            val counts = listOf(p.size, p.count { it.type == PassType.LOYALTY_CARD }, p.count { it.type == PassType.BOARDING_PASS },
+                p.count { it.type == PassType.EVENT_TICKET || it.type == PassType.COUPON || it.type == PassType.GENERIC })
+            val tabs = listOf("All", "Cards", "Flights", "Tickets").mapIndexed { i, t -> if (counts[i] > 0) "$t ${counts[i]}" else t }
             // Tabs
             Row(
                 modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
@@ -410,14 +356,14 @@ fun WalletScreen(
                         SymbianGlossyButton(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                scanChooserIntent = ScanIntent.LOYALTY_CARD
+                                startCameraScan(ScanIntent.LOYALTY_CARD)
                             },
                             baseColor = Color(0xFFFFD54F),
                             contentColor = Color.Black
                         ) {
                             Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Scan QR Card", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Scan a code", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
 
                         SymbianGlossyButton(
@@ -483,39 +429,31 @@ fun WalletScreen(
                 DashedDivider()
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Option 1: Scan QR Code for Loyalty Card (Camera or Photo)
+                // Scan anything: loyalty cards, tickets and boarding passes are told apart automatically.
                 SymbianImportOptionItem(
                     icon = Icons.Default.QrCodeScanner,
-                    title = "Scan Loyalty Card QR Code",
-                    subtitle = "Scan with Camera or choose from Photos",
+                    title = "Scan with camera",
+                    subtitle = "Cards, tickets, boarding passes — QR or barcode, read by itself",
                     accentColor = Color(0xFFFFD54F)
                 ) {
                     showImportDialog = false
-                    scanChooserIntent = ScanIntent.LOYALTY_CARD
+                    startCameraScan(ScanIntent.LOYALTY_CARD)
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Option 2: Add Loyalty Card Manually
                 SymbianImportOptionItem(
-                    icon = Icons.Default.Loyalty,
-                    title = "Add Loyalty Card (Manual Entry)",
-                    subtitle = "Create custom loyalty / rewards card with barcode",
-                    accentColor = Color(0xFF81C784)
+                    icon = Icons.Default.Image,
+                    title = "From a photo or screenshot",
+                    subtitle = "Pick a picture that shows the code",
+                    accentColor = Color(0xFF4DD0E1)
                 ) {
                     showImportDialog = false
-                    loyaltyScannedCode = ""
-                    loyaltyScannedFormat = BarcodeFormatType.QR_CODE
-                    showLoyaltyCardDialog = true
+                    startGalleryScan(ScanIntent.LOYALTY_CARD)
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Option 3: Import .pkpass
                 SymbianImportOptionItem(
                     icon = Icons.Default.FileOpen,
-                    title = "Import Apple Wallet (.pkpass)",
-                    subtitle = "Select a .pkpass archive from airlines or venues",
+                    title = "Import a .pkpass file",
+                    subtitle = "Tickets and passes from airlines, trains, venues",
                     accentColor = Color(0xFF64B5F6)
                 ) {
                     showImportDialog = false
@@ -525,27 +463,23 @@ fun WalletScreen(
                         pkpassFilePicker.launch(arrayOf("*/*"))
                     }
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Option 4: Scan Boarding Pass / Ticket Barcode (Camera or Photo)
                 SymbianImportOptionItem(
-                    icon = Icons.Default.CameraAlt,
-                    title = "Scan Boarding Pass / Ticket",
-                    subtitle = "Extract barcode with Camera or from Photos",
-                    accentColor = Color(0xFFFF8A65)
+                    icon = Icons.Default.Loyalty,
+                    title = "Type in a card number",
+                    subtitle = "Member card without a code to scan",
+                    accentColor = Color(0xFF81C784)
                 ) {
                     showImportDialog = false
-                    scanChooserIntent = ScanIntent.BOARDING_PASS_OR_TICKET
+                    loyaltyScannedCode = ""
+                    loyaltyScannedFormat = BarcodeFormatType.CODE_128
+                    showLoyaltyCardDialog = true
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Option 5: Manual Flight Pass Entry
                 SymbianImportOptionItem(
                     icon = Icons.Default.FlightTakeoff,
-                    title = "Enter Flight Pass Manually",
-                    subtitle = "Create airline boarding pass with auto-generated barcode",
+                    title = "Boarding pass by hand",
+                    subtitle = "Enter flight details; a barcode is made for you",
                     accentColor = Color(0xFFBA68C8)
                 ) {
                     showImportDialog = false
@@ -567,23 +501,13 @@ fun WalletScreen(
         }
     }
 
-    // Scan Source Chooser Dialog (Camera vs Photo)
-    scanChooserIntent?.let { intent ->
-        val title = when (intent) {
-            ScanIntent.LOYALTY_CARD -> "Scan Loyalty Card"
-            ScanIntent.BOARDING_PASS_OR_TICKET -> "Scan Pass or Ticket"
-        }
-        SymbianScanSourceChooserDialog(
-            title = title,
-            onDismiss = { scanChooserIntent = null },
-            onCameraSelect = {
-                scanChooserIntent = null
-                startCameraScan(intent)
-            },
-            onPhotoSelect = {
-                scanChooserIntent = null
-                startGalleryScan(intent)
-            }
+    // Live scanner
+    liveScanner?.let { intent ->
+        WalletScannerDialog(
+            title = if (intent == ScanIntent.BOARDING_PASS_OR_TICKET) "Scan ticket or boarding pass" else "Scan a code",
+            onResult = { r -> liveScanner = null; handleScan(r, intent) },
+            onPickPhoto = { liveScanner = null; startGalleryScan(intent) },
+            onDismiss = { liveScanner = null }
         )
     }
 
@@ -595,7 +519,7 @@ fun WalletScreen(
             fontFamily = state.currentFont.toFontFamily(),
             onDismiss = { showLoyaltyCardDialog = false },
             onScanQrClick = {
-                scanChooserIntent = ScanIntent.LOYALTY_CARD
+                startCameraScan(ScanIntent.LOYALTY_CARD)
             },
             onAddPass = { pass ->
                 viewModel.addWalletPass(pass)
@@ -1931,3 +1855,7 @@ fun rememberPassLogo(base64: String?): androidx.compose.ui.graphics.ImageBitmap?
         android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
     } catch (_: Exception) { null }
 }
+
+
+/** Lets the soft keys (outside this screen) open the wallet's Add menu. */
+object WalletUi { val addRequest = kotlinx.coroutines.flow.MutableStateFlow(0) }

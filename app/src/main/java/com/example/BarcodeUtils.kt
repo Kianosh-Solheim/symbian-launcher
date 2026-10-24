@@ -16,6 +16,23 @@ import java.util.UUID
 
 object BarcodeUtils {
 
+    fun fromZxing(f: BarcodeFormat): BarcodeFormatType = when (f) {
+        BarcodeFormat.QR_CODE -> BarcodeFormatType.QR_CODE
+        BarcodeFormat.AZTEC -> BarcodeFormatType.AZTEC
+        BarcodeFormat.PDF_417 -> BarcodeFormatType.PDF_417
+        BarcodeFormat.CODE_128 -> BarcodeFormatType.CODE_128
+        BarcodeFormat.CODE_39 -> BarcodeFormatType.CODE_39
+        BarcodeFormat.EAN_13 -> BarcodeFormatType.EAN_13
+        BarcodeFormat.EAN_8 -> BarcodeFormatType.EAN_8
+        BarcodeFormat.UPC_A -> BarcodeFormatType.UPC_A
+        BarcodeFormat.UPC_E -> BarcodeFormatType.UPC_E
+        BarcodeFormat.ITF -> BarcodeFormatType.ITF
+        BarcodeFormat.CODABAR -> BarcodeFormatType.CODABAR
+        BarcodeFormat.CODE_93 -> BarcodeFormatType.CODE_93
+        BarcodeFormat.DATA_MATRIX -> BarcodeFormatType.DATA_MATRIX
+        else -> BarcodeFormatType.UNKNOWN
+    }
+
     /**
      * Generates a high-contrast Bitmap for a barcode message & format
      */
@@ -34,15 +51,22 @@ object BarcodeUtils {
                 BarcodeFormatType.CODE_128 -> BarcodeFormat.CODE_128
                 BarcodeFormatType.CODE_39 -> BarcodeFormat.CODE_39
                 BarcodeFormatType.EAN_13 -> BarcodeFormat.EAN_13
+                BarcodeFormatType.EAN_8 -> BarcodeFormat.EAN_8
+                BarcodeFormatType.UPC_A -> BarcodeFormat.UPC_A
+                BarcodeFormatType.UPC_E -> BarcodeFormat.UPC_E
+                BarcodeFormatType.ITF -> BarcodeFormat.ITF
+                BarcodeFormatType.CODABAR -> BarcodeFormat.CODABAR
+                BarcodeFormatType.CODE_93 -> BarcodeFormat.CODE_93
+                BarcodeFormatType.DATA_MATRIX -> BarcodeFormat.DATA_MATRIX
                 else -> BarcodeFormat.QR_CODE
             }
 
-            val targetWidth = if (zxingFormat == BarcodeFormat.QR_CODE || zxingFormat == BarcodeFormat.AZTEC) {
+            val targetWidth = if (zxingFormat == BarcodeFormat.QR_CODE || zxingFormat == BarcodeFormat.AZTEC || zxingFormat == BarcodeFormat.DATA_MATRIX) {
                 height.coerceAtLeast(width)
             } else {
                 width
             }
-            val targetHeight = if (zxingFormat == BarcodeFormat.QR_CODE || zxingFormat == BarcodeFormat.AZTEC) {
+            val targetHeight = if (zxingFormat == BarcodeFormat.QR_CODE || zxingFormat == BarcodeFormat.AZTEC || zxingFormat == BarcodeFormat.DATA_MATRIX) {
                 targetWidth
             } else {
                 height
@@ -122,8 +146,7 @@ object BarcodeUtils {
                 BarcodeFormat.PDF_417 -> BarcodeFormatType.PDF_417
                 BarcodeFormat.CODE_128 -> BarcodeFormatType.CODE_128
                 BarcodeFormat.CODE_39 -> BarcodeFormatType.CODE_39
-                BarcodeFormat.EAN_13 -> BarcodeFormatType.EAN_13
-                else -> BarcodeFormatType.UNKNOWN
+                else -> fromZxing(result.barcodeFormat)
             }
 
             ScannedBarcodeResult(
@@ -200,7 +223,7 @@ object BarcodeUtils {
         // Generic loyalty or scanned card
         return WalletPass(
             id = UUID.randomUUID().toString(),
-            type = if (result.format == BarcodeFormatType.CODE_128 || result.format == BarcodeFormatType.EAN_13) PassType.LOYALTY_CARD else PassType.GENERIC,
+            type = if (!result.format.isSquare && result.format != BarcodeFormatType.PDF_417) PassType.LOYALTY_CARD else PassType.GENERIC,
             organizationName = customName ?: "Loyalty / Scanned Pass",
             description = "Imported Barcode Pass",
             backgroundColor = 0xFF2C3E50,

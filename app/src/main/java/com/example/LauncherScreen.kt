@@ -496,10 +496,10 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                 3 -> "Tickets"
                 else -> "All"
             }
-            leftSoftKeyText = "Category: $catLabel"
+            leftSoftKeyText = "Add"
             onLeftSoftKeyClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                viewModel.cycleWalletCategory()
+                WalletUi.addRequest.value++
             }
             rightSoftKeyText = "Back"
             onRightSoftKeyClick = {
