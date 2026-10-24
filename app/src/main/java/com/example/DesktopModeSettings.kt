@@ -8,6 +8,11 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -114,6 +119,13 @@ fun SettingsDesktopMode(state: LauncherState, haptic: androidx.compose.ui.haptic
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
 
+                if (main != null) {
+                    var showQr by remember { mutableStateOf(false) }
+                    val url = main.removePrefix("https://").removePrefix("http://").let { (if (https) "https://" else "http://") + it.trimEnd('/') } + "/#pair=$code"
+                    SettingsMenuItem("Show QR code (scan with a phone or tablet)", Icons.Default.ChevronRight, haptic) { showQr = true }
+                    if (showQr) DesktopQrDialog(url) { showQr = false }
+                }
+
                 SettingsSectionHeader("Step by step")
                 val steps = buildList {
                     add("On the computer, open Chrome, Edge, Firefox or Vivaldi.")
@@ -193,3 +205,32 @@ private fun Hint(text: String) = Text(
 
 @Composable
 private fun MaterialThemeHighlight(): Color = androidx.compose.material3.MaterialTheme.colorScheme.secondary
+
+
+/** QR code with the address and pairing code: scanning it opens Desktop Mode and pairs automatically. */
+@Composable
+private fun DesktopQrDialog(url: String, onDone: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val bmp = remember(url) { ContactShare.qr(url) }
+    DisposableEffect(Unit) {
+        val w = (context as? android.app.Activity)?.window
+        val prev = w?.attributes?.screenBrightness
+        w?.let { it.attributes = it.attributes.apply { screenBrightness = 1f } }
+        onDispose { w?.let { it.attributes = it.attributes.apply { screenBrightness = prev ?: -1f } } }
+    }
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text("Scan to open Desktop Mode") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                if (bmp != null) Box(Modifier.background(Color.White).padding(6.dp)) {
+                    androidx.compose.foundation.Image(bmp.asImageBitmap(), contentDescription = "QR code",
+                        filterQuality = androidx.compose.ui.graphics.FilterQuality.None, modifier = Modifier.size(220.dp))
+                }
+                Spacer(Modifier.height(6.dp))
+                Text("Pairs automatically — no code to type. Must be on the same Wi-Fi.", fontSize = 12.sp)
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onDone) { Text("Done") } }
+    )
+}

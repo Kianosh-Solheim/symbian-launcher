@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#003366">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Symbian Desktop</title>
 <style>
 :root {
@@ -29,7 +32,7 @@ a { color: var(--accent); }
 .hidden { display: none !important; }
 
 /* ── App frame ─────────────────────────────── */
-#app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+#app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; height: 100dvh; }
 .status {
   display: flex; align-items: center; gap: 18px; padding: 6px 14px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 75%, white) 0%, var(--surface) 55%, color-mix(in srgb, var(--surface) 80%, black) 100%);
@@ -129,7 +132,7 @@ main { display: grid; min-height: 0; overflow: hidden; }
 .suggest { position: absolute; left: 14px; right: 14px; top: 100%; z-index: 5; background: var(--surface); border: 1px solid rgba(0,0,0,.5); max-height: 260px; overflow-y: auto; }
 
 /* ── Home dashboard ───────────────────────── */
-.home { overflow-y: auto; padding: 18px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); align-content: start; }
+.home { overflow-y: auto; padding: 18px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); grid-auto-rows: max-content; align-content: start; }
 .card { background: var(--panel); border: 1px solid rgba(0,0,0,.3); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
 .card h3 { margin: 0; padding: 8px 12px; font-size: 15px; text-shadow: var(--shadow); border-bottom: 1px dashed var(--line);
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 70%, white), var(--surface)); }
@@ -416,6 +419,46 @@ body.win95 ::-webkit-scrollbar-button:single-button { background: #c0c0c0; box-s
   .status { gap: 10px; }
   .softkeys .c { display: none; }
 }
+
+/* ── Phones and small windows: bottom tab bar, one column, finger-sized targets ── */
+@media (max-width: 700px) {
+  body { font-size: 16px; }
+  .status { gap: 8px; padding: 6px 10px; padding-top: max(6px, env(safe-area-inset-top)); }
+  .status .op, .status .link-state { display: none; }
+  .status .clock { font-size: 18px; }
+  .body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  nav { order: 2; display: flex; overflow-x: auto; overflow-y: hidden; border: 0; border-top: 1px solid rgba(0,0,0,.35); padding: 2px 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  nav::-webkit-scrollbar { display: none; }
+  nav button { flex: 0 0 auto; width: 68px; flex-direction: column; gap: 2px; padding: 6px 2px 4px; font-size: 11px; font-weight: normal; position: relative; justify-content: center; text-align: center; border-radius: 6px; }
+  nav button span.lbl { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 64px; }
+  nav button svg, nav button img.pix { width: 24px; height: 24px; }
+  nav button .badge { position: absolute; top: 2px; right: 10px; margin: 0; font-size: 10px; padding: 0 5px; min-width: 16px; }
+  main { order: 1; }
+  .home { padding: 10px; gap: 10px; grid-template-columns: 1fr; }
+  .row { min-height: 52px; }
+  .btn { padding: 9px 14px; }
+  .btn.small { padding: 7px 12px; }
+  input, textarea, select { font-size: 16px !important; } /* stops phones zooming into fields */
+  .title { padding: 8px 10px; }
+  .softkeys { padding: 4px 8px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+  .softkeys .c { display: none; }
+  .dialog, .dialog.wide { width: calc(100vw - 16px) !important; max-height: calc(100dvh - 24px); overflow-y: auto; }
+  .form { grid-template-columns: 1fr; gap: 4px; }
+  .form > label { margin-top: 6px; }
+  .keys { grid-template-columns: repeat(3, 1fr); width: 100%; }
+  .wallet { grid-template-columns: 1fr; padding: 10px; }
+  .photogrid { grid-template-columns: repeat(3, 1fr); padding: 4px; }
+  .calbar, .toolbar { flex-wrap: wrap; gap: 6px; }
+  .wgrid, .whead, .wall { grid-template-columns: 40px repeat(var(--days), 1fr); }
+  #recplayer { left: 8px !important; right: 8px !important; width: auto !important; bottom: 64px !important; }
+  .mobile-back { display: inline-flex !important; }
+  .view, .split > *, .pane, .convo, main { min-width: 0; }
+  .compose { gap: 6px; padding: 6px; }
+  .compose textarea { min-width: 0; flex: 1 1 auto; width: auto; }
+  .compose .counter { display: none; }
+  .bubble { max-width: 85%; overflow-wrap: anywhere; }
+}
+.mobile-back { display: none; }
 </style>
 </head>
 <body>
@@ -483,7 +526,7 @@ const S = {
   view: "home", status: null, weather: null, threads: [], thread: null, messages: [], notifs: [], calls: [], contacts: [],
   agenda: [], media: null, drafts: {}, wallet: [], clip: null, birthdays: [], calendars: [],
   photos: { items: [], total: 0, loading: false, sel: new Set(), selecting: false, permission: true },
-  cal: { mode: store.get("symbian.calmode") || "month", date: new Date(), events: [], loaded: "" }, contact: null, chat: null, newMsg: false, q: "", online: false,
+  cal: { mode: store.get("symbian.calmode") || (matchMedia("(max-width: 700px)").matches ? "agenda" : "month"), date: new Date(), events: [], loaded: "" }, contact: null, chat: null, newMsg: false, q: "", online: false,
 };
 
 // ───────────── API ─────────────
@@ -593,7 +636,15 @@ function renderNav() {
   const b = badges();
   $("#nav").innerHTML = SECTIONS.map(([id, label, ic], i) =>
     `<button data-go="${id}" class="${S.view === id ? "active" : ""}" title="${label}${i < 10 ? ` (Alt+${(i + 1) % 10})` : ""}">${navIcon(ic)}<span class="lbl">${label}</span>${b[id] ? `<span class="badge">${b[id]}</span>` : ""}</button>`).join("");
+  // Phone layout: keep the current section visible in the bottom tab bar.
+  if (isMobile()) { const a = $("#nav .active"); if (a && a.dataset.go !== lastNavShown) { lastNavShown = a.dataset.go; a.scrollIntoView({ inline: "center", block: "nearest" }); } }
 }
+let lastNavShown = "";
+const mobileQuery = matchMedia("(max-width: 700px)");
+const isMobile = () => mobileQuery.matches;
+function applyMobile() { document.body.classList.toggle("mobile", isMobile()); lastNavShown = ""; }
+mobileQuery.addEventListener("change", () => { applyMobile(); try { render(); } catch (_) { } });
+applyMobile();
 function go(view) {
   S.view = view; S.q = "";
   if (view === "calls") store.set("symbian.callsSeen", String(Date.now()));
@@ -2006,9 +2057,14 @@ function applyTheme(t) {
 }
 
 // ───────────── Pairing & start ─────────────
+// Opened from the QR code on the phone: https://phone:8765/#pair=123456 pairs automatically.
+const qrPairCode = (location.hash.match(/pair=(\d{6})/) || [])[1];
+if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+let qrPairTried = false;
 function showPair() {
   $("#app").classList.add("hidden"); $("#pair").classList.remove("hidden");
-  setTimeout(() => $("#code").focus(), 50);
+  if (qrPairCode && !qrPairTried) { qrPairTried = true; $("#code").value = qrPairCode; pair(); return; }
+  if (!isMobile()) setTimeout(() => $("#code").focus(), 50);
 }
 async function pair() {
   const code = $("#code").value.replace(/\D/g, "");
