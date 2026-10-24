@@ -238,6 +238,7 @@ class MainActivity : ComponentActivity() {
                 // Share the active theme with Desktop Mode so the browser page matches the phone.
                 val cs = androidx.compose.material3.MaterialTheme.colorScheme
                 LaunchedEffect(cs.background, cs.surface, cs.primary, cs.secondary, cs.onBackground, state.currentFont, state.currentTheme) {
+                    IconCache.win95 = state.currentTheme == AppTheme.WIN95 // app icons become pixel icons
                     fun hex(c: androidx.compose.ui.graphics.Color) = String.format("#%06X", 0xFFFFFF and c.toArgb())
                     BridgeState.theme.value = mapOf(
                         "background" to hex(cs.background), "surface" to hex(cs.surface), "text" to hex(cs.onBackground),

@@ -539,6 +539,7 @@ function wxIcon(sym) {
   return "🌡️";
 }
 const icon = id => `<svg><use href="#i-${id}"/></svg>`;
+const iconStyle = () => document.body.classList.contains("win95") ? "95" : "0";
 // Windows 95 pixel icons (same 16×16 art as the phone), used in the sidebar when that theme is on.
 const PIX = {
   mail: "................|................|................|KKKKKKKKKKKKKKK.|KWKWWWWWWWWWKWKD|KWWKWWWWWWWKWWWD|KWWWKWWWWWKWWWKD|KWWWWKWWWKWWWWKD|KWWWWWKWKWWWWWKD|KWWWWKWKWKWWWWKD|KWWWKWWWWWKWWWKD|KWWKWWWWWWWKWWKD|KWKWWWWWWWWWKWKD|KKKKKKKKKKKKKKKD|.DDDDDDDDDDDDDDD|................",
@@ -760,7 +761,7 @@ const VIEWS = {
       <div class="pane list"><div class="title">${icon("chat").replace("<svg>", '<svg style="width:20px;height:20px;fill:var(--accent)">')}<span class="grow">Chats</span></div>
         <div class="empty" style="font-size:13px;padding:10px 14px">Live chats from RCS, Signal, WhatsApp and other apps, answered through the phone's own notifications.</div>
         ${list.length ? list.map(n => `<button class="row ${S.chat === n.key ? "active" : ""}" data-chat="${esc(n.key)}">
-          <img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&token=${q(token)}" alt="">
+          <img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&s=${iconStyle()}&token=${q(token)}" alt="">
           <span class="main"><span class="name">${esc(n.title || n.app)}</span><span class="sub">${esc(n.app)} · ${esc(lastText(n))}</span></span>
           <span class="meta">${when(n.time)}</span></button>`).join("") : `<div class="empty">No open chats</div>`}
       </div>
@@ -887,7 +888,7 @@ function notifLink(n) {
 function notifRow(n, compact) {
   const link = notifLink(n);
   return `<div class="row" ${link ? `data-nopen="${esc(link)}" title="Open in browser" style="cursor:pointer;align-items:flex-start"` : `style="cursor:default;align-items:flex-start"`}>
-    <img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&token=${q(token)}" alt="">
+    <img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&s=${iconStyle()}&token=${q(token)}" alt="">
     <span class="main"><span class="name">${esc(n.title || n.app)}</span>
       <span class="sub" style="white-space:${compact ? "nowrap" : "pre-wrap"}">${esc(n.text)}</span>
       ${compact ? "" : `<span class="actions" style="margin-top:6px">
@@ -939,7 +940,7 @@ function newMessage() {
 function chatView(n) {
   const msgs = n.messages && n.messages.length ? n.messages : [{ text: n.text, sender: n.title, time: n.time }];
   return `<div class="convo">
-    <div class="title"><img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&token=${q(token)}" alt=""><span class="grow">${esc(n.title || n.app)}<div style="font-size:12px;font-weight:normal;color:var(--muted)">${esc(n.app)}</div></span>
+    <div class="title"><img class="appicon" onerror="this.style.visibility='hidden'" src="/api/icon?pkg=${q(n.pkg)}&s=${iconStyle()}&token=${q(token)}" alt=""><span class="grow">${esc(n.title || n.app)}<div style="font-size:12px;font-weight:normal;color:var(--muted)">${esc(n.app)}</div></span>
       ${n.clearable ? `<button class="btn small" data-dismiss="${esc(n.key)}">Dismiss</button>` : ""}</div>
     <div class="bubbles">${msgs.map(m => `<div class="bubble ${m.sender ? "in" : "out"}">${m.sender && m.sender !== n.title ? `<b>${esc(m.sender)}</b>\n` : ""}${esc(m.text)}<span class="t">${m.time ? hm(m.time) : ""}</span></div>`).join("")}</div>
     ${n.canReply ? `<div class="compose"><textarea id="reply" placeholder="Reply via ${esc(n.app)}" rows="1"></textarea><button class="btn" data-chatreply="${esc(n.key)}">Send</button></div>`
@@ -1984,7 +1985,7 @@ function announceNew(list) {
     if (n.pkg === "com.google.android.apps.messaging" && !n.canReply) continue;
     const isChat = n.canReply || n.messaging;
     if (isChat ? !p.chats : !p.other) continue;
-    const icon = `/api/icon?pkg=${q(n.pkg)}&token=${q(token)}`;
+    const icon = `/api/icon?pkg=${q(n.pkg)}&s=${iconStyle()}&token=${q(token)}`;
     alertUser(n.title || n.app, n.text, icon, () => { if (isChat) { S.chat = n.key; go("chats"); } else go("notifications"); });
   }
 }
@@ -1994,7 +1995,7 @@ function applyTheme(t) {
   if (t.style) {
     const was = document.body.classList.contains("win95");
     store.set("symbian.style", t.style); document.body.classList.toggle("win95", t.style === "win95");
-    if (was !== (t.style === "win95")) try { renderNav(); } catch (_) { }
+    if (was !== (t.style === "win95")) try { renderNav(); render(); } catch (_) { }
   }
   const r = document.documentElement.style;
   if (t.background) r.setProperty("--bg", t.background);
