@@ -31,7 +31,7 @@ class BridgeServer(
     private val onClientsChanged: (Int) -> Unit
 ) {
     private var server: ServerSocket? = null
-    private val pool = Executors.newFixedThreadPool(8)
+    private val pool = Executors.newFixedThreadPool(16)
     private val sseSlots = Semaphore(6)
     private val clients = CopyOnWriteArrayList<SseClient>()
     @Volatile private var running = false
@@ -245,7 +245,7 @@ class BridgeServer(
             "GET" to "threads" -> data.smsThreads()
             "GET" to "search" -> data.searchMessages(req.query["q"] ?: "")
             "GET" to "messages" -> data.smsMessages(req.query["thread"]?.toLongOrNull() ?: -1)
-            "GET" to "mmspart" -> return data.mmsPart(req.query["id"]?.toLongOrNull() ?: -1).let { bytes(out, it?.first, it?.second ?: "application/octet-stream") }
+            "GET" to "mmspart" -> return data.mmsPartFile(req.query["id"]?.toLongOrNull() ?: -1)?.let { streamFile(out, req, it) } ?: send(out, 404, "text/plain", ByteArray(0))
             "POST" to "sms" -> req.json().let { data.sendSms(it.optString("to"), it.optString("body")) }
             "POST" to "mms" -> {
                 if (req.contentLength > 20_000_000) BridgeData.fail("Image is larger than 20 MB")
@@ -400,15 +400,58 @@ class BridgeServer(
     private fun streamMedia(out: OutputStream, req: Request) {
         val f = data.openMedia(req.query["id"]?.toLongOrNull() ?: -1, req.query["video"] == "1", req.query["audio"] == "1")
             ?: return send(out, 404, "text/plain", ByteArray(0))
-        f.input.use { input ->
+        streamFile(out, req, f)
+    }
+
+    /**
+     * Sends a file with HTTP range support, which browsers need to play and seek in video and
+     * audio (they ask for pieces of the file rather than the whole thing).
+     */
+    private fun streamFile(out: OutputStream, req: Request, f: BridgeData.MediaFile) {
+        var input: java.io.InputStream = f.input
+        var total = f.length
+        var afd: android.content.res.AssetFileDescriptor? = null
+        try {
+            if (f.uri != null) {
+                afd = try { context.contentResolver.openAssetFileDescriptor(f.uri, "r") } catch (_: Exception) { null }
+                if (afd != null && afd.length >= 0) { total = afd.length; try { f.input.close() } catch (_: Exception) { }; input = afd.createInputStream() }
+                else if (total < 0 && afd != null) {
+                    val st = afd.parcelFileDescriptor.statSize
+                    if (st > 0) { total = st; try { f.input.close() } catch (_: Exception) { }; input = afd.createInputStream() }
+                }
+            }
             val disposition = if (req.query["download"] == "1") "attachment" else "inline"
             val safe = f.name.replace("\"", "")
-            val head = StringBuilder("HTTP/1.1 200 OK\r\nContent-Type: ${f.mime}\r\n")
-            if (f.length >= 0) head.append("Content-Length: ${f.length}\r\n")
-            head.append("Content-Disposition: $disposition; filename=\"$safe\"\r\nCache-Control: private, max-age=86400\r\nConnection: close\r\n\r\n")
+            val range = req.headers["range"]?.let { Regex("""bytes=(\d*)-(\d*)""").find(it) }
+            val head = StringBuilder()
+            var start = 0L; var end = total - 1
+            if (range != null && total > 0) {
+                val a = range.groupValues[1]; val b = range.groupValues[2]
+                if (a.isEmpty() && b.isNotEmpty()) { start = (total - b.toLong()).coerceAtLeast(0) }
+                else { start = a.toLongOrNull() ?: 0; if (b.isNotEmpty()) end = minOf(b.toLong(), total - 1) }
+                if (start > end || start >= total) {
+                    out.write("HTTP/1.1 416 Range Not Satisfiable\r\nContent-Range: bytes */$total\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray()); out.flush(); return
+                }
+                head.append("HTTP/1.1 206 Partial Content\r\nContent-Range: bytes $start-$end/$total\r\nContent-Length: ${end - start + 1}\r\n")
+            } else {
+                head.append("HTTP/1.1 200 OK\r\n")
+                if (total >= 0) head.append("Content-Length: $total\r\n")
+            }
+            head.append("Content-Type: ${f.mime}\r\nAccept-Ranges: bytes\r\nContent-Disposition: $disposition; filename=\"$safe\"\r\n")
+                .append("Cache-Control: private, max-age=86400\r\nConnection: close\r\n\r\n")
             out.write(head.toString().toByteArray())
-            input.copyTo(out, 64 * 1024)
+            if (start > 0) { var left = start; while (left > 0) { val n = input.skip(left); if (n <= 0) break; left -= n } }
+            var remaining = if (range != null && total > 0) end - start + 1 else Long.MAX_VALUE
+            val buf = ByteArray(64 * 1024)
+            while (remaining > 0) {
+                val n = input.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
+                if (n < 0) break
+                out.write(buf, 0, n); remaining -= n
+            }
             out.flush()
+        } finally {
+            try { input.close() } catch (_: Exception) { }
+            try { afd?.close() } catch (_: Exception) { }
         }
     }
 

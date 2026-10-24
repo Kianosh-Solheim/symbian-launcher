@@ -1031,7 +1031,18 @@ class BridgeData(private val context: Context) {
         } catch (_: Exception) { null }
     }
 
-    data class MediaFile(val input: InputStream, val length: Long, val mime: String, val name: String)
+    data class MediaFile(val input: InputStream, val length: Long, val mime: String, val name: String, val uri: Uri? = null)
+
+    /** An MMS attachment as a streamable file (so the browser can seek in videos and audio). */
+    fun mmsPartFile(id: Long): MediaFile? = try {
+        var type = "application/octet-stream"
+        context.contentResolver.query(Uri.parse("content://mms/part"), arrayOf("ct"), "_id = ?", arrayOf(id.toString()), null)?.use { c ->
+            if (c.moveToFirst()) type = c.getString(0) ?: type
+        }
+        val uri = Uri.parse("content://mms/part/$id")
+        val input = context.contentResolver.openInputStream(uri)
+        input?.let { MediaFile(it, -1, type, "attachment", uri) }
+    } catch (_: Exception) { null }
 
     fun openMedia(id: Long, video: Boolean, audio: Boolean = false): MediaFile? {
         if (if (audio) !hasAudio() else !hasMedia()) return null
@@ -1042,7 +1053,7 @@ class BridgeData(private val context: Context) {
                 if (c.moveToFirst()) { name = c.getString(0) ?: name; size = c.getLong(1); mime = c.getString(2) ?: mime }
             }
             val input = context.contentResolver.openInputStream(uri) ?: return null
-            MediaFile(input, size, mime, name)
+            MediaFile(input, size, mime, name, uri)
         } catch (_: Exception) { null }
     }
 

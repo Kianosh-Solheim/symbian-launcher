@@ -647,8 +647,9 @@ function badges() {
 }
 function renderNav() {
   const b = badges();
-  $("#nav").innerHTML = SECTIONS.map(([id, label, ic], i) =>
+  const navHtml = SECTIONS.map(([id, label, ic], i) =>
     `<button data-go="${id}" class="${S.view === id ? "active" : ""}" title="${label}${i < 10 ? ` (Alt+${(i + 1) % 10})` : ""}">${navIcon(ic)}<span class="lbl">${label}</span>${b[id] ? `<span class="badge">${b[id]}</span>` : ""}</button>`).join("");
+  if ($("#nav")._last !== navHtml) { $("#nav").innerHTML = navHtml; $("#nav")._last = navHtml; }
   // Phone layout: keep the current section visible in the bottom tab bar.
   if (isMobile()) { const a = $("#nav .active"); if (a && a.dataset.go !== lastNavShown) { lastNavShown = a.dataset.go; a.scrollIntoView({ inline: "center", block: "nearest" }); } }
 }
@@ -719,14 +720,26 @@ function render() {
   if (S.view === "screen" && $("#mstage") && !S.mirrorRebuild) { updateMirrorUi(); return; }
   S.mirrorRebuild = false;
   const m = $("#main");
+  // Don't interrupt a video or sound that is playing on the page: redraw when it pauses or ends.
+  const playing = [...m.querySelectorAll("video, audio")].find(v => !v.paused && !v.ended);
+  if (playing) {
+    if (!playing.dataset.waitRender) { playing.dataset.waitRender = "1"; const again = () => { delete playing.dataset.waitRender; render(); }; playing.addEventListener("pause", again, { once: true }); playing.addEventListener("ended", again, { once: true }); }
+    return;
+  }
+  const html = VIEWS[S.view]();
+  // Nothing changed: leave the page alone (no flicker, images and players keep their state).
+  if (html === lastMainHtml && lastMainView === S.view && m.firstChild) return;
+  lastMainHtml = html; lastMainView = S.view;
   const keepScroll = [...m.querySelectorAll(".pane, .bubbles, .home")].map(e => e.scrollTop);
   const focusedId = document.activeElement?.id; const sel = document.activeElement?.selectionStart;
-  m.innerHTML = VIEWS[S.view]();
+  const focusedVal = document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName) ? document.activeElement.value : null;
+  m.innerHTML = html;
   [...m.querySelectorAll(".pane, .home")].forEach((e, i) => { if (keepScroll[i] != null) e.scrollTop = keepScroll[i]; });
   const b = m.querySelector(".bubbles"); if (b && b.dataset.stick !== "0") b.scrollTop = b.scrollHeight;
-  if (focusedId) { const f = document.getElementById(focusedId); if (f) { f.focus(); try { if (sel != null) f.setSelectionRange(sel, sel); } catch {} } }
+  if (focusedId) { const f = document.getElementById(focusedId); if (f) { if (focusedVal != null && f.value !== focusedVal) f.value = focusedVal; f.focus(); try { if (sel != null) f.setSelectionRange(sel, sel); } catch {} } }
   wire(m);
 }
+let lastMainHtml = "", lastMainView = "";
 
 function renderStatus() {
   const st = S.status;
