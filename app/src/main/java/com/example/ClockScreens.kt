@@ -53,6 +53,8 @@ fun ClockAppScreen(
     onWorldClockOptions: (WorldClockItem) -> Unit = {}
 ) {
     val tabs = listOf("Clock", "Alarm", "Stopwatch", "Timer")
+    // Back must always leave the clock, even if nothing on the page has keypad focus.
+    androidx.activity.compose.BackHandler(enabled = true) { onBack() }
     
     Column(
         modifier = Modifier
@@ -439,6 +441,10 @@ fun ClockTopTabs(
     onSelectTab: (Int) -> Unit,
     state: LauncherState
 ) {
+    // Give the page keypad focus on entry; otherwise the soft keys (* and #, incl. "Back") can't reach it.
+    // The Alarm/Stopwatch/Timer tabs move focus to their first row afterwards.
+    val tabFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { try { tabFocus.requestFocus() } catch (_: Exception) { } }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -458,6 +464,7 @@ fun ClockTopTabs(
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                 fontFamily = state.currentFont.toFontFamily(),
                 modifier = Modifier
+                    .then(if (isSelected) Modifier.focusRequester(tabFocus) else Modifier)
                     .symbianHighlight(isFoc)
                     .focusable(interactionSource = intSource)
                     .clickable(interactionSource = intSource, indication = LocalIndication.current) {
