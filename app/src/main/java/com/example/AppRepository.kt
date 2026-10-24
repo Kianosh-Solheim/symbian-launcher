@@ -396,8 +396,11 @@ class AppRepository(private val context: Context) {
                     icon = iconPackManager.getIcon(globalIconPack, pkgName, actName, icon)
                 }
                 
-                // Only plain app icons get swapped for the S60 theme's own icons (icon packs are left alone).
-                if (overridePack == null && globalIconPack == null) IconCache.register(icon, pkgName)
+                // Your own picture wins over everything else.
+                val custom = CustomIcons.load(context, pkgName)
+                if (custom != null) icon = custom
+                // Plain app icons can be swapped for the S60 theme's own icons (icon packs/pictures are left alone).
+                IconCache.register(icon, if (custom == null && overridePack == null && globalIconPack == null) pkgName else "custom:$pkgName")
                 AppInfo(
                     packageName = pkgName,
                     activityName = actName,

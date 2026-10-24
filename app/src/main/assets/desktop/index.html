@@ -675,6 +675,7 @@ function load(view) {
   if (view === "photos" && !S.photos.items.length) loadPhotos();
   if (view === "wallet") refresh("wallet");
   if (view === "clipboard") refresh("clipboard");
+  if (view === "tools" && !S.apps) api("apps").then(a => { S.apps = a; if (S.view === "tools") render(); }).catch(() => { });
   clearInterval(mirrorPoll); mirrorPoll = null;
   if (view === "screen") { S.mirrorRebuild = true; mirrorRefresh(); mirrorPoll = setInterval(mirrorRefresh, 2000); }
   if (view === "home") refresh("birthdays");
@@ -930,6 +931,19 @@ const VIEWS = {
   tools() {
     setSoftkeys("Ring phone", () => act("ring", { on: true }, "Ringing phone for 30 s"));
     return `<div class="home">
+      <div class="card"><h3>App icons</h3><div class="in">
+        <p style="margin-top:0">Use your own picture as an app's icon on the phone. A plain background around it is removed in the Classic S60 Sky theme, which adds its gloss.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <img id="ic-prev" alt="" style="width:48px;height:48px;object-fit:contain">
+          <select id="ic-app" class="search" style="flex:1;min-width:180px">${(S.apps || []).map(a => `<option value="${esc(a.pkg)}" ${a.pkg === S.iconApp ? "selected" : ""}>${esc(a.name)}${a.custom ? " ★" : ""}</option>`).join("") || "<option>Loading…</option>"}</select>
+        </div>
+        <div class="actions" style="margin-top:10px">
+          <button class="btn" data-icpick="1">Choose picture…</button>
+          <button class="btn" data-icreset="1">Back to normal icon</button>
+          <input type="file" id="ic-file" accept="image/*" class="hidden">
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:0">Tip: you can also paste a picture (Ctrl+V) while this page is open.</p>
+      </div></div>
       <div class="card"><h3>Find my phone</h3><div class="in">
         <p style="margin-top:0">Rings at full volume for 30 seconds, even when the phone is silent.</p>
         <div class="actions"><button class="btn" data-ring="1">Ring</button><button class="btn" data-ring="0">Stop</button></div></div></div>
@@ -1137,7 +1151,29 @@ function wireMirror(m) {
   stage.onpaste = e => { const t = e.clipboardData?.getData("text"); if (t) { e.preventDefault(); e.stopPropagation(); flushMirrorText(); mirrorSend({ type: "text", text: t }); } };
 }
 
+async function uploadAppIcon(file) {
+  const pkg = $("#ic-app")?.value; if (!pkg || !file) return;
+  const r = await fetch(`/api/customicon?pkg=${q(pkg)}`, { method: "POST", headers: { "X-Token": token || "" }, body: file });
+  const j = await r.json().catch(() => ({ ok: false }));
+  if (j.ok === false) return toast(j.error || "Failed");
+  toast("Icon changed on the phone"); S.apps = await api("apps"); S.iconApp = pkg; render();
+}
+function wireIcons(m) {
+  const sel = m.querySelector("#ic-app"); if (!sel) return;
+  const prev = () => { const p = sel.value; if (p) m.querySelector("#ic-prev").src = `/api/icon?pkg=${q(p)}&s=${iconStyle()}&v=${Date.now()}&token=${q(token)}`; };
+  sel.onchange = () => { S.iconApp = sel.value; prev(); }; prev();
+  m.querySelector("[data-icpick]").onclick = () => m.querySelector("#ic-file").click();
+  m.querySelector("#ic-file").onchange = e => uploadAppIcon(e.target.files[0]);
+  m.querySelector("[data-icreset]").onclick = async () => { await act(`customicon/delete?pkg=${q(sel.value)}`, {}, "Normal icon restored"); S.apps = await api("apps"); render(); };
+}
+document.addEventListener("paste", e => {
+  if (S.view !== "tools" || !$("#ic-app")) return;
+  const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith("image/"));
+  if (f) { e.preventDefault(); uploadAppIcon(f); }
+});
+
 function wire(m) {
+  if (S.view === "tools") wireIcons(m);
   if (S.view === "screen") { wireMirror(m); updateMirrorUi(); }
   m.querySelectorAll("[data-playrec]").forEach(b => b.onclick = () => playRecording(b.dataset.playrec, b.dataset.title));
   m.querySelectorAll("[data-calltab]").forEach(b => b.onclick = () => { S.callTab = b.dataset.calltab; if (S.callTab === "rec") refresh("recordings"); render(); });

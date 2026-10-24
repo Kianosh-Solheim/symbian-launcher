@@ -210,6 +210,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     init {
+        viewModelScope.launch { CustomIcons.version.collect { if (it > 0) loadApps(debounceMs = 0) } }
         loadSettings()
         refreshAll()
         startWeatherLoop()
@@ -788,7 +789,10 @@ _state.update { it.copy(individualIconPacks = currentMap) }
         loadApps(debounceMs = 0)
     }
 
+    fun setCustomIcon(context: Context, pkg: String, bytes: ByteArray): Boolean = CustomIcons.save(context, pkg, bytes)
+
     fun clearIndividualIconPack(appPackageName: String) {
+        CustomIcons.remove(getApplication(), appPackageName)
         val currentMap = _state.value.individualIconPacks.toMutableMap()
         currentMap.remove(appPackageName)
         saveIndividualIconPacks(currentMap)

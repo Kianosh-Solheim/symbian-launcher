@@ -660,12 +660,35 @@ class BridgeData(private val context: Context) {
         svc.clearAll(); return ok()
     }
 
+    /** Launchable apps, for choosing which one gets your own icon picture. */
+    fun appsList(): JSONArray {
+        val pm = context.packageManager
+        val arr = JSONArray()
+        pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+            .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
+            .distinctBy { it.first }.filter { it.first != context.packageName }.sortedBy { it.second.lowercase() }
+            .forEach { (p, n) -> arr.put(JSONObject().put("pkg", p).put("name", n).put("custom", CustomIcons.has(context, p))) }
+        return arr
+    }
+
+    fun setCustomIcon(pkg: String, bytes: ByteArray): JSONObject {
+        if (pkg.isBlank()) return fail("No app chosen")
+        if (!CustomIcons.save(context, pkg, bytes)) return fail("That picture can't be read")
+        iconCache.keys.removeAll { it.endsWith(pkg) }
+        return ok()
+    }
+
+    fun removeCustomIcon(pkg: String): JSONObject {
+        CustomIcons.remove(context, pkg); iconCache.keys.removeAll { it.endsWith(pkg) }
+        return ok()
+    }
+
     fun appIcon(pkg: String): ByteArray? = iconCache.getOrPut(when { IconCache.win95 -> "95:$pkg"; IconCache.s60 -> "60:$pkg"; else -> pkg }) {
         try {
-            val d = context.packageManager.getApplicationIcon(pkg)
+            val d = CustomIcons.load(context, pkg) ?: context.packageManager.getApplicationIcon(pkg)
             val bmp = when {
                 IconCache.win95 -> Win95Pixelizer.convert(d)
-                IconCache.s60 -> S60Styler.convert(d, pkg)
+                IconCache.s60 -> S60Styler.convert(d, if (CustomIcons.has(context, pkg)) "custom:$pkg" else pkg)
                 else -> d.toBitmap(96, 96, Bitmap.Config.ARGB_8888)
             }
             ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()

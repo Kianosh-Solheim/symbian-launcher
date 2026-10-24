@@ -140,7 +140,7 @@ object S60Styler {
     }
 
     fun convert(d: Drawable, pkg: String?): Bitmap {
-        generic[pkg]?.let { name -> S60Icons.bitmap(name, OUT)?.let { return it } }
+        if (pkg?.startsWith("custom:") != true) generic[pkg]?.let { name -> S60Icons.bitmap(name, OUT)?.let { return it } }
         val inner = (OUT * 0.84f).toInt()
         val off = (OUT - inner) / 2
         val src = fit(shapeOnly(d), inner)

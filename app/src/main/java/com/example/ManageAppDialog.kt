@@ -125,6 +125,18 @@ fun ManageAppDialogHandler(
         
         val context = LocalContext.current
         val isPinned = state.pinnedApps.any { it.packageName == selectedApp.packageName }
+        // Your own picture as this app's icon.
+        val picturePicker = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+        ) { uri ->
+            if (uri != null) {
+                val bytes = try { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } } catch (_: Exception) { null }
+                val ok = bytes != null && viewModel.setCustomIcon(context, selectedApp.packageName, bytes)
+                android.widget.Toast.makeText(context, if (ok) "Icon changed" else "That picture can't be used", android.widget.Toast.LENGTH_SHORT).show()
+                showIconPackSelector = false
+                onDismiss()
+            }
+        }
         
         val haptic = androidx.compose.ui.platform.LocalView.current.let { view ->
             remember { object : androidx.compose.ui.hapticfeedback.HapticFeedback {
@@ -317,6 +329,15 @@ fun ManageAppDialogHandler(
                                 viewModel.clearIndividualIconPack(selectedApp.packageName)
                                 showIconPackSelector = false
                                 onDismiss()
+                            }
+                        )
+                    }
+                    item {
+                        SettingsMenuItem(
+                            title = "Picture from gallery…",
+                            haptic = haptic,
+                            onClick = {
+                                picturePicker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
                             }
                         )
                     }

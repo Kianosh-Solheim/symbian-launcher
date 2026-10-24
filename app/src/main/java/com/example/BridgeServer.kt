@@ -213,6 +213,12 @@ class BridgeServer(
         val r: Any? = when (req.method to seg[0]) {
             "GET" to "status" -> data.status()
             "GET" to "mirror" -> ScreenMirror.status(context)
+            "GET" to "apps" -> data.appsList()
+            "POST" to "customicon" -> when (seg.getOrNull(1)) {
+                "delete" -> data.removeCustomIcon(req.query["pkg"] ?: "")
+                else -> if (req.contentLength > 10_000_000) BridgeData.fail("Picture is larger than 10 MB")
+                    else data.setCustomIcon(req.query["pkg"] ?: "", req.body(10_000_000))
+            }
             "POST" to "mirror" -> when (seg.getOrNull(1)) {
                 "start" -> { ScreenMirror.requestStart(context); ScreenMirror.status(context) }
                 "stop" -> { ScreenMirror.stop(context); BridgeData.ok() }
