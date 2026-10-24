@@ -60,6 +60,7 @@ import androidx.compose.ui.composed
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Paint
@@ -117,6 +118,33 @@ val LocalSymbianSoundsEnabled = androidx.compose.runtime.staticCompositionLocalO
 
 /** True when the Windows 95 theme is active: highlights become grey 3-D buttons. */
 val LocalWin95 = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** True when the Classic S60 Sky theme is active (glossy navy bars and the sky backdrop). */
+val LocalS60 = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** Navy gloss used for the S60 status and soft-key bars. */
+val S60BarBrush = androidx.compose.ui.graphics.Brush.verticalGradient(
+    listOf(Color(0xFF2A3A8E), Color(0xFF16226A), Color(0xFF0B1245))
+)
+
+/**
+ * S60 sky backdrop: deep blue at the top fading to turquoise, with large pale "light waves"
+ * drifting across, drawn once per size. [alpha] < 1 lets a wallpaper show through.
+ */
+fun Modifier.s60Backdrop(alpha: Float = 1f): Modifier = this.drawWithCache {
+    val w = size.width; val h = size.height
+    val sky = androidx.compose.ui.graphics.Brush.verticalGradient(
+        listOf(Color(0xFF1662C8), Color(0xFF1E86DA), Color(0xFF2BA9DC), Color(0xFF3CC3D6)))
+    val wave = Color.White.copy(alpha = 0.10f)
+    val wave2 = Color(0xFF7FE3F0).copy(alpha = 0.12f)
+    onDrawBehind {
+        drawRect(sky, alpha = alpha)
+        drawOval(wave, topLeft = androidx.compose.ui.geometry.Offset(-w * 0.35f, h * 0.18f), size = androidx.compose.ui.geometry.Size(w * 1.2f, h * 0.22f), alpha = alpha)
+        drawOval(wave2, topLeft = androidx.compose.ui.geometry.Offset(w * 0.25f, h * 0.36f), size = androidx.compose.ui.geometry.Size(w * 1.1f, h * 0.20f), alpha = alpha)
+        drawOval(wave, topLeft = androidx.compose.ui.geometry.Offset(-w * 0.2f, h * 0.55f), size = androidx.compose.ui.geometry.Size(w * 1.4f, h * 0.26f), alpha = alpha)
+        drawOval(wave2, topLeft = androidx.compose.ui.geometry.Offset(w * 0.1f, h * 0.78f), size = androidx.compose.ui.geometry.Size(w * 1.2f, h * 0.3f), alpha = alpha)
+    }
+}
 
 /** Windows 95 bevel: grey face, white/light top-left edges, dark/black bottom-right (reversed when sunken). */
 fun Modifier.win95Bevel(sunken: Boolean = false): Modifier = this.drawBehind {
@@ -264,6 +292,7 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.runtime.CompositionLocalProvider(
                     LocalSymbianSoundsEnabled provides state.symbianSoundsEnabled,
                     LocalWin95 provides (state.currentTheme == AppTheme.WIN95),
+                    LocalS60 provides (state.currentTheme == AppTheme.S60),
                     androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(
                         density = currentDensity.density,
                         fontScale = currentDensity.fontScale * state.textScale

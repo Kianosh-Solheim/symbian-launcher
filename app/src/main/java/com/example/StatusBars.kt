@@ -141,7 +141,7 @@ fun SymbianTopBar(state: LauncherState, batteryInfo: BatteryInfo, signalLevel: I
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(androidx.compose.material3.MaterialTheme.colorScheme.surface)
+            .then(if (LocalS60.current) Modifier.background(S60BarBrush) else Modifier.background(androidx.compose.material3.MaterialTheme.colorScheme.surface))
             .padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
@@ -567,7 +567,9 @@ fun SymbianBottomBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (win95) Modifier.win95Bevel() else Modifier.background(if (isExtremeBatterySaver) Color.Black else androidx.compose.material3.MaterialTheme.colorScheme.surface))
+            .then(if (win95) Modifier.win95Bevel()
+                else if (LocalS60.current && !isExtremeBatterySaver) Modifier.background(S60BarBrush)
+                else Modifier.background(if (isExtremeBatterySaver) Color.Black else androidx.compose.material3.MaterialTheme.colorScheme.surface))
             .padding(horizontal = if (win95) 4.dp else 12.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

@@ -789,7 +789,11 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding(), top = topPadding)
-                .background(if (state.isExtremeBatterySaver) Color.Black else if (state.showWallpaper) MaterialTheme.colorScheme.background.copy(alpha = state.wallpaperTransparency) else MaterialTheme.colorScheme.background)
+                .then(
+                    if (!state.isExtremeBatterySaver && state.currentTheme == AppTheme.S60)
+                        Modifier.s60Backdrop(if (state.showWallpaper) state.wallpaperTransparency else 1f)
+                    else Modifier.background(if (state.isExtremeBatterySaver) Color.Black else if (state.showWallpaper) MaterialTheme.colorScheme.background.copy(alpha = state.wallpaperTransparency) else MaterialTheme.colorScheme.background)
+                )
         ) {
             if (!isExtremeMain && currentScreen != Screen.AGENDA && currentScreen != Screen.CONTACT_DETAIL && currentScreen != Screen.USAGE && currentScreen != Screen.WEATHER_FORECAST && currentScreen != Screen.WALLET && currentScreen != Screen.WALLET_PASS_DETAIL && currentScreen != Screen.CLOCK && currentScreen != Screen.CALCULATOR) {
                 SymbianTopBar(state, batteryInfo, signalLevel, onWeatherClick = { navigateTo(Screen.WEATHER_FORECAST) }, onClockClick = { ClockApps.open(context, state) })

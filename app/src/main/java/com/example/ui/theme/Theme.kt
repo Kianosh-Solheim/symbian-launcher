@@ -75,6 +75,16 @@ private val PinkScheme = lightColorScheme(
     secondary = PinkHighlight
 )
 
+/** Classic S60 "sky" look: navy bars, blue-to-turquoise backdrop with soft light waves, yellow selection. */
+private val S60Scheme = lightColorScheme(
+    background = Color(0xFF1E7FD8),
+    surface = Color(0xFF111C5E),
+    onBackground = Color.White,
+    onSurface = Color.White,
+    primary = Color(0xFF15367F),
+    secondary = Color(0xFFF0C93A)
+)
+
 /** Classic 1995 desktop: teal background, navy title bars, grey 3-D chrome. */
 private val Win95Scheme = lightColorScheme(
     background = Color(0xFF008080),
@@ -99,6 +109,7 @@ fun MyApplicationTheme(
         AppTheme.YELLOW -> YellowScheme
         AppTheme.PINK -> PinkScheme
         AppTheme.WIN95 -> Win95Scheme
+        AppTheme.S60 -> S60Scheme
         AppTheme.CUSTOM -> lightColorScheme(
             background = state.customBgColor?.let { Color(it) } ?: DefaultBackground,
             surface = state.customBarColor?.let { Color(it) } ?: state.customBgColor?.let { Color(it).copy(alpha=0.7f) } ?: DefaultSurface,
