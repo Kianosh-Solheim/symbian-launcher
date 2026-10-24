@@ -1813,7 +1813,10 @@ function clipboardView() {
         <button class="btn small" data-copytext="${esc(h.text)}">Copy here</button>${h.source === "phone" ? "" : `<button class="btn small" data-tophone="${esc(h.text)}">To phone</button>`}</div>`).join("")
         : `<div class="empty">Copied text will appear here</div>`}
     </div>
-    ${c.sync && !c.instant ? `<div class="card" style="grid-column:1/-1"><h3>Make phone → computer instant (one-time setup)</h3><div class="in">
+    ${c.sync && c.readLogs && c.overlay && c.instantAsks ? `<div class="card" style="grid-column:1/-1"><h3>Instant phone → computer</h3><div class="in">
+      <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="clipinstant" ${c.instantOn ? "checked" : ""}> Catch every copy straight away</label>
+      <p class="note-sm">Android asks once each time the launcher starts ("allow access to all device logs?") — choose <b>Allow one-time access</b>. If you choose Don't allow, this switches itself off and won't ask again. When off, copies are shared when you return to the phone's home screen.</p></div></div>` : ""}
+    ${c.sync && !(c.readLogs && c.overlay) ? `<div class="card" style="grid-column:1/-1"><h3>Make phone → computer instant (one-time setup)</h3><div class="in">
       <p style="margin-top:0">Android only lets the app in front read the clipboard. With two extra permissions, granted once over USB, the launcher can catch every copy straight away. Connect the phone with USB debugging on, then run on the computer:</p>
       ${cmds.map(x => `<code class="cmd">${esc(x)}</code>`).join("")}
       <div class="actions"><button class="btn small" data-copytext="${esc(cmds.join("\n"))}">Copy commands</button></div>
@@ -1831,6 +1834,8 @@ function wireClipboard(m) {
   if (send) send.onclick = async () => { const t = $("#cliptext").value; if (!t) return; const r = await act("clipboard", { text: t }, "On the phone's clipboard"); if (r.ok) { $("#cliptext").value = ""; refresh("clipboard"); } };
   const sw = $("#clipsync", m);
   if (sw) sw.onchange = async () => { S.clip = await act("clipboard/settings", { sync: sw.checked }); setupClipPoll(); render(); };
+  const ci = $("#clipinstant", m);
+  if (ci) ci.onchange = async () => { S.clip = await act("clipboard/settings", { instant: ci.checked }); render(); };
   const allow = $("#clipallow", m);
   if (allow) allow.onclick = async () => {
     try { await navigator.clipboard.readText(); } catch {}

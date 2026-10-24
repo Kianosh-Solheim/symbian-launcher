@@ -47,7 +47,18 @@ object ClipboardHub {
     fun canReadLogs(c: Context) = ContextCompat.checkSelfPermission(c, android.Manifest.permission.READ_LOGS) ==
         android.content.pm.PackageManager.PERMISSION_GRANTED
     fun canOverlay(c: Context) = Settings.canDrawOverlays(c)
-    fun instantAvailable(c: Context) = canReadLogs(c) && canOverlay(c)
+    /**
+     * Android 13+ asks "allow access to all device logs?" every time the log watcher starts, so there
+     * instant mode is opt-in, runs once per launcher start, and switches itself off if you decline.
+     */
+    fun instantWanted(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .getBoolean("clip_instant", android.os.Build.VERSION.SDK_INT < 33)
+    fun setInstant(c: Context, on: Boolean) {
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("clip_instant", on).apply()
+        if (on) { declined = false; startInstantWatcher(c.applicationContext) } else stopInstantWatcher()
+    }
+    @Volatile private var declined = false
+    fun instantAvailable(c: Context) = canReadLogs(c) && canOverlay(c) && instantWanted(c)
 
     @Synchronized
     private fun record(text: String, source: String): Clip? {
@@ -91,7 +102,7 @@ object ClipboardHub {
     // ───────── Instant mode ─────────
 
     fun startInstantWatcher(context: Context) {
-        if (watcher?.isAlive == true || !syncEnabled(context) || !instantAvailable(context)) return
+        if (watcher?.isAlive == true || declined || !syncEnabled(context) || !instantAvailable(context)) return
         val pkg = context.packageName
         // Registering a listener makes the system log a denial line for us on every copy.
         Handler(Looper.getMainLooper()).post {
@@ -100,6 +111,7 @@ object ClipboardHub {
             } catch (_: Exception) { }
         }
         watcher = thread(name = "clip-watch", isDaemon = true) {
+            val started = System.currentTimeMillis()
             try {
                 val p = Runtime.getRuntime().exec(arrayOf("logcat", "-T", "1", "-v", "brief", "ClipboardService:E", "*:S"))
                 watcherProcess = p
@@ -113,6 +125,11 @@ object ClipboardHub {
                 }
             } catch (e: Exception) {
                 Log.w("SymbianClip", "Clipboard watcher stopped", e)
+            }
+            // Ended by itself within a minute (not by us): log access was declined — don't ask again.
+            if (watcher === Thread.currentThread() && System.currentTimeMillis() - started < 60_000 && android.os.Build.VERSION.SDK_INT >= 33) {
+                declined = true
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("clip_instant", false).apply()
             }
         }
     }

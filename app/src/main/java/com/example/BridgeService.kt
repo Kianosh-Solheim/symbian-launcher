@@ -221,7 +221,10 @@ class BridgeService : Service() {
                 (getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager).listen(phoneListener,
                     if (want) PhoneStateListener.LISTEN_CALL_STATE or PhoneStateListener.LISTEN_SIGNAL_STRENGTHS else PhoneStateListener.LISTEN_CALL_STATE)
             } catch (_: Exception) { }
-            if (want) ClipboardHub.startInstantWatcher(applicationContext) else ClipboardHub.stopInstantWatcher()
+            // On Android 13+ every restart of the log watcher triggers a permission prompt, so once
+            // running it stays running instead of stopping when the browser disconnects.
+            if (want) ClipboardHub.startInstantWatcher(applicationContext)
+            else if (Build.VERSION.SDK_INT < 33) ClipboardHub.stopInstantWatcher()
         }
         main.post { updateNotification() }
     }

@@ -1316,11 +1316,14 @@ class BridgeData(private val context: Context) {
         .put("instant", ClipboardHub.instantAvailable(context))
         .put("readLogs", ClipboardHub.canReadLogs(context))
         .put("overlay", ClipboardHub.canOverlay(context))
+        .put("instantOn", ClipboardHub.instantWanted(context))
+        .put("instantAsks", Build.VERSION.SDK_INT >= 33)
         .put("package", context.packageName)
         .put("history", ClipboardHub.historyJson())
 
     fun clipboardSettings(j: JSONObject): JSONObject {
-        ClipboardHub.setSync(context, j.optBoolean("sync"))
+        if (j.has("instant")) ClipboardHub.setInstant(context, j.optBoolean("instant"))
+        if (j.has("sync")) ClipboardHub.setSync(context, j.optBoolean("sync"))
         return clipboardState().put("ok", true)
     }
 
