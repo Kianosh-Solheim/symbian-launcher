@@ -256,6 +256,11 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
     }
 
 
+    val openClock by MainActivity.openClockRequest.collectAsState()
+    LaunchedEffect(openClock) {
+        if (openClock) { MainActivity.openClockRequest.value = false; viewModel.setClockTab(1); navigateTo(Screen.CLOCK) }
+    }
+
     BackHandler(enabled = state.t9Query.isNotEmpty()) {
         viewModel.backspaceT9()
     }
@@ -728,6 +733,10 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                         return@onPreviewKeyEvent true
                     }
 
+                    if (keyCode in Key.Zero.keyCode..Key.Nine.keyCode &&
+                        (currentScreen == Screen.ALARM_EDIT || (currentScreen == Screen.CLOCK && state.clockTab == 3))) {
+                        return@onPreviewKeyEvent false // typed straight into the alarm time / timer length
+                    }
                     if (keyCode in Key.Zero.keyCode..Key.Nine.keyCode) {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         if (currentScreen == Screen.APP_DRAWER || currentScreen == Screen.CONTACTS_DRAWER) {

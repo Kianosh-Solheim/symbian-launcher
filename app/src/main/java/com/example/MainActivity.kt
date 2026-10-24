@@ -180,6 +180,16 @@ fun Modifier.symbianHighlight(
 }
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        const val ACTION_OPEN_CLOCK = "no.kianosh.symbianlauncher.OPEN_CLOCK"
+        /** Set when something (the status-bar alarm icon) asks for the Alarm tab; LauncherScreen consumes it. */
+        val openClockRequest = kotlinx.coroutines.flow.MutableStateFlow(false)
+    }
+
+    private fun handleIntent(i: Intent?) { if (i?.action == ACTION_OPEN_CLOCK) openClockRequest.value = true }
+
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); handleIntent(intent) }
+
     override fun onStart() { super.onStart(); AppVisibility.visible = true }
     override fun onStop() { AppVisibility.visible = false; super.onStop() }
 
@@ -193,6 +203,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         BridgeService.restoreIfEnabled(this)
+        handleIntent(intent)
+        AlarmStore.load(this)
+        AlarmRingService.ensureChannels(this)
+        AlarmStore.scheduleAll(this) // keeps alarms armed after updates, even if the phone never rebooted
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         setContent {
             val viewModel: LauncherViewModel = viewModel()

@@ -1242,66 +1242,16 @@ _state.update { it.copy(hapticIntensity = intensity) }
     }
     
     private fun loadAlarms() {
-        val str = prefs.getString("alarms", "[]") ?: "[]"
-        val list = mutableListOf<AlarmItem>()
-        try {
-            val array = org.json.JSONArray(str)
-            for (i in 0 until array.length()) {
-                val obj = array.getJSONObject(i)
-                list.add(AlarmItem(
-                    id = obj.getString("id"),
-                    hour = obj.getInt("hour"),
-                    minute = obj.getInt("minute"),
-                    label = obj.optString("label", "Alarm"),
-                    enabled = obj.optBoolean("enabled", true)
-                ))
-            }
-        } catch (e: Exception) { e.printStackTrace() }
-        _state.update { it.copy(alarms = list) }
+        val app = getApplication<Application>()
+        AlarmStore.load(app)
+        viewModelScope.launch { AlarmStore.alarms.collect { list -> _state.update { it.copy(alarms = list) } } }
     }
 
-    private fun saveAlarms(list: List<AlarmItem>) {
-        val array = org.json.JSONArray()
-        list.forEach {
-            val obj = org.json.JSONObject()
-            obj.put("id", it.id)
-            obj.put("hour", it.hour)
-            obj.put("minute", it.minute)
-            obj.put("label", it.label)
-            obj.put("enabled", it.enabled)
-            array.put(obj)
-        }
-        prefs.edit().putString("alarms", array.toString()).apply()
-        _state.update { it.copy(alarms = list) }
-    }
+    fun addAlarm(context: android.content.Context, alarm: AlarmItem) = AlarmStore.upsert(context, alarm.copy(enabled = true))
 
-    fun addAlarm(context: android.content.Context, alarm: AlarmItem) {
-        val list = _state.value.alarms.toMutableList()
-        list.add(alarm)
-        saveAlarms(list)
-        if (alarm.enabled) AlarmUtils.scheduleAlarm(context, alarm)
-    }
+    fun updateAlarm(context: android.content.Context, alarm: AlarmItem) = AlarmStore.upsert(context, alarm)
 
-    fun updateAlarm(context: android.content.Context, alarm: AlarmItem) {
-        val list = _state.value.alarms.toMutableList()
-        val idx = list.indexOfFirst { it.id == alarm.id }
-        if (idx != -1) {
-            list[idx] = alarm
-            saveAlarms(list)
-            if (alarm.enabled) AlarmUtils.scheduleAlarm(context, alarm)
-            else AlarmUtils.cancelAlarm(context, alarm.id)
-        }
-    }
-
-    fun deleteAlarm(context: android.content.Context, id: String) {
-        val list = _state.value.alarms.toMutableList()
-        val idx = list.indexOfFirst { it.id == id }
-        if (idx != -1) {
-            list.removeAt(idx)
-            saveAlarms(list)
-            AlarmUtils.cancelAlarm(context, id)
-        }
-    }
+    fun deleteAlarm(context: android.content.Context, id: String) = AlarmStore.delete(context, id)
 
     private fun loadWorldClocks() {
         val str = prefs.getString("world_clocks", null)

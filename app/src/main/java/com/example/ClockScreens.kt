@@ -38,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 
 @Composable
 fun ClockAppScreen(
@@ -468,295 +470,6 @@ fun ClockTopTabs(
 }
 
 @Composable
-fun AlarmTab(state: LauncherState, haptic: HapticFeedback, viewModel: LauncherViewModel, onAddAlarm: () -> Unit, onAlarmOptions: (AlarmItem) -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
-    ) {
-        items(state.alarms) { alarm ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val intSource = remember { MutableInteractionSource() }
-                val isFoc by intSource.collectIsFocusedAsState()
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .symbianHighlight(isFoc)
-                        .focusable(interactionSource = intSource)
-                        .clickable(interactionSource = intSource, indication = LocalIndication.current) {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            viewModel.updateAlarm(context, alarm.copy(enabled = !alarm.enabled))
-                        }
-                        .padding(vertical = 12.dp, horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(alarm.toDisplayString(), color = if (isFoc) Color.Black else Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        Text(alarm.label, color = if (isFoc) Color.DarkGray else Color.LightGray, fontSize = 14.sp, fontFamily = state.currentFont.toFontFamily())
-                    }
-                    Text(
-                        text = if (alarm.enabled) "On" else "Off",
-                        color = if (isFoc) Color.Black else Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = state.currentFont.toFontFamily()
-                    )
-                }
-                
-                val moreIntSource = remember { MutableInteractionSource() }
-                val moreFoc by moreIntSource.collectIsFocusedAsState()
-                IconButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onAlarmOptions(alarm)
-                    },
-                    interactionSource = moreIntSource,
-                    modifier = Modifier.symbianHighlight(moreFoc)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Options",
-                        tint = if (moreFoc) Color.Black else Color.White
-                    )
-                }
-            }
-            HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-        }
-        
-        item {
-            val intSource = remember { MutableInteractionSource() }
-            val isFoc by intSource.collectIsFocusedAsState()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .symbianHighlight(isFoc)
-                    .focusable(interactionSource = intSource)
-                    .clickable(interactionSource = intSource, indication = LocalIndication.current) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onAddAlarm()
-                    }
-                    .padding(vertical = 12.dp, horizontal = 4.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Add", tint = if (isFoc) Color.Black else Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Add Alarm", color = if (isFoc) Color.Black else Color.White, fontSize = 18.sp, fontFamily = state.currentFont.toFontFamily())
-            }
-            HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-        }
-    }
-}
-
-@Composable
-fun StopwatchTab(state: LauncherState, haptic: HapticFeedback) {
-    var isRunning by remember { mutableStateOf(false) }
-    var timeMillis by remember { mutableStateOf(0L) }
-    
-    LaunchedEffect(isRunning) {
-        if (isRunning) {
-            val start = System.currentTimeMillis() - timeMillis
-            // Frame-synchronised: updates once per display frame and pauses when off-screen,
-            // instead of waking the CPU 100 times a second.
-            while (isRunning) {
-                androidx.compose.runtime.withFrameMillis { }
-                timeMillis = System.currentTimeMillis() - start
-            }
-        }
-    }
-    
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val maxW = maxWidth
-        val maxH = maxHeight
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            val minutes = (timeMillis / 60000).toString().padStart(2, '0')
-            val seconds = ((timeMillis % 60000) / 1000).toString().padStart(2, '0')
-            val fraction = ((timeMillis % 1000) / 10).toString().padStart(2, '0')
-            
-            val timeFontSize = minOf(maxW * 0.12f, 48.dp)
-            Text(
-                text = "$minutes:$seconds.$fraction",
-                color = Color.White,
-                fontSize = timeFontSize.value.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                maxLines = 1
-            )
-            
-            Spacer(modifier = Modifier.height(maxH * 0.1f))
-            
-            HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-            
-            val btnSource1 = remember { MutableInteractionSource() }
-            val btnFoc1 by btnSource1.collectIsFocusedAsState()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .symbianHighlight(btnFoc1)
-                    .focusable(interactionSource = btnSource1)
-                    .clickable(interactionSource = btnSource1, indication = LocalIndication.current) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        isRunning = !isRunning
-                    }
-                    .padding(vertical = 12.dp, horizontal = 12.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(if (isRunning) "Stop" else "Start", color = if (btnFoc1) Color.Black else Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
-            }
-            
-            HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-            
-            val btnSource2 = remember { MutableInteractionSource() }
-            val btnFoc2 by btnSource2.collectIsFocusedAsState()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .symbianHighlight(btnFoc2)
-                    .focusable(interactionSource = btnSource2)
-                    .clickable(interactionSource = btnSource2, indication = LocalIndication.current) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        if (!isRunning) timeMillis = 0L
-                    }
-                    .padding(vertical = 12.dp, horizontal = 12.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text("Reset", color = if (btnFoc2) Color.Black else Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
-            }
-            
-            HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-        }
-    }
-}
-
-@Composable
-fun TimerTab(state: LauncherState, haptic: HapticFeedback) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val maxW = maxWidth
-        val maxH = maxHeight
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            val isLandscape = maxW > maxH
-            val circleSize = minOf(maxW, maxH) * if (isLandscape) 0.5f else 0.4f
-            
-            Box(
-                modifier = Modifier.size(circleSize),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.2f),
-                        style = Stroke(width = 4.dp.toPx())
-                    )
-                    drawArc(
-                        color = Color.White,
-                        startAngle = -90f,
-                        sweepAngle = 270f,
-                        useCenter = false,
-                        style = Stroke(width = 4.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                    )
-                }
-                
-                val timeFontSize = minOf(circleSize * 0.2f, 32.dp)
-                Text(
-                    text = "15:00",
-                    color = Color.White,
-                    fontSize = timeFontSize.value.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(maxH * 0.08f))
-            
-            HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-            
-            val btnSource = remember { MutableInteractionSource() }
-            val btnFoc by btnSource.collectIsFocusedAsState()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .symbianHighlight(btnFoc)
-                    .focusable(interactionSource = btnSource)
-                    .clickable(interactionSource = btnSource, indication = LocalIndication.current) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
-                    .padding(vertical = 12.dp, horizontal = 12.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text("Start", color = if (btnFoc) Color.Black else Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
-            }
-            
-            HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-        }
-    }
-}
-
-@Composable
-fun AlarmOptionsScreen(state: LauncherState, alarm: AlarmItem, haptic: HapticFeedback, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.Center) {
-        val intSource1 = remember { MutableInteractionSource() }
-        val isFoc1 by intSource1.collectIsFocusedAsState()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .symbianHighlight(isFoc1)
-                .focusable(interactionSource = intSource1)
-                .clickable(interactionSource = intSource1, indication = LocalIndication.current) { onEdit() }
-                .padding(vertical = 12.dp, horizontal = 4.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text("Edit", color = if (isFoc1) Color.Black else Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
-        }
-        HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-        
-        val intSource2 = remember { MutableInteractionSource() }
-        val isFoc2 by intSource2.collectIsFocusedAsState()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .symbianHighlight(isFoc2)
-                .focusable(interactionSource = intSource2)
-                .clickable(interactionSource = intSource2, indication = LocalIndication.current) { onDelete() }
-                .padding(vertical = 12.dp, horizontal = 4.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text("Edit", color = if (isFoc2) Color.Black else Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
-        }
-        HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-        
-        val intSourceDel = remember { MutableInteractionSource() }
-        val isFocDel by intSourceDel.collectIsFocusedAsState()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .symbianHighlight(isFocDel)
-                .focusable(interactionSource = intSourceDel)
-                .clickable(interactionSource = intSourceDel, indication = LocalIndication.current) { onDelete() }
-                .padding(vertical = 12.dp, horizontal = 4.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text("Delete", color = if (isFoc2) Color.Black else Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
-        }
-        HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-    }
-}
-
-@Composable
 fun WorldClockOptionsScreen(state: LauncherState, haptic: HapticFeedback, onEdit: () -> Unit, onDelete: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.Center) {
         val intSource = remember { MutableInteractionSource() }
@@ -788,78 +501,6 @@ fun WorldClockOptionsScreen(state: LauncherState, haptic: HapticFeedback, onEdit
             Text("Delete", color = if (isFoc) Color.Black else Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
         }
         HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
-    }
-}
-
-@Composable
-fun AlarmEditScreen(state: LauncherState, alarm: AlarmItem?, haptic: HapticFeedback, onSave: (AlarmItem) -> Unit) {
-    var hour by remember { mutableStateOf(alarm?.hour ?: 8) }
-    var minute by remember { mutableStateOf(alarm?.minute ?: 0) }
-    var label by remember { mutableStateOf(alarm?.label ?: "Alarm") }
-    
-    val context = androidx.compose.ui.platform.LocalContext.current
-    
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.Center) {
-        val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
-        LaunchedEffect(Unit) { try { focusRequester.requestFocus() } catch (e: Exception) {} }
-        
-        Text("Hour: $hour", color = Color.White, fontSize = 24.sp, fontFamily = state.currentFont.toFontFamily())
-        val intSourceH = remember { MutableInteractionSource() }
-        val isFocH by intSourceH.collectIsFocusedAsState()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (alarm == null) Modifier.focusRequester(focusRequester) else Modifier)
-                .symbianHighlight(isFocH)
-                .focusable(interactionSource = intSourceH)
-                .clickable(interactionSource = intSourceH, indication = LocalIndication.current) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    hour = (hour + 1) % 24
-                }
-                .padding(vertical = 12.dp, horizontal = 4.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text("Next Hour", color = if (isFocH) Color.Black else Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text("Minute: $minute", color = Color.White, fontSize = 24.sp, fontFamily = state.currentFont.toFontFamily())
-        val intSourceM = remember { MutableInteractionSource() }
-        val isFocM by intSourceM.collectIsFocusedAsState()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .symbianHighlight(isFocM)
-                .focusable(interactionSource = intSourceM)
-                .clickable(interactionSource = intSourceM, indication = LocalIndication.current) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    minute = (minute + 5) % 60
-                }
-                .padding(vertical = 12.dp, horizontal = 4.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text("Next Minute (+5)", color = if (isFocM) Color.Black else Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        val intSourceSave = remember { MutableInteractionSource() }
-        val isFocSave by intSourceSave.collectIsFocusedAsState()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .symbianHighlight(isFocSave)
-                .focusable(interactionSource = intSourceSave)
-                .clickable(interactionSource = intSourceSave, indication = LocalIndication.current) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onSave(alarm?.copy(hour = hour, minute = minute, label = label) ?: AlarmItem(hour = hour, minute = minute, label = label))
-                }
-                .padding(vertical = 12.dp, horizontal = 4.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text("Save", color = if (isFocSave) Color.Black else Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
-        }
     }
 }
 
@@ -908,6 +549,317 @@ fun WorldClockSearchScreen(state: LauncherState, haptic: HapticFeedback, onSelec
                 Text(city.first, color = if (isFoc) Color.Black else Color.White, fontSize = 20.sp, fontFamily = state.currentFont.toFontFamily())
             }
             HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
+        }
+    }
+}
+
+// ───────────── Shared D-pad rows ─────────────
+
+@Composable
+private fun clockFg(focused: Boolean) = if (focused) Color.Black else win95Fg()
+
+@Composable
+fun ClockRow(
+    title: String,
+    state: LauncherState,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    value: String? = null,
+    big: Boolean = false,
+    focusRequester: FocusRequester? = null,
+    onKey: ((androidx.compose.ui.input.key.KeyEvent) -> Boolean)? = null,
+    onClick: () -> Unit
+) {
+    val src = remember { MutableInteractionSource() }
+    val foc by src.collectIsFocusedAsState()
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .then(if (onKey != null) Modifier.onKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) onKey(it) else false } else Modifier)
+            .symbianHighlight(foc)
+            .focusable(interactionSource = src)
+            .clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick)
+            .padding(vertical = if (big) 10.dp else 12.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = clockFg(foc), fontSize = if (big) 34.sp else 18.sp, fontWeight = FontWeight.Bold,
+                fontFamily = if (big) FontFamily.Monospace else state.currentFont.toFontFamily())
+            if (!subtitle.isNullOrBlank()) Text(subtitle, color = if (foc) Color.DarkGray else win95Fg().copy(alpha = 0.7f), fontSize = 13.sp,
+                fontFamily = state.currentFont.toFontFamily())
+        }
+        if (value != null) Text(value, color = clockFg(foc), fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
+    }
+    HorizontalDivider(color = win95Fg().copy(alpha = 0.2f), thickness = 1.dp)
+}
+
+private fun digitOf(e: androidx.compose.ui.input.key.KeyEvent): Int? {
+    val c = e.nativeKeyEvent.keyCode
+    return when (c) {
+        in android.view.KeyEvent.KEYCODE_0..android.view.KeyEvent.KEYCODE_9 -> c - android.view.KeyEvent.KEYCODE_0
+        in android.view.KeyEvent.KEYCODE_NUMPAD_0..android.view.KeyEvent.KEYCODE_NUMPAD_9 -> c - android.view.KeyEvent.KEYCODE_NUMPAD_0
+        else -> null
+    }
+}
+
+// ───────────── Alarms ─────────────
+
+@Composable
+fun AlarmTab(state: LauncherState, haptic: HapticFeedback, viewModel: LauncherViewModel, onAddAlarm: () -> Unit, onAlarmOptions: (AlarmItem) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val now = rememberTickingTime(30_000L)
+    val next = remember(state.alarms, now) { AlarmStore.next(now) }
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { try { first.requestFocus() } catch (_: Exception) { } }
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+        item {
+            Text(
+                next?.let { (a, at) -> "Next: ${a.label.ifBlank { "Alarm" }} ${untilText(at, now)}" } ?: "No alarms on",
+                color = win95Fg().copy(alpha = 0.8f), fontSize = 14.sp, fontFamily = state.currentFont.toFontFamily(),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+            )
+            ClockRow("+  New alarm", state, focusRequester = first) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onAddAlarm()
+            }
+        }
+        items(state.alarms, key = { it.id }) { alarm ->
+            val sub = buildString {
+                append(alarm.label.ifBlank { "Alarm" }); append(" · "); append(alarm.daysLabel())
+                if (alarm.enabled) { append(" · "); append(untilText(alarm.nextTrigger(now), now)) }
+                if (alarm.snoozeUntil > now) append(" (snoozed)")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) {
+                    ClockRow(alarm.toDisplayString(), state, subtitle = sub, value = if (alarm.enabled) "On" else "Off", big = true) {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.updateAlarm(context, alarm.copy(enabled = !alarm.enabled))
+                    }
+                }
+                val moreSrc = remember { MutableInteractionSource() }
+                val moreFoc by moreSrc.collectIsFocusedAsState()
+                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onAlarmOptions(alarm) },
+                    interactionSource = moreSrc, modifier = Modifier.symbianHighlight(moreFoc)) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = clockFg(moreFoc))
+                }
+            }
+        }
+        item {
+            Text("OK switches an alarm on/off · ⋮ to edit. Alarms ring even when the phone is locked or silent.",
+                color = win95Fg().copy(alpha = 0.55f), fontSize = 12.sp, modifier = Modifier.padding(8.dp))
+        }
+    }
+}
+
+@Composable
+fun AlarmOptionsScreen(state: LauncherState, alarm: AlarmItem, haptic: HapticFeedback, onEdit: () -> Unit, onDelete: () -> Unit) {
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { try { first.requestFocus() } catch (_: Exception) { } }
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.Center) {
+        Text("${alarm.toDisplayString()} · ${alarm.label}", color = win95Fg(), fontSize = 20.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(8.dp))
+        ClockRow("Edit", state, focusRequester = first) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onEdit() }
+        ClockRow("Delete", state) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onDelete() }
+    }
+}
+
+@Composable
+fun AlarmEditScreen(state: LauncherState, alarm: AlarmItem?, haptic: HapticFeedback, onSave: (AlarmItem) -> Unit) {
+    val base = alarm ?: AlarmItem(hour = 7, minute = 0)
+    var hour by remember { mutableStateOf(base.hour) }
+    var minute by remember { mutableStateOf(base.minute) }
+    var label by remember { mutableStateOf(base.label) }
+    var days by remember { mutableStateOf(base.days) }
+    var vibrate by remember { mutableStateOf(base.vibrate) }
+    var snooze by remember { mutableStateOf(base.snoozeMin) }
+    var typed by remember { mutableStateOf("") }
+    val draft = base.copy(hour = hour, minute = minute, label = label, days = days, vibrate = vibrate, snoozeMin = snooze, snoozeUntil = 0)
+    val now = rememberTickingTime(30_000L)
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { try { first.requestFocus() } catch (_: Exception) { } }
+
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
+        item {
+            val shown = if (typed.isEmpty()) draft.toDisplayString()
+                else typed.padEnd(4, '_').let { "${it.take(2)}:${it.drop(2)}" }
+            ClockRow(shown, state, subtitle = "Type the time on the keypad, e.g. 0730", big = true, focusRequester = first,
+                onKey = { e ->
+                    val d = digitOf(e) ?: return@ClockRow false
+                    val t = typed + d
+                    typed = if (t.length >= 4) {
+                        val h = t.take(2).toInt(); val m = t.substring(2, 4).toInt()
+                        if (h < 24 && m < 60) { hour = h; minute = m }
+                        ""
+                    } else t
+                    true
+                }) { typed = "" }
+            ClockRow("Hour", state, value = hour.toString().padStart(2, '0'), subtitle = "OK = +1") { hour = (hour + 1) % 24 }
+            ClockRow("Minute", state, value = minute.toString().padStart(2, '0'), subtitle = "OK = +5") { minute = (minute / 5 * 5 + 5) % 60 }
+            val presets = listOf(0, 0b1111111, 0b0011111, 0b1100000)
+            ClockRow("Repeat", state, value = draft.daysLabel(), subtitle = "OK = once / every day / weekdays / weekends") {
+                days = presets[(presets.indexOf(days) + 1).let { if (it <= 0 && days !in presets) 0 else it % presets.size }]
+            }
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                AlarmItem.DAY_SHORT.forEachIndexed { i, d ->
+                    val src = remember { MutableInteractionSource() }
+                    val foc by src.collectIsFocusedAsState()
+                    val on = days and (1 shl i) != 0
+                    Box(
+                        Modifier.weight(1f).padding(2.dp)
+                            .symbianHighlight(foc)
+                            .border(1.dp, if (on) win95Fg() else win95Fg().copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                            .focusable(interactionSource = src)
+                            .clickable(interactionSource = src, indication = LocalIndication.current) { days = days xor (1 shl i) }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(d.take(2), color = if (foc) Color.Black else if (on) win95Fg() else win95Fg().copy(alpha = 0.4f),
+                            fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp)
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = label, onValueChange = { label = it.take(40) }, singleLine = true,
+                label = { Text("Name") },
+                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = win95Fg(), unfocusedTextColor = win95Fg(),
+                    focusedLabelColor = win95Fg(), unfocusedLabelColor = win95Fg().copy(alpha = 0.6f),
+                    focusedBorderColor = win95Fg(), unfocusedBorderColor = win95Fg().copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+            )
+            ClockRow("Snooze", state, value = "$snooze min") { snooze = listOf(5, 10, 15, 20, 30).let { it[(it.indexOf(snooze) + 1) % it.size] } }
+            ClockRow("Vibrate", state, value = if (vibrate) "On" else "Off") { vibrate = !vibrate }
+            ClockRow("Save", state, subtitle = "Rings ${untilText(draft.nextTrigger(now), now)}") {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onSave(draft.copy(enabled = true))
+            }
+        }
+    }
+}
+
+// ───────────── Stopwatch (keeps running while you use other screens) ─────────────
+
+object StopwatchState {
+    var running by mutableStateOf(false)
+    var startedAt by mutableStateOf(0L)
+    var banked by mutableStateOf(0L)
+    val laps = mutableStateListOf<Long>()
+    fun elapsed(now: Long = System.currentTimeMillis()) = banked + if (running) now - startedAt else 0L
+}
+
+private fun fmtStopwatch(ms: Long): String {
+    val h = ms / 3_600_000; val m = (ms / 60_000) % 60; val s = (ms / 1000) % 60; val cs = (ms % 1000) / 10
+    val core = "${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}"
+    return if (h > 0) "$h:$core" else core
+}
+
+@Composable
+fun StopwatchTab(state: LauncherState, haptic: HapticFeedback) {
+    val sw = StopwatchState
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(sw.running) {
+        while (sw.running) { androidx.compose.runtime.withFrameMillis { }; now = System.currentTimeMillis() }
+        now = System.currentTimeMillis()
+    }
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { try { first.requestFocus() } catch (_: Exception) { } }
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        item {
+            Text(fmtStopwatch(sw.elapsed(now)), color = win95Fg(), fontSize = 44.sp, fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace, modifier = Modifier.padding(vertical = 16.dp))
+            ClockRow(if (sw.running) "Pause" else if (sw.elapsed(now) > 0) "Resume" else "Start", state, focusRequester = first) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                val t = System.currentTimeMillis()
+                if (sw.running) { sw.banked += t - sw.startedAt; sw.running = false } else { sw.startedAt = t; sw.running = true }
+            }
+            ClockRow(if (sw.running) "Lap" else "Reset", state) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                if (sw.running) sw.laps.add(0, sw.elapsed()) else { sw.banked = 0; sw.laps.clear(); now = System.currentTimeMillis() }
+            }
+        }
+        items(sw.laps.size) { i ->
+            val total = sw.laps[i]
+            val prev = sw.laps.getOrNull(i + 1) ?: 0L
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
+                Text("Lap ${sw.laps.size - i}", color = win95Fg().copy(alpha = 0.7f), modifier = Modifier.weight(1f))
+                Text("+" + fmtStopwatch(total - prev), color = win95Fg(), fontFamily = FontFamily.Monospace)
+                Spacer(Modifier.width(12.dp))
+                Text(fmtStopwatch(total), color = win95Fg().copy(alpha = 0.7f), fontFamily = FontFamily.Monospace)
+            }
+        }
+    }
+}
+
+// ───────────── Timer (rings through the alarm service, even when the screen is off) ─────────────
+
+private fun fmtTimer(ms: Long): String {
+    val total = (ms + 999) / 1000
+    val h = total / 3600; val m = (total / 60) % 60; val s = total % 60
+    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
+    else "${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
+}
+
+@Composable
+fun TimerTab(state: LauncherState, haptic: HapticFeedback) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) { AlarmStore.load(context) }
+    val t by AlarmStore.timer.collectAsState()
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(t.running) { while (t.running) { now = System.currentTimeMillis(); delay(250) }; now = System.currentTimeMillis() }
+    var typed by remember { mutableStateOf("") }
+    val left = t.left(now)
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { try { first.requestFocus() } catch (_: Exception) { } }
+
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        item {
+            val fg = win95Fg()
+            Box(Modifier.padding(vertical = 10.dp).size(150.dp), contentAlignment = Alignment.Center) {
+                val frac = if (t.length > 0) (left.toFloat() / t.length).coerceIn(0f, 1f) else 0f
+                Canvas(Modifier.fillMaxSize()) {
+                    drawCircle(color = fg.copy(alpha = 0.2f), style = Stroke(width = 5.dp.toPx()))
+                    drawArc(color = fg, startAngle = -90f, sweepAngle = 360f * frac, useCenter = false,
+                        style = Stroke(width = 5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                }
+                Text(
+                    if (typed.isNotEmpty()) typed.padStart(4, '0').let { "${it.dropLast(2)}:${it.takeLast(2)}" } else fmtTimer(left),
+                    color = fg, fontSize = 30.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace
+                )
+            }
+            ClockRow(if (t.running) "Pause" else if (t.pausedLeft > 0) "Resume" else "Start", state,
+                subtitle = if (!t.running && t.pausedLeft == 0L) "Type minutes and seconds, e.g. 1500 = 15 min" else null,
+                focusRequester = first,
+                onKey = { e ->
+                    if (t.running) return@ClockRow false
+                    val d = digitOf(e) ?: return@ClockRow false
+                    typed = (typed + d).takeLast(6).trimStart('0')
+                    val v = typed.padStart(6, '0')
+                    val ms = (v.take(2).toLong() * 3600 + v.substring(2, 4).toLong() * 60 + v.takeLast(2).toLong()) * 1000
+                    if (ms > 0) AlarmStore.setTimerLength(context, ms)
+                    true
+                }) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                typed = ""
+                if (t.running) AlarmStore.pauseTimer(context) else AlarmStore.startTimer(context)
+            }
+            ClockRow("Reset", state) { typed = ""; AlarmStore.resetTimer(context) }
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                listOf(1, 3, 5, 10, 15, 30).forEach { min ->
+                    val src = remember { MutableInteractionSource() }
+                    val foc by src.collectIsFocusedAsState()
+                    Box(
+                        Modifier.weight(1f).padding(2.dp).symbianHighlight(foc)
+                            .border(1.dp, fg.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                            .focusable(interactionSource = src)
+                            .clickable(interactionSource = src, indication = LocalIndication.current) {
+                                typed = ""; AlarmStore.resetTimer(context); AlarmStore.setTimerLength(context, min * 60_000L)
+                            }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) { Text("${min}m", color = if (foc) Color.Black else fg, fontSize = 13.sp) }
+                }
+            }
+            Text("The timer rings even if you leave this screen or the phone locks.", color = fg.copy(alpha = 0.55f), fontSize = 12.sp,
+                modifier = Modifier.padding(8.dp))
         }
     }
 }
