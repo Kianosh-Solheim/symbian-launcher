@@ -281,11 +281,12 @@ class MainActivity : ComponentActivity() {
                 val cs = androidx.compose.material3.MaterialTheme.colorScheme
                 LaunchedEffect(cs.background, cs.surface, cs.primary, cs.secondary, cs.onBackground, state.currentFont, state.currentTheme) {
                     IconCache.win95 = state.currentTheme == AppTheme.WIN95 // app icons become pixel icons
+                    IconCache.s60 = state.currentTheme == AppTheme.S60 // app icons get the S60 gloss
                     fun hex(c: androidx.compose.ui.graphics.Color) = String.format("#%06X", 0xFFFFFF and c.toArgb())
                     BridgeState.theme.value = mapOf(
                         "background" to hex(cs.background), "surface" to hex(cs.surface), "text" to hex(cs.onBackground),
                         "accent" to hex(cs.primary), "highlight" to hex(cs.secondary), "font" to state.currentFont.name,
-                        "style" to if (state.currentTheme == AppTheme.WIN95) "win95" else "symbian"
+                        "style" to when (state.currentTheme) { AppTheme.WIN95 -> "win95"; AppTheme.S60 -> "s60"; else -> "symbian" }
                     )
                 }
                 val currentDensity = androidx.compose.ui.platform.LocalDensity.current

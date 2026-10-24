@@ -24,9 +24,18 @@ object IconCache {
     private val retro = WeakHashMap<Drawable, ImageBitmap>()
 
     var win95 by mutableStateOf(false)
+    /** Classic S60 Sky theme: glossy versions of every icon. */
+    var s60 by mutableStateOf(false)
+    private val glossy = WeakHashMap<Drawable, ImageBitmap>()
+    private val owners = WeakHashMap<Drawable, String>()
+
+    /** Remembers which app an icon belongs to, so built-in functions can get the theme's own icon. */
+    fun register(d: Drawable, pkg: String) = synchronized(owners) { owners[d] = pkg }
+    fun ownerOf(d: Drawable): String? = synchronized(owners) { owners[d] }
 
     fun get(drawable: Drawable): ImageBitmap {
         if (win95) return synchronized(retro) { retro.getOrPut(drawable) { Win95Pixelizer.convert(drawable).asImageBitmap() } }
+        if (s60) return synchronized(glossy) { glossy.getOrPut(drawable) { S60Styler.convert(drawable, ownerOf(drawable)).asImageBitmap() } }
         return synchronized(cache) {
             cache.getOrPut(drawable) {
                 val w = drawable.intrinsicWidth.takeIf { it > 0 } ?: MAX_PX

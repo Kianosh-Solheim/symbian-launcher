@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -167,6 +169,37 @@ object S60Icons {
     )
 
     fun has(name: String) = name in icons
+
+    /** Renders an icon into a bitmap (used to replace app icons for built-in phone functions). */
+    fun bitmap(name: String, px: Int): android.graphics.Bitmap? {
+        val layers = icons[name] ?: return null
+        val bmp = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val k = px / 48f
+        c.scale(k, k)
+        layers.forEach { l ->
+            c.save(); c.translate(l.dx, l.dy)
+            val p = l.path.asAndroidPath()
+            when (val f = l.fill) {
+                is S60Fill.Solid -> c.drawPath(p, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = f.c.toArgb() })
+                is S60Fill.Vertical -> {
+                    val b = android.graphics.RectF(); p.computeBounds(b, true)
+                    c.drawPath(p, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        shader = android.graphics.LinearGradient(0f, b.top, 0f, b.bottom, f.top.toArgb(), f.bottom.toArgb(), android.graphics.Shader.TileMode.CLAMP)
+                    })
+                }
+                null -> {}
+            }
+            l.stroke?.let { s ->
+                c.drawPath(p, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = s.toArgb(); style = android.graphics.Paint.Style.STROKE; strokeWidth = l.strokeW
+                    strokeCap = android.graphics.Paint.Cap.ROUND; strokeJoin = android.graphics.Paint.Join.ROUND
+                })
+            }
+            c.restore()
+        }
+        return bmp
+    }
 
     @Composable
     fun Icon(name: String, modifier: Modifier = Modifier) {

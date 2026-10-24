@@ -582,7 +582,7 @@ function wxIcon(sym) {
   return "🌡️";
 }
 const icon = id => `<svg><use href="#i-${id}"/></svg>`;
-const iconStyle = () => document.body.classList.contains("win95") ? "95" : "0";
+const iconStyle = () => store.get("symbian.style") || "symbian";
 // Windows 95 pixel icons (same 16×16 art as the phone), used in the sidebar when that theme is on.
 const PIX = {
   mail: "................|................|................|KKKKKKKKKKKKKKK.|KWKWWWWWWWWWKWKD|KWWKWWWWWWWKWWWD|KWWWKWWWWWKWWWKD|KWWWWKWWWKWWWWKD|KWWWWWKWKWWWWWKD|KWWWWKWKWKWWWWKD|KWWWKWWWWWKWWWKD|KWWKWWWWWWWKWWKD|KWKWWWWWWWWWKWKD|KKKKKKKKKKKKKKKD|.DDDDDDDDDDDDDDD|................",
@@ -2044,9 +2044,9 @@ function confirmOnce(btn, msg) { return window.confirm(msg); }
 
 function applyTheme(t) {
   if (t.style) {
-    const was = document.body.classList.contains("win95");
+    const was = store.get("symbian.style");
     store.set("symbian.style", t.style); document.body.classList.toggle("win95", t.style === "win95");
-    if (was !== (t.style === "win95")) try { renderNav(); render(); } catch (_) { }
+    if (was !== t.style) try { renderNav(); render(); } catch (_) { }
   }
   const r = document.documentElement.style;
   if (t.background) r.setProperty("--bg", t.background);
