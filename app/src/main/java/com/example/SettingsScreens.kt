@@ -368,6 +368,10 @@ fun SettingsTimeDate(state: LauncherState, viewModel: LauncherViewModel, haptic:
                 }
             }
             
+            SettingsMenuItem("Clock app: ${ClockApps.label(LocalContext.current, ClockApps.chosen(LocalContext.current))}", null, haptic) {
+                ClockApps.askNeeded.value = true
+            }
+
             SettingsSectionHeader("Date")
             SettingsToggleItem("Show date", state.showDate, haptic) { checked -> viewModel.updateState { it.copy(showDate = checked) } }
             if (state.showDate) {

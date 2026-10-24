@@ -147,7 +147,9 @@ fun SymbianLauncherScreen(viewModel: LauncherViewModel, state: LauncherState) {
 var backStack by remember { mutableStateOf(listOf<Screen>()) }
 
     val navigateTo: (Screen) -> Unit = { screen ->
-        if (screen == Screen.MAIN) {
+        if (screen == Screen.CLOCK) {
+            ClockApps.open(context, state) // the clock is its own app now
+        } else if (screen == Screen.MAIN) {
             backStack = emptyList()
         } else if (screen != currentScreen) {
             backStack = backStack + currentScreen
@@ -203,7 +205,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
     
         LaunchedEffect(state.showClockScreen) {
         if (state.showClockScreen) {
-            navigateTo(Screen.CLOCK)
+            ClockApps.open(context, state)
             viewModel.toggleClockDialog(false)
         }
     }
@@ -256,9 +258,13 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
     }
 
 
+    val askClock by ClockApps.askNeeded.collectAsState()
+    LaunchedEffect(Unit) { ClockApps.checkFirstRun(context) }
+    if (askClock) ClockChooserDialog(onDone = { ClockApps.askNeeded.value = false })
+
     val openClock by MainActivity.openClockRequest.collectAsState()
     LaunchedEffect(openClock) {
-        if (openClock) { MainActivity.openClockRequest.value = false; viewModel.setClockTab(1); navigateTo(Screen.CLOCK) }
+        if (openClock) { MainActivity.openClockRequest.value = false; ClockApps.open(context, state, alarms = true) }
     }
 
     BackHandler(enabled = state.t9Query.isNotEmpty()) {
@@ -733,10 +739,6 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                         return@onPreviewKeyEvent true
                     }
 
-                    if (keyCode in Key.Zero.keyCode..Key.Nine.keyCode &&
-                        (currentScreen == Screen.ALARM_EDIT || (currentScreen == Screen.CLOCK && state.clockTab == 3))) {
-                        return@onPreviewKeyEvent false // typed straight into the alarm time / timer length
-                    }
                     if (keyCode in Key.Zero.keyCode..Key.Nine.keyCode) {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         if (currentScreen == Screen.APP_DRAWER || currentScreen == Screen.CONTACTS_DRAWER) {
@@ -790,7 +792,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                 .background(if (state.isExtremeBatterySaver) Color.Black else if (state.showWallpaper) MaterialTheme.colorScheme.background.copy(alpha = state.wallpaperTransparency) else MaterialTheme.colorScheme.background)
         ) {
             if (!isExtremeMain && currentScreen != Screen.AGENDA && currentScreen != Screen.CONTACT_DETAIL && currentScreen != Screen.USAGE && currentScreen != Screen.WEATHER_FORECAST && currentScreen != Screen.WALLET && currentScreen != Screen.WALLET_PASS_DETAIL && currentScreen != Screen.CLOCK && currentScreen != Screen.CALCULATOR) {
-                SymbianTopBar(state, batteryInfo, signalLevel, onWeatherClick = { navigateTo(Screen.WEATHER_FORECAST) }, onClockClick = { navigateTo(Screen.CLOCK) })
+                SymbianTopBar(state, batteryInfo, signalLevel, onWeatherClick = { navigateTo(Screen.WEATHER_FORECAST) }, onClockClick = { ClockApps.open(context, state) })
             }
             
             val animationScale = remember(context) {
@@ -1092,77 +1094,9 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                         navigateTo(Screen.MAIN)
                     }
                 }
-                Screen.CLOCK -> {
-                    ClockAppScreen(
-                        state = state,
-                        viewModel = viewModel,
-                        haptic = haptic,
-                        onBack = { navigateBack() },
-                        onAddAlarm = { navigateTo(Screen.ALARM_EDIT); selectedAlarm = null },
-                        onAlarmOptions = { selectedAlarm = it; navigateTo(Screen.ALARM_OPTIONS) },
-                        onAddWorldClock = { navigateTo(Screen.WORLD_CLOCK_SEARCH) },
-                        onWorldClockOptions = { selectedWorldClock = it; navigateTo(Screen.WORLD_CLOCK_OPTIONS) }
-                    )
-                }
-                Screen.ALARM_EDIT -> {
-                    AlarmEditScreen(
-                        state = state,
-                        alarm = selectedAlarm,
-                        haptic = haptic,
-                        onSave = { 
-                            if (selectedAlarm == null) {
-                                viewModel.addAlarm(context, it)
-                            } else {
-                                viewModel.updateAlarm(context, it)
-                            }
-                            navigateTo(Screen.CLOCK)
-                        }
-                    )
-                }
-                Screen.ALARM_OPTIONS -> {
-                    if (selectedAlarm != null) {
-                        AlarmOptionsScreen(
-                            state = state,
-                            alarm = selectedAlarm!!,
-                            haptic = haptic,
-                            onEdit = { navigateTo(Screen.ALARM_EDIT) },
-                            onDelete = { 
-                                viewModel.deleteAlarm(context, selectedAlarm!!.id)
-                                navigateTo(Screen.CLOCK)
-                            }
-                        )
-                    } else {
-                        navigateTo(Screen.CLOCK)
-                    }
-                }
-                Screen.WORLD_CLOCK_SEARCH -> {
-                    WorldClockSearchScreen(
-                        state = state,
-                        haptic = haptic,
-                        onSelect = {
-                            if (selectedWorldClock != null) {
-                                viewModel.deleteWorldClock(selectedWorldClock!!.id)
-                            }
-                            viewModel.addWorldClock(it)
-                            selectedWorldClock = null
-                            navigateTo(Screen.CLOCK)
-                        }
-                    )
-                }
-                Screen.WORLD_CLOCK_OPTIONS -> {
-                    if (selectedWorldClock != null) {
-                        WorldClockOptionsScreen(
-                            state = state,
-                            haptic = haptic,
-                            onEdit = { navigateTo(Screen.WORLD_CLOCK_SEARCH) },
-                            onDelete = {
-                                viewModel.deleteWorldClock(selectedWorldClock!!.id)
-                                navigateTo(Screen.CLOCK)
-                            }
-                        )
-                    } else {
-                        navigateTo(Screen.CLOCK)
-                    }
+                Screen.CLOCK, Screen.ALARM_EDIT, Screen.ALARM_OPTIONS, Screen.WORLD_CLOCK_SEARCH, Screen.WORLD_CLOCK_OPTIONS -> {
+                    // The clock is a separate app now; anything still pointing here opens it instead.
+                    LaunchedEffect(Unit) { ClockApps.open(context, state); navigateBack() }
                 }
             }
                 }

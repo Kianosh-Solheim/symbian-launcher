@@ -1,4 +1,4 @@
-package com.example
+package com.example.clock
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
@@ -43,8 +43,8 @@ import androidx.compose.ui.input.key.type
 
 @Composable
 fun ClockAppScreen(
-    state: LauncherState,
-    viewModel: LauncherViewModel,
+    state: ClockUiState,
+    viewModel: ClockViewModel,
     haptic: HapticFeedback,
     onBack: () -> Unit,
     onAddAlarm: () -> Unit = {},
@@ -85,7 +85,7 @@ fun ClockAppScreen(
 
 @Composable
 fun CombinedClockTab(
-    state: LauncherState,
+    state: ClockUiState,
     haptic: HapticFeedback,
     onAddWorldClock: () -> Unit,
     onWorldClockOptions: (WorldClockItem) -> Unit
@@ -154,7 +154,7 @@ fun CombinedClockTab(
                 // Digital Time
                 Text(
                     text = sdfTime.format(java.util.Date(currentTime)),
-                    color = Color.White,
+                    color = win95Fg(),
                     fontSize = 32.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
@@ -191,7 +191,7 @@ fun CombinedClockTab(
             ) {
                 Text(
                     text = "World Clocks",
-                    color = Color.White,
+                    color = win95Fg(),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = state.currentFont.toFontFamily()
@@ -227,7 +227,7 @@ fun CombinedClockTab(
                 }
             }
             
-            HorizontalDivider(color = Color.White.copy(alpha = 0.2f), thickness = 1.dp)
+            HorizontalDivider(color = win95Fg().copy(alpha = 0.2f), thickness = 1.dp)
             Spacer(modifier = Modifier.height(10.dp))
         }
 
@@ -267,8 +267,8 @@ fun CombinedClockTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color.White.copy(alpha = 0.08f))
-                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                    .background(win95Fg().copy(alpha = 0.08f))
+                    .border(1.dp, win95Fg().copy(alpha = 0.15f), RoundedCornerShape(10.dp))
                     .symbianHighlight(isFoc)
                     .focusable(interactionSource = intSource)
                     .clickable(interactionSource = intSource, indication = LocalIndication.current) {
@@ -282,12 +282,12 @@ fun CombinedClockTab(
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add",
-                    tint = if (isFoc) Color.Black else Color.White
+                    tint = if (isFoc) Color.Black else win95Fg()
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Add World Clock",
-                    color = if (isFoc) Color.Black else Color.White,
+                    color = if (isFoc) Color.Black else win95Fg(),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = state.currentFont.toFontFamily()
@@ -302,7 +302,7 @@ fun WorldClockGridCard(
     item: WorldClockItem,
     currentTime: Long,
     formattedTime: String,
-    state: LauncherState,
+    state: ClockUiState,
     haptic: HapticFeedback,
     onOptions: () -> Unit
 ) {
@@ -316,8 +316,8 @@ fun WorldClockGridCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.08f))
-            .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(12.dp))
+            .background(win95Fg().copy(alpha = 0.08f))
+            .border(1.dp, win95Fg().copy(alpha = 0.18f), RoundedCornerShape(12.dp))
             .symbianHighlight(isFoc)
             .focusable(interactionSource = intSource)
             .clickable(interactionSource = intSource, indication = LocalIndication.current) {
@@ -344,7 +344,7 @@ fun WorldClockGridCard(
             // City Name
             Text(
                 text = item.city,
-                color = if (isFoc) Color.Black else Color.White,
+                color = if (isFoc) Color.Black else win95Fg(),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = state.currentFont.toFontFamily(),
@@ -356,7 +356,7 @@ fun WorldClockGridCard(
             // Digital Time Underneath
             Text(
                 text = formattedTime,
-                color = if (isFoc) Color.Black else Color.White,
+                color = if (isFoc) Color.Black else win95Fg(),
                 fontSize = 17.sp,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold
@@ -390,7 +390,7 @@ fun WorldClockGridCard(
             Icon(
                 imageVector = Icons.Default.MoreVert,
                 contentDescription = "Options",
-                tint = if (moreFoc || isFoc) Color.Black else Color.White.copy(alpha = 0.8f),
+                tint = if (moreFoc || isFoc) Color.Black else win95Fg().copy(alpha = 0.8f),
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -439,7 +439,7 @@ fun ClockTopTabs(
     tabs: List<String>,
     currentTab: Int,
     onSelectTab: (Int) -> Unit,
-    state: LauncherState
+    state: ClockUiState
 ) {
     // Give the page keypad focus on entry; otherwise the soft keys (* and #, incl. "Back") can't reach it.
     // The Alarm/Stopwatch/Timer tabs move focus to their first row afterwards.
@@ -459,7 +459,7 @@ fun ClockTopTabs(
             
             Text(
                 text = title,
-                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f),
+                color = if (isSelected) win95Fg() else win95Fg().copy(alpha = 0.5f),
                 fontSize = 18.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                 fontFamily = state.currentFont.toFontFamily(),
@@ -477,7 +477,7 @@ fun ClockTopTabs(
 }
 
 @Composable
-fun WorldClockOptionsScreen(state: LauncherState, haptic: HapticFeedback, onEdit: () -> Unit, onDelete: () -> Unit) {
+fun WorldClockOptionsScreen(state: ClockUiState, haptic: HapticFeedback, onEdit: () -> Unit, onDelete: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.Center) {
         val intSource = remember { MutableInteractionSource() }
         val isFoc by intSource.collectIsFocusedAsState()
@@ -490,9 +490,9 @@ fun WorldClockOptionsScreen(state: LauncherState, haptic: HapticFeedback, onEdit
                 .padding(vertical = 12.dp, horizontal = 4.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            Text("Edit", color = if (isFoc) Color.Black else Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
+            Text("Edit", color = if (isFoc) Color.Black else win95Fg(), fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
         }
-        HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
+        HorizontalDivider(color = win95Fg().copy(alpha=0.2f), thickness = 1.dp)
         
         val intSourceDel = remember { MutableInteractionSource() }
         val isFocDel by intSourceDel.collectIsFocusedAsState()
@@ -505,14 +505,14 @@ fun WorldClockOptionsScreen(state: LauncherState, haptic: HapticFeedback, onEdit
                 .padding(vertical = 12.dp, horizontal = 4.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            Text("Delete", color = if (isFoc) Color.Black else Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
+            Text("Delete", color = if (isFoc) Color.Black else win95Fg(), fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = state.currentFont.toFontFamily())
         }
-        HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
+        HorizontalDivider(color = win95Fg().copy(alpha=0.2f), thickness = 1.dp)
     }
 }
 
 @Composable
-fun WorldClockSearchScreen(state: LauncherState, haptic: HapticFeedback, onSelect: (WorldClockItem) -> Unit) {
+fun WorldClockSearchScreen(state: ClockUiState, haptic: HapticFeedback, onSelect: (WorldClockItem) -> Unit) {
     val commonCities = listOf(
         Pair("London", "Europe/London"),
         Pair("New York", "America/New_York"),
@@ -534,7 +534,7 @@ fun WorldClockSearchScreen(state: LauncherState, haptic: HapticFeedback, onSelec
         contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
     ) {
         item {
-            Text("Select City", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
+            Text("Select City", color = win95Fg(), fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
         }
         
         items(commonCities) { city ->
@@ -553,9 +553,9 @@ fun WorldClockSearchScreen(state: LauncherState, haptic: HapticFeedback, onSelec
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(city.first, color = if (isFoc) Color.Black else Color.White, fontSize = 20.sp, fontFamily = state.currentFont.toFontFamily())
+                Text(city.first, color = if (isFoc) Color.Black else win95Fg(), fontSize = 20.sp, fontFamily = state.currentFont.toFontFamily())
             }
-            HorizontalDivider(color = Color.White.copy(alpha=0.2f), thickness = 1.dp)
+            HorizontalDivider(color = win95Fg().copy(alpha=0.2f), thickness = 1.dp)
         }
     }
 }
@@ -568,7 +568,7 @@ private fun clockFg(focused: Boolean) = if (focused) Color.Black else win95Fg()
 @Composable
 fun ClockRow(
     title: String,
-    state: LauncherState,
+    state: ClockUiState,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     value: String? = null,
@@ -613,7 +613,7 @@ private fun digitOf(e: androidx.compose.ui.input.key.KeyEvent): Int? {
 // ───────────── Alarms ─────────────
 
 @Composable
-fun AlarmTab(state: LauncherState, haptic: HapticFeedback, viewModel: LauncherViewModel, onAddAlarm: () -> Unit, onAlarmOptions: (AlarmItem) -> Unit) {
+fun AlarmTab(state: ClockUiState, haptic: HapticFeedback, viewModel: ClockViewModel, onAddAlarm: () -> Unit, onAlarmOptions: (AlarmItem) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val now = rememberTickingTime(30_000L)
     val next = remember(state.alarms, now) { AlarmStore.next(now) }
@@ -659,7 +659,7 @@ fun AlarmTab(state: LauncherState, haptic: HapticFeedback, viewModel: LauncherVi
 }
 
 @Composable
-fun AlarmOptionsScreen(state: LauncherState, alarm: AlarmItem, haptic: HapticFeedback, onEdit: () -> Unit, onDelete: () -> Unit) {
+fun AlarmOptionsScreen(state: ClockUiState, alarm: AlarmItem, haptic: HapticFeedback, onEdit: () -> Unit, onDelete: () -> Unit) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { try { first.requestFocus() } catch (_: Exception) { } }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.Center) {
@@ -671,7 +671,7 @@ fun AlarmOptionsScreen(state: LauncherState, alarm: AlarmItem, haptic: HapticFee
 }
 
 @Composable
-fun AlarmEditScreen(state: LauncherState, alarm: AlarmItem?, haptic: HapticFeedback, onSave: (AlarmItem) -> Unit) {
+fun AlarmEditScreen(state: ClockUiState, alarm: AlarmItem?, haptic: HapticFeedback, onSave: (AlarmItem) -> Unit) {
     val base = alarm ?: AlarmItem(hour = 7, minute = 0)
     var hour by remember { mutableStateOf(base.hour) }
     var minute by remember { mutableStateOf(base.minute) }
@@ -760,7 +760,7 @@ private fun fmtStopwatch(ms: Long): String {
 }
 
 @Composable
-fun StopwatchTab(state: LauncherState, haptic: HapticFeedback) {
+fun StopwatchTab(state: ClockUiState, haptic: HapticFeedback) {
     val sw = StopwatchState
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(sw.running) {
@@ -806,7 +806,7 @@ private fun fmtTimer(ms: Long): String {
 }
 
 @Composable
-fun TimerTab(state: LauncherState, haptic: HapticFeedback) {
+fun TimerTab(state: ClockUiState, haptic: HapticFeedback) {
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) { AlarmStore.load(context) }
     val t by AlarmStore.timer.collectAsState()
