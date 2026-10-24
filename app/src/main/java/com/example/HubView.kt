@@ -54,6 +54,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -175,46 +176,12 @@ fun HubView(
     
     val currentTimeMs = rememberTickingTime(60_000L)
 
-    val firstEvent = state.todayEvents.firstOrNull()
-    val now = currentTimeMs
-    val timeFmt = if (state.is24HourFormat) "HH:mm" else "h:mm a"
-    val timeFormat = Formatters.get(timeFmt)
-    
-    val eventText = if (firstEvent == null) {
-        "No more entries today"
-    } else {
-        if (firstEvent.isOngoing(now)) {
-            val endStr = timeFormat.format(java.util.Date(firstEvent.getEffectiveEndTime()))
-            val remaining = firstEvent.getRemainingTimeFormatted(now)
-            "now-ends at $endStr (in $remaining) — ${firstEvent.title}"
-        } else if (android.text.format.DateUtils.isToday(firstEvent.dtStart)) {
-            val timeStr = timeFormat.format(java.util.Date(firstEvent.dtStart))
-            "$timeStr — ${firstEvent.title}"
-        } else {
-            val timeStr = timeFormat.format(java.util.Date(firstEvent.dtStart))
-            
-            val calendar = java.util.Calendar.getInstance()
-            calendar.timeInMillis = now
-            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
-            val tomorrowStart = calendar.clone() as java.util.Calendar
-            tomorrowStart.set(java.util.Calendar.HOUR_OF_DAY, 0)
-            tomorrowStart.set(java.util.Calendar.MINUTE, 0)
-            tomorrowStart.set(java.util.Calendar.SECOND, 0)
-            
-            val tomorrowEnd = calendar.clone() as java.util.Calendar
-            tomorrowEnd.set(java.util.Calendar.HOUR_OF_DAY, 23)
-            tomorrowEnd.set(java.util.Calendar.MINUTE, 59)
-            tomorrowEnd.set(java.util.Calendar.SECOND, 59)
-            
-            val dateStr = if (firstEvent.dtStart in tomorrowStart.timeInMillis..tomorrowEnd.timeInMillis) {
-                "Tomorrow"
-            } else {
-                Formatters.get("MMM d").format(java.util.Date(firstEvent.dtStart))
-            }
-            "No more entries todaynNext: $dateStr, $timeStr — ${firstEvent.title}"
-        }
+    // Calendar lines: today's entries, or "No more entries today" followed by what's next.
+    // The hub shows as many of them as fit on screen (see the calendar row below).
+    val calendarLines = remember(state.todayEvents, currentTimeMs, state.is24HourFormat) {
+        hubCalendarLines(state.todayEvents, currentTimeMs, state.is24HourFormat)
     }
-    
+
     val isNotificationAccessEnabled = remember(context) { 
         try {
             NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName) 
@@ -223,7 +190,16 @@ fun HubView(
         }
     }
 
-    Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    // The calendar row may grow into whatever space the other rows leave free, but never past the
+    // bottom of the screen: total height minus the calendar row = everything else.
+    val bounded = constraints.hasBoundedHeight
+    val viewport = constraints.maxHeight
+    var totalPx by remember { mutableIntStateOf(0) }
+    var calPx by remember { mutableIntStateOf(0) }
+    val minRowPx = with(androidx.compose.ui.platform.LocalDensity.current) { 48.dp.roundToPx() }
+    val calMaxPx = if (bounded) (viewport - (totalPx - calPx)).coerceAtLeast(minRowPx) else Int.MAX_VALUE
+    Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).onSizeChanged { totalPx = it.height }) {
         if (!isNotificationAccessEnabled) {
             HubRow(
                 icon = Icons.Default.Warning,
@@ -275,9 +251,14 @@ fun HubView(
         DashedDivider()
         
         if (state.showCalendarSection) {
+            val density = androidx.compose.ui.platform.LocalDensity.current
             HubRow(
-                text = eventText,
+                text = calendarLines.first(),
+                moreLines = calendarLines.drop(1),
                 font = state.currentFont.toFontFamily(),
+                modifier = Modifier
+                    .onSizeChanged { calPx = it.height }
+                    .then(if (calMaxPx != Int.MAX_VALUE) Modifier.heightIn(max = with(density) { calMaxPx.toDp() }) else Modifier),
                 onClick = {
                     onNavigateToAgenda()
                 },
@@ -343,6 +324,7 @@ fun HubView(
         }
         DashedDivider()
     }
+    }
 }
 
 
@@ -369,7 +351,7 @@ fun HubRow(icon: ImageVector, text: String, font: FontFamily, onClick: () -> Uni
 
 
 @Composable
-fun HubRow(text: String, font: FontFamily, onClick: () -> Unit, modifier: Modifier = Modifier, iconComponent: @Composable () -> Unit) {
+fun HubRow(text: String, font: FontFamily, onClick: () -> Unit, modifier: Modifier = Modifier, moreLines: List<String> = emptyList(), iconComponent: @Composable () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     Row(
@@ -383,7 +365,8 @@ fun HubRow(text: String, font: FontFamily, onClick: () -> Unit, modifier: Modifi
     ) {
         iconComponent()
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
+        val style = TextStyle(shadow = if (isFocused) Shadow.None else Shadow(color = Color.Black.copy(alpha=0.8f), offset = Offset(1.5f, 1.5f), blurRadius = 2f))
+        if (moreLines.isEmpty()) Text(
             text = text,
             color = if (isFocused) Color.Black else Color.White,
             fontFamily = font,
@@ -391,9 +374,23 @@ fun HubRow(text: String, font: FontFamily, onClick: () -> Unit, modifier: Modifi
             maxLines = 2,
             lineHeight = 20.sp,
             overflow = TextOverflow.Ellipsis,
-            style = TextStyle(shadow = if (isFocused) Shadow.None else Shadow(color = Color.Black.copy(alpha=0.8f), offset = Offset(1.5f, 1.5f), blurRadius = 2f)),
+            style = style,
             modifier = Modifier.weight(1f)
-        )
+        ) else FitLines(Modifier.weight(1f)) {
+            (listOf(text) + moreLines).forEachIndexed { i, line ->
+                Text(
+                    text = line,
+                    color = if (isFocused) (if (i == 0) Color.Black else Color(0xFF222222)) else if (i == 0) Color.White else Color.White.copy(alpha = 0.85f),
+                    fontFamily = font,
+                    fontSize = if (i == 0) 16.sp else 14.sp,
+                    fontWeight = if (i == 0) FontWeight.Normal else FontWeight.Normal,
+                    maxLines = 1,
+                    lineHeight = 19.sp,
+                    overflow = TextOverflow.Ellipsis,
+                    style = style
+                )
+            }
+        }
     }
 }
 
@@ -418,4 +415,54 @@ fun DashedDivider() {
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
         )
     }
+}
+
+
+/** Stacks lines top to bottom and shows only as many as fit in the height it's given (always the first). */
+@Composable
+private fun FitLines(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.Layout(content, modifier) { measurables, constraints ->
+        val loose = constraints.copy(minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity)
+        val placeables = ArrayList<androidx.compose.ui.layout.Placeable>()
+        var h = 0
+        for (m in measurables) {
+            val p = m.measure(loose)
+            if (placeables.isNotEmpty() && constraints.hasBoundedHeight && h + p.height > constraints.maxHeight) break
+            placeables += p; h += p.height
+        }
+        val w = placeables.maxOfOrNull { it.width } ?: 0
+        layout(w.coerceIn(constraints.minWidth, constraints.maxWidth), h.coerceIn(constraints.minHeight, if (constraints.hasBoundedHeight) constraints.maxHeight else h)) {
+            var y = 0
+            placeables.forEach { it.placeRelative(0, y); y += it.height }
+        }
+    }
+}
+
+/** "09:00  Lecture", "Now  Meeting (until 11:30)", "Tomorrow  All day  Holiday" … for the hub's calendar row. */
+fun hubCalendarLines(events: List<CalendarEvent>, now: Long, is24: Boolean): List<String> {
+    val tf = Formatters.get(if (is24) "HH:mm" else "h:mm a")
+    val cal = java.util.Calendar.getInstance()
+    fun dayStart(offset: Int): Long {
+        cal.timeInMillis = now; cal.add(java.util.Calendar.DAY_OF_YEAR, offset)
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0); cal.set(java.util.Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+    val tomorrow = dayStart(1); val dayAfter = dayStart(2)
+    fun line(e: CalendarEvent): String {
+        val title = e.title.ifBlank { "(No title)" }
+        if (e.isOngoing(now)) return if (e.allDay) "Today  $title" else "Now  $title (until ${tf.format(java.util.Date(e.getEffectiveEndTime()))})"
+        val day = when {
+            e.dtStart < tomorrow -> ""
+            e.dtStart < dayAfter -> "Tomorrow "
+            else -> Formatters.get("EEE d MMM").format(java.util.Date(e.dtStart)) + " "
+        }
+        val time = if (e.allDay) "All day" else tf.format(java.util.Date(e.dtStart))
+        return "$day$time  $title"
+    }
+    if (events.isEmpty()) return listOf("No more entries today")
+    val lines = ArrayList<String>()
+    if (events.none { it.dtStart < tomorrow }) { lines += "No more entries today"; lines += events.map { "Next: " + line(it) }.take(1) + events.drop(1).map(::line) }
+    else lines += events.map(::line)
+    return lines.take(12)
 }

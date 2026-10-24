@@ -651,68 +651,43 @@ class AppRepository(private val context: Context) {
         list
     }
 
+    /**
+     * Ongoing and upcoming events for the next 30 days. Uses calendar *instances*, so repeating events
+     * (weekly lectures, birthdays …) appear on each day they happen, not only on their first date.
+     */
     suspend fun getUpcomingEvents(selectedCalendarIds: Set<Long>? = null): List<CalendarEvent> = withContext(Dispatchers.IO) {
+        if (selectedCalendarIds != null && selectedCalendarIds.isEmpty()) return@withContext emptyList()
         val events = mutableListOf<CalendarEvent>()
-        val projection = arrayOf(
-            CalendarContract.Events._ID,
-            CalendarContract.Events.TITLE,
-            CalendarContract.Events.DTSTART,
-            CalendarContract.Events.DTEND,
-            CalendarContract.Events.ALL_DAY,
-            CalendarContract.Events.CALENDAR_ID
-        )
         val now = System.currentTimeMillis()
-        val oneDayAgo = now - (24 * 60 * 60 * 1000L)
-        
-        val timeSelection = "(${CalendarContract.Events.DTEND} >= ? OR ${CalendarContract.Events.DTSTART} >= ?)"
-        val timeArgs = arrayOf(now.toString(), oneDayAgo.toString())
-        
-        val selection: String
-        val selectionArgs: Array<String>
-        
-        if (selectedCalendarIds != null) {
-            if (selectedCalendarIds.isEmpty()) {
-                return@withContext emptyList()
-            }
-            val placeholders = selectedCalendarIds.joinToString(",") { "?" }
-            selection = "$timeSelection AND ${CalendarContract.Events.CALENDAR_ID} IN ($placeholders)"
-            selectionArgs = timeArgs + selectedCalendarIds.map { it.toString() }.toTypedArray()
-        } else {
-            selection = timeSelection
-            selectionArgs = timeArgs
-        }
-        
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+            android.content.ContentUris.appendId(it, now - 24 * 3_600_000L)
+            android.content.ContentUris.appendId(it, now + 30 * 24 * 3_600_000L)
+        }.build()
+        val projection = arrayOf(
+            CalendarContract.Instances.EVENT_ID, CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN,
+            CalendarContract.Instances.END, CalendarContract.Instances.ALL_DAY, CalendarContract.Instances.CALENDAR_ID
+        )
+        val selection = selectedCalendarIds?.let { ids -> "${CalendarContract.Instances.CALENDAR_ID} IN (${ids.joinToString(",") { "?" }})" }
+        val args = selectedCalendarIds?.map { it.toString() }?.toTypedArray()
         try {
-            val cursor = context.contentResolver.query(
-                CalendarContract.Events.CONTENT_URI, projection, selection, selectionArgs, "${CalendarContract.Events.DTSTART} ASC LIMIT 40"
-            )
-            cursor?.use {
-                val idIdx = it.getColumnIndex(CalendarContract.Events._ID)
-                val titleIdx = it.getColumnIndex(CalendarContract.Events.TITLE)
-                val dtStartIdx = it.getColumnIndex(CalendarContract.Events.DTSTART)
-                val dtEndIdx = it.getColumnIndex(CalendarContract.Events.DTEND)
-                val allDayIdx = it.getColumnIndex(CalendarContract.Events.ALL_DAY)
-                val calIdIdx = it.getColumnIndex(CalendarContract.Events.CALENDAR_ID)
-                while (it.moveToNext()) {
-                    val id = it.getLong(idIdx)
-                    val title = it.getString(titleIdx) ?: ""
-                    val dtStart = it.getLong(dtStartIdx)
-                    val dtEnd = if (dtEndIdx != -1 && !it.isNull(dtEndIdx)) it.getLong(dtEndIdx) else null
-                    val allDay = if (allDayIdx != -1 && !it.isNull(allDayIdx)) it.getInt(allDayIdx) == 1 else false
-                    val calId = if (calIdIdx != -1 && !it.isNull(calIdIdx)) it.getLong(calIdIdx) else 0L
-                    
-                    val event = CalendarEvent(id, title, dtStart, dtEnd, allDay, calId)
-                    // Keep events that are ongoing or start in future
-                    if (event.getEffectiveEndTime() > now) {
-                        events.add(event)
+            context.contentResolver.query(uri, projection, selection, args, "${CalendarContract.Instances.BEGIN} ASC")?.use { c ->
+                while (c.moveToNext() && events.size < 40) {
+                    val allDay = !c.isNull(4) && c.getInt(4) == 1
+                    var begin = c.getLong(2)
+                    var end = if (c.isNull(3)) null else c.getLong(3)
+                    if (allDay) {
+                        // All-day instances are stored at UTC midnight; move them to local midnight.
+                        val off = java.util.TimeZone.getDefault().getOffset(begin)
+                        begin -= off; end = end?.let { it - java.util.TimeZone.getDefault().getOffset(it) }
                     }
+                    val e = CalendarEvent(c.getLong(0), c.getString(1) ?: "", begin, end, allDay, if (c.isNull(5)) 0L else c.getLong(5))
+                    if (e.getEffectiveEndTime() > now) events.add(e)
                 }
             }
-        } catch(e: Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
         }
-        
-        // Sort ongoing events first, followed by upcoming in chronological order
+        // Ongoing events first, then upcoming in chronological order.
         events.sortedWith(compareBy<CalendarEvent> { !it.isOngoing(now) }.thenBy { it.dtStart })
     }
 
