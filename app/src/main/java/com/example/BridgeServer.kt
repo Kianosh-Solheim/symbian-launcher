@@ -146,6 +146,14 @@ class BridgeServer(
             val input = BufferedInputStream(socket.getInputStream(), 16 * 1024)
             val out = socket.getOutputStream()
             val req = parse(input, socket.inetAddress) ?: return
+            if (req.method == "GET" && req.path == "/api/mirror/stream") {
+                if (!BridgeState.isValidToken(context, req.token)) { send(out, 401, "text/plain", ByteArray(0)); return }
+                socket.soTimeout = 0
+                keepOpen = true
+                val s = socket
+                Thread({ try { ScreenMirror.stream(out) } finally { try { s.close(); raw.close() } catch (_: Exception) { } } }, "mirror-stream").start()
+                return
+            }
             if (req.method == "GET" && req.path == "/api/events") {
                 keepOpen = openEventStream(req, socket, out)
                 return
@@ -204,6 +212,21 @@ class BridgeServer(
         val seg = p.removePrefix("/api/").split('/')
         val r: Any? = when (req.method to seg[0]) {
             "GET" to "status" -> data.status()
+            "GET" to "mirror" -> ScreenMirror.status(context)
+            "POST" to "mirror" -> when (seg.getOrNull(1)) {
+                "start" -> { ScreenMirror.requestStart(context); ScreenMirror.status(context) }
+                "stop" -> { ScreenMirror.stop(context); BridgeData.ok() }
+                "setup" -> {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    BridgeData.ok()
+                }
+                "input" -> {
+                    val svc = MirrorInputService.instance
+                    if (svc == null) BridgeData.fail("Control is off: turn on \"Symbian Desktop Mode control\" in the phone's Accessibility settings")
+                    else { val j = req.json(); val ok = try { svc.handle(j) } catch (_: Exception) { false }; if (ok) BridgeData.ok() else BridgeData.fail("Not possible here") }
+                }
+                else -> BridgeData.fail("Unknown")
+            }
             "GET" to "theme" -> data.theme()
             "GET" to "weather" -> data.weather() ?: JSONObject()
             "GET" to "contacts" -> data.contacts()

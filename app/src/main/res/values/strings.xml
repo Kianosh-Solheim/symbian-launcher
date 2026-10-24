@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Symbian</string>
+    <string name="mirror_accessibility_desc">Lets Symbian Desktop Mode tap, scroll and type on this phone from your computer while the screen is mirrored. It only acts on commands from a browser you paired, and does nothing otherwise.</string>
+    <string name="mirror_accessibility_label">Symbian Desktop Mode control</string>
 </resources>

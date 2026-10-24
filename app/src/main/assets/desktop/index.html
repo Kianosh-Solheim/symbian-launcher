@@ -459,6 +459,18 @@ body.win95 ::-webkit-scrollbar-button:single-button { background: #c0c0c0; box-s
   .bubble { max-width: 85%; overflow-wrap: anywhere; }
 }
 .mobile-back { display: none; }
+
+/* ── Screen mirroring ── */
+.mirrorview { grid-template-rows: auto 1fr auto; }
+.mtools { display: flex; align-items: center; gap: 8px; padding: 8px 12px; flex-wrap: wrap; }
+.mtools .mbtns { display: flex; gap: 4px; flex-wrap: wrap; }
+.mtools .grow { flex: 1; font-size: 13px; color: var(--muted); }
+.mstage { display: grid; place-items: center; min-height: 0; overflow: hidden; padding: 8px; outline: none; }
+.mstage:focus-visible img { box-shadow: 0 0 0 3px var(--hl); }
+.mstage img { max-width: 100%; max-height: 100%; height: 100%; width: auto; object-fit: contain; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.5); background: #000; cursor: pointer; touch-action: none; user-select: none; }
+.mhint { font-size: 12px; color: var(--muted); text-align: center; padding: 4px 8px 8px; }
+body.mobile .mhint { display: none; }
+body.win95 .mstage img { border-radius: 0; box-shadow: var(--sunken); }
 </style>
 </head>
 <body>
@@ -474,6 +486,7 @@ body.win95 ::-webkit-scrollbar-button:single-button { background: #c0c0c0; box-s
   <symbol id="i-photo" viewBox="0 0 24 24"><path d="M3 5h18v14H3zm2 2v8.5l4-4 3 3 4-5 3 3.5V7zm4 3a1.5 1.5 0 1 0 0-.01z"/></symbol>
   <symbol id="i-card" viewBox="0 0 24 24"><path d="M2 5h20v14H2zm2 3v2h16V8zm0 5v4h7v-4z"/></symbol>
   <symbol id="i-clip" viewBox="0 0 24 24"><path d="M9 2h6v2h4v18H5V4h4zm0 4H7v14h10V6h-2v2H9zm2-2v2h2V4z"/></symbol>
+  <symbol id="i-screen" viewBox="0 0 24 24"><path d="M7 1h10a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm0 3v15h10V4zm5 16.2a1 1 0 1 0 0 .1z"/></symbol>
   <symbol id="i-tool" viewBox="0 0 24 24"><path d="M22 19.6 13.9 11.5A6 6 0 0 0 6.5 3.3l3.9 3.9-2.8 2.8-3.9-3.9a6 6 0 0 0 8.2 7.4l8.1 8.1z"/></symbol>
 </svg>
 
@@ -623,7 +636,7 @@ const navIcon = id => document.body.classList.contains("win95") && PIX_FOR[id] ?
 // ───────────── Navigation ─────────────
 const SECTIONS = [
   ["home", "Home", "home"], ["messages", "Messages", "msg"], ["chats", "Chats", "chat"], ["calls", "Calls", "call"],
-  ["contacts", "Contacts", "person"], ["birthdays", "Birthdays", "cake"], ["photos", "Photos", "photo"], ["notifications", "Notifications", "bell"], ["calendar", "Calendar", "cal"], ["wallet", "Wallet", "card"], ["clipboard", "Clipboard", "clip"], ["tools", "Tools", "tool"],
+  ["contacts", "Contacts", "person"], ["birthdays", "Birthdays", "cake"], ["photos", "Photos", "photo"], ["notifications", "Notifications", "bell"], ["calendar", "Calendar", "cal"], ["wallet", "Wallet", "card"], ["clipboard", "Clipboard", "clip"], ["screen", "Screen", "screen"], ["tools", "Tools", "tool"],
 ];
 function badges() {
   const unread = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
@@ -662,6 +675,8 @@ function load(view) {
   if (view === "photos" && !S.photos.items.length) loadPhotos();
   if (view === "wallet") refresh("wallet");
   if (view === "clipboard") refresh("clipboard");
+  clearInterval(mirrorPoll); mirrorPoll = null;
+  if (view === "screen") { S.mirrorRebuild = true; mirrorRefresh(); mirrorPoll = setInterval(mirrorRefresh, 2000); }
   if (view === "home") refresh("birthdays");
 }
 async function refresh(what) {
@@ -699,6 +714,9 @@ function back() {
 
 function render() {
   renderStatus(); renderNav();
+  // The mirrored screen is a live stream: never rebuild it (that would restart the video).
+  if (S.view === "screen" && $("#mstage") && !S.mirrorRebuild) { updateMirrorUi(); return; }
+  S.mirrorRebuild = false;
   const m = $("#main");
   const keepScroll = [...m.querySelectorAll(".pane, .bubbles, .home")].map(e => e.scrollTop);
   const focusedId = document.activeElement?.id; const sel = document.activeElement?.selectionStart;
@@ -888,6 +906,27 @@ const VIEWS = {
   wallet() { return walletView(); },
   clipboard() { return clipboardView(); },
 
+  screen() {
+    setSoftkeys(S.mirror?.running ? "Stop" : "Start", () => S.mirror?.running ? mirrorStop() : mirrorStart());
+    return `<div class="view mirrorview">
+      <div class="toolbar mtools">
+        <button class="btn" id="m-start" data-mstart="1">Start</button>
+        <span class="mbtns">
+          <button class="btn small" data-mglobal="back" title="Back (Esc)">◁ Back</button>
+          <button class="btn small" data-mglobal="home" title="Home">○ Home</button>
+          <button class="btn small" data-mglobal="recents" title="Recent apps">▢ Apps</button>
+          <button class="btn small" data-mglobal="notifications" title="Notifications">▾ Notifications</button>
+        </span>
+        <span class="grow" id="m-state"></span>
+      </div>
+      <div id="mstage" class="mstage" tabindex="0">
+        <img id="mimg" alt="" draggable="false">
+        <div id="m-empty" class="empty"></div>
+      </div>
+      <div class="mhint">Click = tap · hold = long press · drag = swipe · wheel = scroll · type to enter text · arrows/Enter = D-pad · Esc = Back</div>
+    </div>`;
+  },
+
   tools() {
     setSoftkeys("Ring phone", () => act("ring", { on: true }, "Ringing phone for 30 s"));
     return `<div class="home">
@@ -1039,7 +1078,67 @@ function playRecording(src, title) {
   box.querySelector("#rp-title").textContent = title;
   const a = box.querySelector("#rp-audio"); a.src = src; a.play().catch(() => { });
 }
+// ───────────── Screen mirroring ─────────────
+let mirrorPoll = null, mirrorTextBuf = "", mirrorTextTimer = null, mirrorWheelAt = 0;
+async function mirrorRefresh() {
+  try { S.mirror = await api("mirror"); } catch { return; }
+  updateMirrorUi();
+}
+function updateMirrorUi() {
+  const st = S.mirror || {}, img = $("#mimg"), empty = $("#m-empty"), state = $("#m-state"), b = $("#m-start");
+  if (!img) return;
+  setSoftkeys(st.running ? "Stop" : "Start", () => st.running ? mirrorStop() : mirrorStart());
+  b.textContent = st.running ? "Stop" : st.waiting ? "Waiting…" : "Start";
+  const want = st.running ? `/api/mirror/stream?token=${q(token)}` : "";
+  if (want && !img.dataset.on) { img.src = want; img.dataset.on = "1"; }
+  if (!want && img.dataset.on) { img.removeAttribute("src"); delete img.dataset.on; }
+  img.style.display = st.running ? "" : "none";
+  empty.style.display = st.running ? "none" : "";
+  empty.innerHTML = st.waiting ? "On the phone, choose <b>Start now</b> / <b>Share entire screen</b> to allow mirroring."
+    : "Press <b>Start</b> to show the phone's screen here. The phone asks once for permission each time.";
+  state.innerHTML = !st.input ? `Control is off — <a href="#" data-msetup="1">turn it on</a> on the phone (Accessibility › Symbian Desktop Mode control).`
+    : st.running ? "Live — click the screen, then type or use the arrow keys." : "";
+  const sa = state.querySelector("[data-msetup]"); if (sa) sa.onclick = e => { e.preventDefault(); act("mirror/setup", {}, "Opened Accessibility settings on the phone"); };
+}
+async function mirrorStart() { await act("mirror/start", {}); mirrorRefresh(); }
+async function mirrorStop() { await act("mirror/stop", {}); mirrorRefresh(); }
+function mirrorSend(cmd) { api("mirror/input", cmd).then(r => { if (r.ok === false && r.error) toast(r.error); }).catch(() => { }); }
+function mirrorPos(e) {
+  const r = $("#mimg").getBoundingClientRect();
+  return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))];
+}
+function flushMirrorText() { if (mirrorTextBuf) { mirrorSend({ type: "text", text: mirrorTextBuf }); mirrorTextBuf = ""; } }
+function wireMirror(m) {
+  const stage = m.querySelector("#mstage"); if (!stage) return;
+  m.querySelector("[data-mstart]").onclick = () => S.mirror?.running ? mirrorStop() : mirrorStart();
+  m.querySelectorAll("[data-mglobal]").forEach(b => b.onclick = () => { mirrorSend({ type: "global", action: b.dataset.mglobal }); stage.focus(); });
+  const img = stage.querySelector("#mimg");
+  let down = null;
+  img.onpointerdown = e => { e.preventDefault(); stage.focus(); img.setPointerCapture(e.pointerId); down = { t: Date.now(), pts: [mirrorPos(e)] }; };
+  img.onpointermove = e => { if (down) { const p = mirrorPos(e), l = down.pts[down.pts.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) > 0.01) down.pts.push(p); } };
+  img.onpointerup = e => {
+    if (!down) return; const d = down; down = null;
+    const a = d.pts[0], z = mirrorPos(e), dt = Date.now() - d.t;
+    if (Math.hypot(z[0] - a[0], z[1] - a[1]) < 0.02) mirrorSend({ type: "tap", x: a[0], y: a[1], long: dt > 500 });
+    else { const pts = d.pts.concat([z]).filter((_, i, arr) => arr.length < 12 || i % Math.ceil(arr.length / 12) === 0 || i === arr.length - 1); mirrorSend({ type: "swipe", points: pts, ms: Math.min(1500, Math.max(120, dt)) }); }
+  };
+  img.oncontextmenu = e => { e.preventDefault(); const p = mirrorPos(e); mirrorSend({ type: "tap", x: p[0], y: p[1], long: true }); };
+  stage.onwheel = e => { e.preventDefault(); if (!S.mirror?.running || Date.now() - mirrorWheelAt < 250) return; mirrorWheelAt = Date.now(); const p = mirrorPos(e); mirrorSend({ type: "scroll", x: p[0], y: p[1], dy: e.deltaY }); };
+  stage.onkeydown = e => {
+    if (e.altKey || e.metaKey || (e.ctrlKey && e.key !== "v")) return;
+    const keys = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "enter", Backspace: "backspace", Delete: "delete" };
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); flushMirrorText(); return mirrorSend({ type: "global", action: "back" }); }
+    if (keys[e.key]) { e.preventDefault(); e.stopPropagation(); flushMirrorText(); return mirrorSend({ type: "key", key: keys[e.key] }); }
+    if (e.key.length === 1 && !e.ctrlKey) {
+      e.preventDefault(); e.stopPropagation();
+      mirrorTextBuf += e.key; clearTimeout(mirrorTextTimer); mirrorTextTimer = setTimeout(flushMirrorText, 120);
+    }
+  };
+  stage.onpaste = e => { const t = e.clipboardData?.getData("text"); if (t) { e.preventDefault(); e.stopPropagation(); flushMirrorText(); mirrorSend({ type: "text", text: t }); } };
+}
+
 function wire(m) {
+  if (S.view === "screen") { wireMirror(m); updateMirrorUi(); }
   m.querySelectorAll("[data-playrec]").forEach(b => b.onclick = () => playRecording(b.dataset.playrec, b.dataset.title));
   m.querySelectorAll("[data-calltab]").forEach(b => b.onclick = () => { S.callTab = b.dataset.calltab; if (S.callTab === "rec") refresh("recordings"); render(); });
   m.querySelectorAll("[data-thread]").forEach(b => b.onclick = () => { if (S.view !== "messages") { S.view = "messages"; } openThread(Number(b.dataset.thread)); });
