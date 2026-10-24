@@ -2,6 +2,7 @@ package com.example
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.AlertDialogDefaults
@@ -518,14 +519,14 @@ fun AlertDialog(
     containerColor: Color = Color.Unspecified,
 ) {
     // Dialogs with their own colour (battery saver) keep their look.
-    if (!LocalWin95.current || containerColor.isSpecified) {
+    if (containerColor.isSpecified) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = onDismissRequest, confirmButton = confirmButton, modifier = modifier,
-            dismissButton = dismissButton, icon = icon, title = title, text = text,
-            containerColor = if (containerColor.isSpecified) containerColor else AlertDialogDefaults.containerColor
+            dismissButton = dismissButton, icon = icon, title = title, text = text, containerColor = containerColor
         )
         return
     }
+    if (!LocalWin95.current) { SymbianDialog(onDismissRequest, confirmButton, modifier, dismissButton, icon, title, text); return }
     Dialog(onDismissRequest = onDismissRequest) {
         val scheme = MaterialTheme.colorScheme.copy(
             background = Win95.Face, surface = Color.White, onBackground = Color.Black, onSurface = Color.Black,
@@ -601,4 +602,52 @@ fun win95Color(c: Color): Color {
 /** A coloured round button face normally; a raised grey Windows 95 button in that theme. */
 fun Modifier.win95OrBackground(color: Color, shape: Shape): Modifier = composed {
     if (LocalWin95.current) win95Bevel() else background(color, shape)
+}
+
+
+/** Symbian-style pop-up: dark glossy panel in the theme colours, white text, soft-key style buttons. */
+@Composable
+private fun SymbianDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier,
+    dismissButton: (@Composable () -> Unit)?,
+    icon: (@Composable () -> Unit)?,
+    title: (@Composable () -> Unit)?,
+    text: (@Composable () -> Unit)?,
+) {
+    val cs = MaterialTheme.colorScheme
+    val panel = androidx.compose.ui.graphics.lerp(cs.surface, Color.Black, 0.35f)
+    val panelTop = androidx.compose.ui.graphics.lerp(cs.surface, Color.White, 0.08f)
+    val fg = cs.onSurface
+    Dialog(onDismissRequest = onDismissRequest) {
+        val shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+        MaterialTheme(colorScheme = cs.copy(primary = fg)) {
+            CompositionLocalProvider(LocalContentColor provides fg) {
+                Column(
+                    modifier.widthIn(min = 240.dp, max = 340.dp)
+                        .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop, panel)), shape)
+                        .border(1.dp, cs.secondary.copy(alpha = 0.7f), shape)
+                        .padding(vertical = 10.dp)
+                ) {
+                    if (title != null) {
+                        Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) {
+                            androidx.compose.material3.ProvideTextStyle(MaterialTheme.typography.titleMedium.copy(color = fg, fontWeight = FontWeight.Bold)) { title() }
+                        }
+                        Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp).height(1.dp).background(cs.secondary.copy(alpha = 0.6f)))
+                    }
+                    Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.Top) {
+                        if (icon != null) { icon(); Spacer(Modifier.width(8.dp)) }
+                        Box(Modifier.weight(1f, fill = false)) {
+                            androidx.compose.material3.ProvideTextStyle(MaterialTheme.typography.bodyMedium.copy(color = fg)) { text?.invoke() }
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.End) {
+                        if (dismissButton != null) { dismissButton(); Spacer(Modifier.width(4.dp)) }
+                        confirmButton()
+                    }
+                }
+            }
+        }
+    }
 }
