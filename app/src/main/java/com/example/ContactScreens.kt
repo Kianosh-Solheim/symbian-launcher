@@ -127,6 +127,8 @@ fun ContactDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     var callLogs by remember(contact.id) { mutableStateOf<List<CallLogEntry>?>(null) }
     var showFullPhotoDialog by remember { mutableStateOf(false) }
+    var showShareDialog by remember { mutableStateOf(false) }
+    if (showShareDialog) ContactShareDialog(contact) { showShareDialog = false }
 
     val isScrolledDown by remember {
         derivedStateOf {
@@ -575,18 +577,7 @@ fun ContactDetailScreen(
                                 .symbianHighlight(isShareFocused, RoundedCornerShape(8.dp))
                                 .clickable(interactionSource = shareSource, indication = LocalIndication.current) {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    val shareText = buildString {
-                                        append("Contact: ${contact.name}\n")
-                                        contact.phoneNumbers.forEach { append("${it.label}: ${it.number}\n") }
-                                        contact.emails.forEach { append("${it.label}: ${it.address}\n") }
-                                    }.trim()
-                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                        putExtra(Intent.EXTRA_TEXT, shareText)
-                                        type = "text/plain"
-                                    }
-                                    try {
-                                        context.startActivity(Intent.createChooser(sendIntent, "Share Contact"))
-                                    } catch (e: Exception) {}
+                                    showShareDialog = true
                                 }
                                 .padding(8.dp)
                         ) {
