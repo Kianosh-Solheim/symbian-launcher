@@ -854,32 +854,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                             }
                             // Pinned Apps Row (Only visible if not searching)
                             if (state.pinnedApps.isNotEmpty() && state.t9Query.isEmpty()) {
-                            LazyRow(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(if (state.showWallpaper) MaterialTheme.colorScheme.background.copy(alpha = 0.4f) else MaterialTheme.colorScheme.background)
-                                    .background(if (state.showWallpaper) Color.Transparent else Color.White.copy(alpha = 0.12f))
-                                    .padding(vertical = 6.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(state.pinnedApps) { app ->
-                                    val interactionSource = remember { MutableInteractionSource() }
-                                    val isFocused by interactionSource.collectIsFocusedAsState()
-                                    Box(
-                                        modifier = Modifier
-                                            .symbianHighlight(isFocused)
-                                            .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { viewModel.launchApp(app) }
-                                            .padding(4.dp)
-                                    ) {
-                                        AppIconImage(
-                                            bitmap = app.icon.toCachedImageBitmap(),
-                                            contentDescription = app.name,
-                                            modifier = Modifier.size(40.dp)
-                                        )
-                                    }
-                                }
-                            }
+                            PinnedAppsStrip(state.pinnedApps, state.showWallpaper) { viewModel.launchApp(it) }
                             DashedDivider()
                         }
     
@@ -1104,6 +1079,55 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                     LaunchedEffect(Unit) { ClockApps.open(context, state); navigateBack() }
                 }
             }
+                }
+            }
+        }
+    }
+}
+
+
+/** Pinned apps that always fit on screen: icons shrink as more apps are pinned, and wrap to more rows when they would get too small. */
+@Composable
+fun PinnedAppsStrip(apps: List<AppInfo>, showWallpaper: Boolean, onLaunch: (AppInfo) -> Unit) {
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (showWallpaper) MaterialTheme.colorScheme.background.copy(alpha = 0.4f) else MaterialTheme.colorScheme.background)
+            .background(if (showWallpaper) Color.Transparent else Color.White.copy(alpha = 0.12f))
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        val n = apps.size.coerceAtLeast(1)
+        val avail = maxWidth.value
+        val maxIcon = 40f; val minIcon = 26f; val pad = 4f
+        // Pick the fewest rows that keep icons at least minIcon wide.
+        var rows = 1; var cols = n; var gap = 12f; var icon = maxIcon
+        while (true) {
+            cols = (n + rows - 1) / rows
+            gap = when { cols <= 6 -> 12f; cols <= 9 -> 6f; else -> 3f }
+            icon = ((avail - gap * (cols - 1)) / cols - 2 * pad).coerceAtMost(maxIcon)
+            if (icon >= minIcon || rows >= 4) break
+            rows++
+        }
+        icon = icon.coerceAtLeast(16f)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            apps.chunked(cols).forEach { rowApps ->
+                Row(horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
+                    rowApps.forEach { app ->
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val isFocused by interactionSource.collectIsFocusedAsState()
+                        Box(
+                            modifier = Modifier
+                                .symbianHighlight(isFocused)
+                                .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onLaunch(app) }
+                                .padding(pad.dp)
+                        ) {
+                            AppIconImage(
+                                bitmap = app.icon.toCachedImageBitmap(),
+                                contentDescription = app.name,
+                                modifier = Modifier.size(icon.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
