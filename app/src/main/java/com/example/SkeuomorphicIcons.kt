@@ -33,6 +33,7 @@ import java.util.Calendar
 fun SkeuomorphicMessageIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("msg", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("msg", modifier); return }
+    if (LocalLcd.current) { LcdIcon("msg", modifier); return }
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
         val h = size.height
@@ -97,6 +98,7 @@ fun SkeuomorphicMessageIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicEmailIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("mail", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("mail", modifier); return }
+    if (LocalLcd.current) { LcdIcon("mail", modifier); return }
     val textMeasurer = rememberTextMeasurer()
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
@@ -172,6 +174,7 @@ fun SkeuomorphicEmailIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicCalendarIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("cal", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("cal", modifier); return }
+    if (LocalLcd.current) { LcdIcon("cal", modifier); return }
     val textMeasurer = rememberTextMeasurer()
     val dayOfMonth = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
     
@@ -257,6 +260,7 @@ fun SkeuomorphicCalendarIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicContactsIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("person", modifier.size(32.dp)); return }
     if (LocalS60.current) { S60Icons.Icon("person", modifier.size(32.dp)); return }
+    if (LocalLcd.current) { LcdIcon("person", modifier.size(32.dp)); return }
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
         val h = size.height
@@ -332,6 +336,7 @@ fun SkeuomorphicContactsIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicNotificationsIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("bell", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("bell", modifier); return }
+    if (LocalLcd.current) { LcdIcon("bell", modifier); return }
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
         val h = size.height
@@ -404,6 +409,7 @@ fun SkeuomorphicNotificationsIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicAppsIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("apps", modifier.size(32.dp)); return }
     if (LocalS60.current) { S60Icons.Icon("apps", modifier.size(32.dp)); return }
+    if (LocalLcd.current) { LcdIcon("apps", modifier.size(32.dp)); return }
     Canvas(modifier = modifier.size(32.dp)) {
         val w = size.width
         val h = size.height
@@ -461,6 +467,7 @@ fun SkeuomorphicAppsIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicSettingsIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("settings", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("settings", modifier); return }
+    if (LocalLcd.current) { LcdIcon("settings", modifier); return }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -520,6 +527,7 @@ fun SkeuomorphicSettingsIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicUsageIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("usage", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("usage", modifier); return }
+    if (LocalLcd.current) { LcdIcon("usage", modifier); return }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -583,6 +591,7 @@ fun SkeuomorphicUsageIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicWalletIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("card", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("card", modifier); return }
+    if (LocalLcd.current) { LcdIcon("card", modifier); return }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -676,6 +685,7 @@ fun SkeuomorphicWalletIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicCalculatorIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("calc", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("calc", modifier); return }
+    if (LocalLcd.current) { LcdIcon("calc", modifier); return }
     val textMeasurer = rememberTextMeasurer()
     Canvas(modifier = modifier) {
         val w = size.width
@@ -838,6 +848,7 @@ fun SkeuomorphicCalculatorIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicClockIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("clock", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("clock", modifier); return }
+    if (LocalLcd.current) { LcdIcon("clock", modifier); return }
     val currentTimeMillis = rememberTickingTime(1_000L)
 
     val calendar = remember(currentTimeMillis) {
@@ -1013,6 +1024,7 @@ fun SkeuomorphicClockIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicBatterySaverIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("battery", modifier.size(36.dp)); return }
     if (LocalS60.current) { S60Icons.Icon("battery", modifier.size(36.dp)); return }
+    if (LocalLcd.current) { LcdIcon("battery", modifier.size(36.dp)); return }
     Canvas(modifier = modifier.size(36.dp)) {
         val w = size.width
         val h = size.height
@@ -1113,6 +1125,7 @@ fun SkeuomorphicBatterySaverIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicPhoneIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("call", modifier.size(36.dp)); return }
     if (LocalS60.current) { S60Icons.Icon("call", modifier.size(36.dp)); return }
+    if (LocalLcd.current) { LcdIcon("call", modifier.size(36.dp)); return }
     Canvas(modifier = modifier.size(36.dp)) {
         val w = size.width
         val h = size.height
@@ -1184,6 +1197,7 @@ fun SkeuomorphicPhoneIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicCameraIcon(modifier: Modifier = Modifier) {
     if (LocalWin95.current) { Win95PixelIcon("camera", modifier.size(36.dp)); return }
     if (LocalS60.current) { S60Icons.Icon("camera", modifier.size(36.dp)); return }
+    if (LocalLcd.current) { LcdIcon("camera", modifier.size(36.dp)); return }
     Canvas(modifier = modifier.size(36.dp)) {
         val w = size.width
         val h = size.height
@@ -1272,6 +1286,7 @@ fun SkeuomorphicCameraIcon(modifier: Modifier = Modifier) {
 fun SkeuomorphicDesktopIcon(modifier: Modifier = Modifier, active: Boolean = false) {
     if (LocalWin95.current) { Win95PixelIcon("desktop", modifier); return }
     if (LocalS60.current) { S60Icons.Icon("desktop", modifier); return }
+    if (LocalLcd.current) { LcdIcon("desktop", modifier); return }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height

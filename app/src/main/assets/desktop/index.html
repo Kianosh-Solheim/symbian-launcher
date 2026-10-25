@@ -462,6 +462,8 @@ body.win95 ::-webkit-scrollbar-button:single-button { background: #c0c0c0; box-s
 /* Classic Green LCD: same two-tone conversion as on the phone. */
 body.lcd { filter: url(#lcdf); background: #000 !important; --bg: #000; --bg-top: #000; --bg-bottom: #000; --panel: #000; --surface: #0a0a0a; --line: rgba(255,255,255,.55); --muted: #b0b0b0; --text: #fff; text-shadow: none; }
 body.lcd * { text-shadow: none !important; }
+body.lcd { font-family: "Pixelify Sans", ui-monospace, monospace; }
+body.lcd img { image-rendering: pixelated; }
 body.lcd #app, body.lcd .body, body.lcd main, body.lcd .view, body.lcd .home, body.lcd .pane { background: #000 !important; }
 body.lcd .card, body.lcd .dialog, body.lcd .pane + .pane, body.lcd nav { border-color: rgba(255,255,255,.7) !important; box-shadow: none !important; }
 body.lcd .status, body.lcd .softkeys { background: #000 !important; border-color: rgba(255,255,255,.7) !important; }
@@ -479,6 +481,8 @@ body.lcd .btn { background: #000; border: 1px solid #fff; box-shadow: none; }
 .mhint { font-size: 12px; color: var(--muted); text-align: center; padding: 4px 8px 8px; }
 body.mobile .mhint { display: none; }
 body.win95 .mstage img { border-radius: 0; box-shadow: var(--sunken); }
+@font-face { font-family: "Pixelify Sans"; src: url("/static/pixelify.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Pixelify Sans"; src: url("/static/pixelify-bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
 </style>
 </head>
 <body>

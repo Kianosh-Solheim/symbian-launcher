@@ -71,6 +71,12 @@ data class T9Result(
 val NokiaPureFontFamily = FontFamily.SansSerif
 val PixelBitmapFontFamily = FontFamily.Monospace
 
+/** Pixelify Sans: a real pixel typeface (SIL Open Font License), sharp at any size. */
+val PixelFont = FontFamily(
+    androidx.compose.ui.text.font.Font(R.font.pixelify_sans_regular, androidx.compose.ui.text.font.FontWeight.Normal),
+    androidx.compose.ui.text.font.Font(R.font.pixelify_sans_bold, androidx.compose.ui.text.font.FontWeight.Bold)
+)
+
 enum class AppFont(val displayName: String) {
     NOKIA_PURE("Symbian Sans (Clean)"),
     PIXEL("Retro Pixel (Monospace)"),
@@ -80,7 +86,7 @@ enum class AppFont(val displayName: String) {
     fun toFontFamily(): FontFamily {
         return when (this) {
             NOKIA_PURE -> FontFamily.SansSerif
-            PIXEL -> FontFamily.Monospace
+            PIXEL -> PixelFont
             MONOSPACE -> FontFamily.Monospace
             SANS_SERIF -> FontFamily.Default
             SERIF -> FontFamily.Serif
@@ -608,6 +614,8 @@ _state.update { it.copy(pinnedApps = current) }
 
     fun setTheme(theme: AppTheme) {
         prefs.edit().putString("theme", theme.name).apply()
+        // The green LCD look goes with the pixel font (can be changed back under Font).
+        if (theme == AppTheme.LCD && _state.value.currentFont != AppFont.PIXEL) setFont(AppFont.PIXEL)
         
 _state.update { it.copy(currentTheme = theme) }
     }

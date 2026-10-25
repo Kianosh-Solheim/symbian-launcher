@@ -313,6 +313,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(cs.background, cs.surface, cs.primary, cs.secondary, cs.onBackground, state.currentFont, state.currentTheme) {
                     IconCache.win95 = state.currentTheme == AppTheme.WIN95 // app icons become pixel icons
                     IconCache.s60 = state.currentTheme == AppTheme.S60 // app icons get the S60 gloss
+                    IconCache.lcd = state.currentTheme == AppTheme.LCD // app icons become LCD pixel icons
                     fun hex(c: androidx.compose.ui.graphics.Color) = String.format("#%06X", 0xFFFFFF and c.toArgb())
                     BridgeState.theme.value = mapOf(
                         "background" to hex(cs.background), "surface" to hex(cs.surface), "text" to hex(cs.onBackground),

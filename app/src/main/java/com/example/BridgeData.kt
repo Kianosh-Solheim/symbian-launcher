@@ -683,12 +683,13 @@ class BridgeData(private val context: Context) {
         return ok()
     }
 
-    fun appIcon(pkg: String): ByteArray? = iconCache.getOrPut(when { IconCache.win95 -> "95:$pkg"; IconCache.s60 -> "60:$pkg"; else -> pkg }) {
+    fun appIcon(pkg: String): ByteArray? = iconCache.getOrPut(when { IconCache.win95 -> "95:$pkg"; IconCache.s60 -> "60:$pkg"; IconCache.lcd -> "lcd:$pkg"; else -> pkg }) {
         try {
             val d = CustomIcons.load(context, pkg) ?: context.packageManager.getApplicationIcon(pkg)
             val bmp = when {
                 IconCache.win95 -> Win95Pixelizer.convert(d)
                 IconCache.s60 -> S60Styler.convert(d, if (CustomIcons.has(context, pkg)) "custom:$pkg" else pkg)
+                IconCache.lcd -> LcdPixelizer.convert(d)
                 else -> d.toBitmap(96, 96, Bitmap.Config.ARGB_8888)
             }
             ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()

@@ -26,6 +26,9 @@ object IconCache {
     var win95 by mutableStateOf(false)
     /** Classic S60 Sky theme: glossy versions of every icon. */
     var s60 by mutableStateOf(false)
+    /** Classic Green LCD theme: detailed pixel versions of every icon. */
+    var lcd by mutableStateOf(false)
+    private val lcdIcons = WeakHashMap<Drawable, ImageBitmap>()
     private val glossy = WeakHashMap<Drawable, ImageBitmap>()
     private val owners = WeakHashMap<Drawable, String>()
 
@@ -35,6 +38,7 @@ object IconCache {
 
     fun get(drawable: Drawable): ImageBitmap {
         if (win95) return synchronized(retro) { retro.getOrPut(drawable) { Win95Pixelizer.convert(drawable).asImageBitmap() } }
+        if (lcd) return synchronized(lcdIcons) { lcdIcons.getOrPut(drawable) { LcdPixelizer.convert(drawable).asImageBitmap() } }
         if (s60) return synchronized(glossy) { glossy.getOrPut(drawable) { S60Styler.convert(drawable, ownerOf(drawable)).asImageBitmap() } }
         return synchronized(cache) {
             cache.getOrPut(drawable) {
