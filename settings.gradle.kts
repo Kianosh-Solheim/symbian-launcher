@@ -27,3 +27,4 @@ rootProject.name = "symbian-launcher"
 include(":app")
 include(":clock")
 include(":snake")
+include(":blocks")

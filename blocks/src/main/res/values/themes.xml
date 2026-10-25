@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Blocks" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/lcd_bg</item>
+        <item name="android:statusBarColor">#FF1B2414</item>
+        <item name="android:navigationBarColor">#FF1B2414</item>
+    </style>
+</resources>
