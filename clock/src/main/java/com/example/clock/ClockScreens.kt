@@ -562,7 +562,7 @@ fun WorldClockSearchScreen(state: ClockUiState, haptic: HapticFeedback, onSelect
 // ───────────── Shared D-pad rows ─────────────
 
 @Composable
-private fun clockFg(focused: Boolean) = if (focused) Color.Black else win95Fg()
+private fun clockFg(focused: Boolean) = if (focused) (if (LocalLcd.current) androidx.compose.material3.MaterialTheme.colorScheme.background else Color.Black) else win95Fg()
 
 @Composable
 fun ClockRow(

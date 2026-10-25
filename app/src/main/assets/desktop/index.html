@@ -464,6 +464,10 @@ body.lcd { filter: url(#lcdf); background: #000 !important; --bg: #000; --bg-top
 body.lcd * { text-shadow: none !important; }
 body.lcd { font-family: "Pixelify Sans", ui-monospace, monospace; }
 body.lcd img { image-rendering: pixelated; }
+body.lcd .sel, body.lcd nav button.active, body.lcd nav button:focus-visible, body.lcd .row:focus-visible, body.lcd .row.active { background: #fff !important; color: #000 !important; border-radius: 0 !important; }
+body.lcd nav button.active svg, body.lcd .row.active svg { fill: #000 !important; }
+body.lcd::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 3px); }
 body.lcd #app, body.lcd .body, body.lcd main, body.lcd .view, body.lcd .home, body.lcd .pane { background: #000 !important; }
 body.lcd .card, body.lcd .dialog, body.lcd .pane + .pane, body.lcd nav { border-color: rgba(255,255,255,.7) !important; box-shadow: none !important; }
 body.lcd .status, body.lcd .softkeys { background: #000 !important; border-color: rgba(255,255,255,.7) !important; }
@@ -487,7 +491,7 @@ body.win95 .mstage img { border-radius: 0; box-shadow: var(--sunken); }
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <filter id="lcdf" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="-0.1665 -0.3269 -0.0635 0 0.6667 -0.1841 -0.3614 -0.0702 0 0.7765 -0.1055 -0.2072 -0.0402 0 0.4157 0 0 0 1 0"/></filter>
+  <filter id="lcdf" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="-0.1606 -0.3154 -0.0612 0 0.5922 -0.2075 -0.4074 -0.0791 0 0.7882 -0.0645 -0.1266 -0.0246 0 0.2392 0 0 0 1 0"/></filter>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></symbol>
   <symbol id="i-msg" viewBox="0 0 24 24"><path d="M3 5h18v12H7l-4 4zM6 8v2h12V8zm0 4v2h9v-2z"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M2 4h14v10H6l-4 4zm16 4h4v12l-4-4h-8v-2h8z"/></symbol>

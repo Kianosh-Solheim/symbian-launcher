@@ -41,6 +41,7 @@ enum class AppFont {
  */
 data class ClockLook(
     val win95: Boolean = false,
+    val lcd: Boolean = false,
     val background: Int = 0xFF000000.toInt(),
     val surface: Int = 0xFF1E293B.toInt(),
     val text: Int = 0xFFFFFFFF.toInt(),
@@ -52,7 +53,7 @@ data class ClockLook(
     val weekdayFormat: WeekdayFormat = WeekdayFormat.SHORT,
     val font: AppFont = AppFont.SANS_SERIF
 ) {
-    fun toJson(): String = JSONObject().put("win95", win95).put("bg", background).put("surface", surface).put("text", text)
+    fun toJson(): String = JSONObject().put("win95", win95).put("lcd", lcd).put("bg", background).put("surface", surface).put("text", text)
         .put("accent", accent).put("highlight", highlight).put("is24", is24).put("dateFormat", dateFormat.name)
         .put("showWeekday", showWeekday).put("weekdayFormat", weekdayFormat.name).put("font", font.name).toString()
 
@@ -61,7 +62,7 @@ data class ClockLook(
 
         fun fromJson(s: String?): ClockLook = try {
             val o = JSONObject(s ?: "{}"); val d = ClockLook()
-            ClockLook(o.optBoolean("win95", d.win95), o.optInt("bg", d.background), o.optInt("surface", d.surface), o.optInt("text", d.text),
+            ClockLook(o.optBoolean("win95", d.win95), o.optBoolean("lcd", d.lcd), o.optInt("bg", d.background), o.optInt("surface", d.surface), o.optInt("text", d.text),
                 o.optInt("accent", d.accent), o.optInt("highlight", d.highlight), o.optBoolean("is24", d.is24),
                 en(o.optString("dateFormat", null), d.dateFormat), o.optBoolean("showWeekday", d.showWeekday),
                 en(o.optString("weekdayFormat", null), d.weekdayFormat), en(o.optString("font", null), d.font))
@@ -71,8 +72,8 @@ data class ClockLook(
         fun fromIntent(i: Intent?, prev: ClockLook): ClockLook {
             if (i == null || !i.hasExtra("look_style")) return prev
             if (i.getStringExtra("look_style") == "lcd") return prev.copy(
-                win95 = false, background = 0xFFAAC66A.toInt(), surface = 0xFF95B25A.toInt(), text = 0xFF1C2910.toInt(),
-                accent = 0xFF1C2910.toInt(), highlight = 0xFF7E9A48.toInt(),
+                win95 = false, lcd = true, background = 0xFF97C93D.toInt(), surface = 0xFF86B634.toInt(), text = 0xFF0E1806.toInt(),
+                accent = 0xFF0E1806.toInt(), highlight = 0xFF0E1806.toInt(),
                 is24 = i.getBooleanExtra("look_is24", prev.is24),
                 dateFormat = en(i.getStringExtra("look_dateFormat"), prev.dateFormat),
                 showWeekday = i.getBooleanExtra("look_showWeekday", prev.showWeekday),
@@ -80,7 +81,7 @@ data class ClockLook(
                 font = AppFont.PIXEL
             )
             return prev.copy(
-                win95 = i.getStringExtra("look_style") == "win95",
+                win95 = i.getStringExtra("look_style") == "win95", lcd = false,
                 background = i.getIntExtra("look_bg", prev.background), surface = i.getIntExtra("look_surface", prev.surface),
                 text = i.getIntExtra("look_text", prev.text), accent = i.getIntExtra("look_accent", prev.accent),
                 highlight = i.getIntExtra("look_highlight", prev.highlight),
@@ -132,6 +133,7 @@ object WorldClockStore {
 }
 
 val LocalWin95 = staticCompositionLocalOf { false }
+val LocalLcd = staticCompositionLocalOf { false }
 
 @Composable
 fun win95Fg(): Color = if (LocalWin95.current) Color.Black else androidx.compose.material3.MaterialTheme.colorScheme.onBackground
@@ -155,8 +157,10 @@ fun Modifier.symbianHighlight(
     unfocusedColor: Color = Color.Transparent
 ): Modifier = this.composed {
     val win95 = LocalWin95.current
+    val lcd = LocalLcd.current
     when {
         isFocused && win95 -> this.win95Bevel()
+        isFocused && lcd -> this.background(androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
         isFocused -> {
             val base = androidx.compose.material3.MaterialTheme.colorScheme.secondary
             val top = androidx.compose.ui.graphics.lerp(base, Color.White, 0.4f)

@@ -130,7 +130,7 @@ class ClockActivity : ComponentActivity() {
         }
 
         MaterialTheme(colorScheme = scheme) {
-            CompositionLocalProvider(LocalWin95 provides l.win95) {
+            CompositionLocalProvider(LocalWin95 provides l.win95, LocalLcd provides l.lcd) {
                 Column(Modifier.fillMaxSize().background(if (l.win95) Color(0xFF008080) else Color(l.background)).systemBarsPadding()) {
                     Box(Modifier.weight(1f).fillMaxWidth().then(if (l.win95) Modifier.padding(3.dp).win95Bevel().padding(3.dp) else Modifier)) {
                         Column(Modifier.fillMaxSize()) {

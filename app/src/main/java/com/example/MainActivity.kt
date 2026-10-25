@@ -173,8 +173,8 @@ val LocalLcd = androidx.compose.runtime.staticCompositionLocalOf { false }
  * become the green background, and the yellow selection becomes a dark inverted bar.
  */
 private val lcdMatrix: ColorMatrix = run {
-    val light = floatArrayOf(170f, 198f, 106f)  // #AAC66A backlight
-    val dark = floatArrayOf(28f, 41f, 16f)      // #1C2910 ink
+    val light = floatArrayOf(151f, 201f, 61f)  // #97C93D backlight
+    val dark = floatArrayOf(14f, 24f, 6f)       // #0E1806 ink
     val m = FloatArray(20)
     for (i in 0..2) {
         val k = (dark[i] - light[i]) / 255f
@@ -192,6 +192,10 @@ fun Modifier.lcdFilter(enabled: Boolean = true): Modifier = if (enabled) {
             drawContent()
             canvas.restore()
         }
+        // Faint dot-matrix grid, like the pixels of a real LCD.
+        val step = 3.dp.toPx(); val grid = Color(0x120E1806)
+        var x = 0f; while (x < size.width) { drawLine(grid, Offset(x, 0f), Offset(x, size.height), 1f); x += step }
+        var y = 0f; while (y < size.height) { drawLine(grid, Offset(0f, y), Offset(size.width, y), 1f); y += step }
     }
 } else this
 
@@ -216,6 +220,7 @@ fun Modifier.symbianHighlight(
 ): Modifier = this.composed {
     val soundsEnabled = LocalSymbianSoundsEnabled.current
     val win95 = LocalWin95.current
+    val lcd = LocalLcd.current
     androidx.compose.runtime.LaunchedEffect(isFocused) {
         if (isFocused && soundsEnabled) {
             com.example.SymbianSoundManager.playClick()
@@ -223,6 +228,9 @@ fun Modifier.symbianHighlight(
     }
     if (isFocused && win95) {
         this.win95Bevel()
+    } else if (isFocused && lcd) {
+        // LCD: a solid, square inverted bar (drawn white, the screen filter turns it into ink).
+        this.background(androidx.compose.ui.graphics.Color.White)
     } else if (isFocused) {
         val baseColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary
         val topColor = androidx.compose.ui.graphics.lerp(baseColor, androidx.compose.ui.graphics.Color.White, 0.4f)
