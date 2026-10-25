@@ -82,8 +82,56 @@ fun RealisticWeatherIcon(
     size: Dp = 48.dp
 ) {
     val condition = parseWeatherCondition(symbolCode)
+    if (LocalLcd.current) {
+        val name = lcdWeatherName(condition)
+        val bmp = androidx.compose.runtime.remember(name) { LcdPixelizer.builtIn(name) }
+        if (bmp != null) {
+            androidx.compose.foundation.Image(bmp, contentDescription = null,
+                modifier = modifier.size(size).lcdInvertOnSelection(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                filterQuality = androidx.compose.ui.graphics.FilterQuality.None)
+            return
+        }
+    }
+    if (LocalWin95.current) {
+        // Retro look: draw the icon at 24×24 and blow it up without smoothing.
+        val bmp = androidx.compose.runtime.remember(condition) {
+            val px = 24
+            val img = androidx.compose.ui.graphics.ImageBitmap(px, px)
+            androidx.compose.ui.graphics.drawscope.CanvasDrawScope().draw(
+                androidx.compose.ui.unit.Density(1f), androidx.compose.ui.unit.LayoutDirection.Ltr,
+                androidx.compose.ui.graphics.Canvas(img), Size(px.toFloat(), px.toFloat())
+            ) { drawWeather(condition) }
+            img
+        }
+        androidx.compose.foundation.Image(bmp, contentDescription = null, modifier = modifier.size(size),
+            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+            filterQuality = androidx.compose.ui.graphics.FilterQuality.None)
+        return
+    }
     Box(modifier = modifier.size(size)) {
-        Canvas(modifier = Modifier.matchParentSize()) {
+        Canvas(modifier = Modifier.matchParentSize()) { drawWeather(condition) }
+    }
+}
+
+private fun lcdWeatherName(c: WeatherConditionType) = when (c) {
+    WeatherConditionType.CLEAR_DAY -> "wx_sun"
+    WeatherConditionType.CLEAR_NIGHT -> "wx_moon"
+    WeatherConditionType.PARTLY_CLOUDY_DAY -> "wx_partsun"
+    WeatherConditionType.PARTLY_CLOUDY_NIGHT -> "wx_partmoon"
+    WeatherConditionType.CLOUDY -> "wx_cloud"
+    WeatherConditionType.OVERCAST -> "wx_overcast"
+    WeatherConditionType.LIGHT_RAIN -> "wx_lightrain"
+    WeatherConditionType.RAIN -> "wx_rain"
+    WeatherConditionType.HEAVY_RAIN -> "wx_heavyrain"
+    WeatherConditionType.THUNDERSTORM -> "wx_thunder"
+    WeatherConditionType.SNOW -> "wx_snow"
+    WeatherConditionType.SLEET -> "wx_sleet"
+    WeatherConditionType.FOG -> "wx_fog"
+    WeatherConditionType.WIND -> "wx_wind"
+}
+
+private fun DrawScope.drawWeather(condition: WeatherConditionType) {
             when (condition) {
                 WeatherConditionType.CLEAR_DAY -> drawRealisticSun(isFull = true)
                 WeatherConditionType.CLEAR_NIGHT -> drawRealisticMoon(withStars = true)
@@ -142,8 +190,6 @@ fun RealisticWeatherIcon(
                     drawWindTrails()
                 }
             }
-        }
-    }
 }
 
 // -------------------------------------------------------------
