@@ -790,7 +790,8 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding(), top = topPadding)
                 .then(
-                    if (!state.isExtremeBatterySaver && state.currentTheme == AppTheme.S60)
+                    if (state.currentTheme == AppTheme.LCD) Modifier.background(MaterialTheme.colorScheme.background)
+                    else if (!state.isExtremeBatterySaver && state.currentTheme == AppTheme.S60)
                         Modifier.s60Backdrop(if (state.showWallpaper) state.wallpaperTransparency else 1f)
                     else Modifier.background(if (state.isExtremeBatterySaver) Color.Black else if (state.showWallpaper) MaterialTheme.colorScheme.background.copy(alpha = state.wallpaperTransparency) else MaterialTheme.colorScheme.background)
                 )

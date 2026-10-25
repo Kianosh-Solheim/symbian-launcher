@@ -459,6 +459,14 @@ body.win95 ::-webkit-scrollbar-button:single-button { background: #c0c0c0; box-s
   .bubble { max-width: 85%; overflow-wrap: anywhere; }
 }
 .mobile-back { display: none; }
+/* Classic Green LCD: same two-tone conversion as on the phone. */
+body.lcd { filter: url(#lcdf); background: #000 !important; --bg: #000; --bg-top: #000; --bg-bottom: #000; --panel: #000; --surface: #0a0a0a; --line: rgba(255,255,255,.55); --muted: #b0b0b0; --text: #fff; text-shadow: none; }
+body.lcd * { text-shadow: none !important; }
+body.lcd #app, body.lcd .body, body.lcd main, body.lcd .view, body.lcd .home, body.lcd .pane { background: #000 !important; }
+body.lcd .card, body.lcd .dialog, body.lcd .pane + .pane, body.lcd nav { border-color: rgba(255,255,255,.7) !important; box-shadow: none !important; }
+body.lcd .status, body.lcd .softkeys { background: #000 !important; border-color: rgba(255,255,255,.7) !important; }
+body.lcd .card h3, body.lcd .dialog h2 { background: #000; border-bottom: 1px dashed rgba(255,255,255,.7); }
+body.lcd .btn { background: #000; border: 1px solid #fff; box-shadow: none; }
 
 /* ── Screen mirroring ── */
 .mirrorview { grid-template-rows: auto 1fr auto; }
@@ -475,6 +483,7 @@ body.win95 .mstage img { border-radius: 0; box-shadow: var(--sunken); }
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="lcdf" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="-0.1665 -0.3269 -0.0635 0 0.6667 -0.1841 -0.3614 -0.0702 0 0.7765 -0.1055 -0.2072 -0.0402 0 0.4157 0 0 0 1 0"/></filter>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></symbol>
   <symbol id="i-msg" viewBox="0 0 24 24"><path d="M3 5h18v12H7l-4 4zM6 8v2h12V8zm0 4v2h9v-2z"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M2 4h14v10H6l-4 4zm16 4h4v12l-4-4h-8v-2h8z"/></symbol>
@@ -2198,7 +2207,7 @@ function confirmOnce(btn, msg) { return window.confirm(msg); }
 function applyTheme(t) {
   if (t.style) {
     const was = store.get("symbian.style");
-    store.set("symbian.style", t.style); document.body.classList.toggle("win95", t.style === "win95");
+    store.set("symbian.style", t.style); document.body.classList.toggle("win95", t.style === "win95"); document.body.classList.toggle("lcd", t.style === "lcd");
     if (was !== t.style) try { renderNav(); render(); } catch (_) { }
   }
   const r = document.documentElement.style;
@@ -2230,6 +2239,7 @@ async function pair() {
   } catch { $("#pairerr").textContent = "Phone not reachable"; }
 }
 document.body.classList.toggle("win95", store.get("symbian.style") === "win95");
+document.body.classList.toggle("lcd", store.get("symbian.style") === "lcd");
 $("#pairbtn").onclick = pair;
 $("#code").onkeydown = e => { if (e.key === "Enter") pair(); };
 $("#code").oninput = e => { if (e.target.value.replace(/\D/g, "").length === 6) pair(); };

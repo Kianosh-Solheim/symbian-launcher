@@ -85,6 +85,19 @@ private val S60Scheme = lightColorScheme(
     secondary = Color(0xFFF0C93A)
 )
 
+/**
+ * Green LCD: drawn in dark tones here because the whole screen is then turned into two-tone
+ * LCD (dark → lime backlight, light → ink). Bars a shade off the background, light selection = dark bar.
+ */
+private val LcdScheme = lightColorScheme(
+    background = Color(0xFF000000),
+    surface = Color(0xFF161616),
+    onBackground = Color.White,
+    onSurface = Color.White,
+    primary = Color(0xFF8A8A8A),
+    secondary = Color(0xFFE8E8E8)
+)
+
 /** Classic 1995 desktop: teal background, navy title bars, grey 3-D chrome. */
 private val Win95Scheme = lightColorScheme(
     background = Color(0xFF008080),
@@ -110,6 +123,7 @@ fun MyApplicationTheme(
         AppTheme.PINK -> PinkScheme
         AppTheme.WIN95 -> Win95Scheme
         AppTheme.S60 -> S60Scheme
+        AppTheme.LCD -> LcdScheme
         AppTheme.CUSTOM -> lightColorScheme(
             background = state.customBgColor?.let { Color(it) } ?: DefaultBackground,
             surface = state.customBarColor?.let { Color(it) } ?: state.customBgColor?.let { Color(it).copy(alpha=0.7f) } ?: DefaultSurface,

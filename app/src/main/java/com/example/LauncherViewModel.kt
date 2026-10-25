@@ -27,6 +27,7 @@ enum class AppTheme(val displayName: String) {
     PINK("Hot Pink"),
     WIN95("Windows 95"),
     S60("Classic S60 Sky"),
+    LCD("Classic Green LCD"),
     CUSTOM("Custom Theme")
 }
 

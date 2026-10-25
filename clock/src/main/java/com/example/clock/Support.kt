@@ -70,6 +70,15 @@ data class ClockLook(
         /** Reads the launcher's extras (all optional). */
         fun fromIntent(i: Intent?, prev: ClockLook): ClockLook {
             if (i == null || !i.hasExtra("look_style")) return prev
+            if (i.getStringExtra("look_style") == "lcd") return prev.copy(
+                win95 = false, background = 0xFFAAC66A.toInt(), surface = 0xFF95B25A.toInt(), text = 0xFF1C2910.toInt(),
+                accent = 0xFF1C2910.toInt(), highlight = 0xFF7E9A48.toInt(),
+                is24 = i.getBooleanExtra("look_is24", prev.is24),
+                dateFormat = en(i.getStringExtra("look_dateFormat"), prev.dateFormat),
+                showWeekday = i.getBooleanExtra("look_showWeekday", prev.showWeekday),
+                weekdayFormat = en(i.getStringExtra("look_weekdayFormat"), prev.weekdayFormat),
+                font = AppFont.PIXEL
+            )
             return prev.copy(
                 win95 = i.getStringExtra("look_style") == "win95",
                 background = i.getIntExtra("look_bg", prev.background), surface = i.getIntExtra("look_surface", prev.surface),
@@ -125,7 +134,7 @@ object WorldClockStore {
 val LocalWin95 = staticCompositionLocalOf { false }
 
 @Composable
-fun win95Fg(): Color = if (LocalWin95.current) Color.Black else Color.White
+fun win95Fg(): Color = if (LocalWin95.current) Color.Black else androidx.compose.material3.MaterialTheme.colorScheme.onBackground
 
 /** Windows 95 bevel: grey face, light top-left edges, dark bottom-right. */
 fun Modifier.win95Bevel(sunken: Boolean = false): Modifier = this.drawBehind {

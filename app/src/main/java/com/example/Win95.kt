@@ -626,6 +626,7 @@ private fun SymbianDialog(
             CompositionLocalProvider(LocalContentColor provides fg) {
                 Column(
                     modifier.widthIn(min = 240.dp, max = 340.dp)
+                        .lcdFilter(LocalLcd.current)
                         .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop, panel)), shape)
                         .border(1.dp, cs.secondary.copy(alpha = 0.7f), shape)
                         .padding(vertical = 10.dp)

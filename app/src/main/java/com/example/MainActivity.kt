@@ -164,6 +164,37 @@ fun Modifier.win95Bevel(sunken: Boolean = false): Modifier = this.drawBehind {
 }
 
 
+/** True when the Classic Green LCD theme is active. */
+val LocalLcd = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/**
+ * Classic green LCD (old Nokia style): everything is redrawn in two tones — dark "ink" on a lime
+ * green backlight. Brightness is turned around, so white text becomes dark ink and dark panels
+ * become the green background, and the yellow selection becomes a dark inverted bar.
+ */
+private val lcdMatrix: ColorMatrix = run {
+    val light = floatArrayOf(170f, 198f, 106f)  // #AAC66A backlight
+    val dark = floatArrayOf(28f, 41f, 16f)      // #1C2910 ink
+    val m = FloatArray(20)
+    for (i in 0..2) {
+        val k = (dark[i] - light[i]) / 255f
+        m[i * 5] = k * 0.299f; m[i * 5 + 1] = k * 0.587f; m[i * 5 + 2] = k * 0.114f; m[i * 5 + 4] = light[i]
+    }
+    m[18] = 1f
+    ColorMatrix(m)
+}
+
+fun Modifier.lcdFilter(enabled: Boolean = true): Modifier = if (enabled) {
+    val paint = Paint().apply { colorFilter = ColorFilter.colorMatrix(lcdMatrix) }
+    this.drawWithContent {
+        drawIntoCanvas { canvas ->
+            canvas.saveLayer(Rect(0f, 0f, size.width, size.height), paint)
+            drawContent()
+            canvas.restore()
+        }
+    }
+} else this
+
 fun Modifier.symbianGrayscale(enabled: Boolean = true): Modifier = if (enabled) {
     val colorMatrix = ColorMatrix().apply { setToSaturation(0f) }
     val paint = Paint().apply {
@@ -286,7 +317,7 @@ class MainActivity : ComponentActivity() {
                     BridgeState.theme.value = mapOf(
                         "background" to hex(cs.background), "surface" to hex(cs.surface), "text" to hex(cs.onBackground),
                         "accent" to hex(cs.primary), "highlight" to hex(cs.secondary), "font" to state.currentFont.name,
-                        "style" to when (state.currentTheme) { AppTheme.WIN95 -> "win95"; AppTheme.S60 -> "s60"; else -> "symbian" }
+                        "style" to when (state.currentTheme) { AppTheme.WIN95 -> "win95"; AppTheme.S60 -> "s60"; AppTheme.LCD -> "lcd"; else -> "symbian" }
                     )
                 }
                 val currentDensity = androidx.compose.ui.platform.LocalDensity.current
@@ -294,6 +325,7 @@ class MainActivity : ComponentActivity() {
                     LocalSymbianSoundsEnabled provides state.symbianSoundsEnabled,
                     LocalWin95 provides (state.currentTheme == AppTheme.WIN95),
                     LocalS60 provides (state.currentTheme == AppTheme.S60),
+                    LocalLcd provides (state.currentTheme == AppTheme.LCD),
                     androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(
                         density = currentDensity.density,
                         fontScale = currentDensity.fontScale * state.textScale
@@ -303,6 +335,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .symbianGrayscale(state.currentTheme == AppTheme.GREY)
+                            .lcdFilter(state.currentTheme == AppTheme.LCD)
                     ) {
                         SymbianLauncherScreen(viewModel, state)
                     }
