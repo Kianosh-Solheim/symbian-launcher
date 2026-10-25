@@ -41,6 +41,9 @@ object S60Styler {
      * (Snapchat → the ghost); for older icons, a flat border colour is cut away. If the emblem is
      * plain white (it relied on the tile for colour), it is coloured with the tile's colour instead.
      */
+    /** The app's emblem without its tile (see [shapeOnly]); used by the LCD theme too. */
+    fun emblem(d: Drawable): Bitmap = shapeOnly(d)
+
     private fun shapeOnly(d: Drawable): Bitmap {
         val n = 216
         if (d is android.graphics.drawable.AdaptiveIconDrawable && d.foreground != null) {
