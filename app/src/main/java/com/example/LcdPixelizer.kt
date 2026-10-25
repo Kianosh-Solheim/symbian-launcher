@@ -33,7 +33,7 @@ object LcdPixelizer {
             val i = y * N + x; val c = px[i]
             if ((c ushr 24) < 100) { px[i] = 0; continue }
             val l = (0.299f * (c shr 16 and 0xFF) + 0.587f * (c shr 8 and 0xFF) + 0.114f * (c and 0xFF)) / 255f
-            val ink = 1f - l                                   // dark detail → strong ink
+            val ink = ((1f - l - 0.22f) * 1.65f).coerceIn(0f, 1f) // outlines → solid ink, bright fills → light or empty
             val t = (bayer[(y and 3) * 4 + (x and 3)] + 0.5f) / 16f - 0.5f
             val level = ((ink * 3f + t * 0.9f).let { Math.round(it) }).coerceIn(0, 3)
             val v = level * 85                                 // 0, 85, 170, 255
