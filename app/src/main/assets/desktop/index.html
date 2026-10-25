@@ -464,6 +464,9 @@ body.lcd { filter: url(#lcdf); background: #000 !important; --bg: #000; --bg-top
 body.lcd * { text-shadow: none !important; }
 body.lcd { font-family: "Pixelify Sans", ui-monospace, monospace; }
 body.lcd img { image-rendering: pixelated; }
+/* Photos are turned "negative" first so the LCD filter shows them the right way round, high-contrast. */
+body.lcd img[src*="/api/photo"], body.lcd img[src*="/api/thumb"], body.lcd img[src*="/api/mmspart"], body.lcd img[src*="/api/media-file"],
+body.lcd img[src*="/api/wallet/"], body.lcd img[src^="data:"], body.lcd .lightbox img, body.lcd video { filter: invert(1) grayscale(1) contrast(1.6); }
 body.lcd .sel, body.lcd nav button.active, body.lcd nav button:focus-visible, body.lcd .row:focus-visible, body.lcd .row.active { background: #fff !important; color: #000 !important; border-radius: 0 !important; }
 body.lcd nav button.active svg, body.lcd .row.active svg { fill: #000 !important; }
 body.lcd::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 999;
