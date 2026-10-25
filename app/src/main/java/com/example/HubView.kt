@@ -226,7 +226,7 @@ fun HubView(
                 modifier = Modifier.focusRequester(focusRequester),
                 iconComponent = { 
                     if (msgAppIcon != null) {
-                        Image(bitmap = msgAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        AppIconImage(bitmap = msgAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicMessageIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }
@@ -241,7 +241,7 @@ fun HubView(
             onClick = { if (generalNotifs.isNotEmpty()) onNavigateToNotifications() },
             iconComponent = { 
                 if (notifAppIcon != null) {
-                    Image(bitmap = notifAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                    AppIconImage(bitmap = notifAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                 } else {
                     SkeuomorphicNotificationsIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                 }
@@ -264,7 +264,7 @@ fun HubView(
                 },
                 iconComponent = { 
                     if (calendarAppIcon != null) {
-                        Image(bitmap = calendarAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        AppIconImage(bitmap = calendarAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicCalendarIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }
@@ -286,7 +286,7 @@ fun HubView(
                 onClick = onNavigateToEmails,
                 iconComponent = { 
                     if (emailAppIcon != null) {
-                        Image(bitmap = emailAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        AppIconImage(bitmap = emailAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicEmailIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }
@@ -302,7 +302,7 @@ fun HubView(
                 onClick = onNavigateToApps,
                 iconComponent = { 
                     if (appsAppIcon != null) {
-                        Image(bitmap = appsAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        AppIconImage(bitmap = appsAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicAppsIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }
@@ -315,7 +315,7 @@ fun HubView(
                 onClick = onNavigateToContacts,
                 iconComponent = { 
                     if (contactsAppIcon != null) {
-                        Image(bitmap = contactsAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
+                        AppIconImage(bitmap = contactsAppIcon.toCachedImageBitmap(), contentDescription = null, modifier = Modifier.size(32.dp * state.iconScale).clip(RoundedCornerShape(4.dp)))
                     } else {
                         SkeuomorphicContactsIcon(modifier = Modifier.size(24.dp * state.iconScale)) 
                     }

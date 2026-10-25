@@ -603,6 +603,7 @@ fun BottomBarButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         color = if (isFocused) Color.Black else Color.White, 
         fontWeight = FontWeight.Bold, 
         fontSize = 16.sp,
+        fontFamily = if (LocalLcd.current) PixelFont else null,
         style = TextStyle(shadow = if (isFocused) Shadow.None else Shadow(color = Color.Black, offset = Offset(1f,1f), blurRadius = 2f)),
         modifier = modifier
             .symbianHighlight(isFocused)

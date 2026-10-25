@@ -161,7 +161,7 @@ fun AppDrawer(
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(
+                        AppIconImage(
                             bitmap = app.icon.toCachedImageBitmap(),
                             contentDescription = app.name,
                             modifier = Modifier.size(36.dp * state.iconScale)

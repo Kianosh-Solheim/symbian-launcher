@@ -217,7 +217,7 @@ fun NotificationsView(
                                     }
                                     .padding(4.dp)
                             ) {
-                                Image(
+                                AppIconImage(
                                     bitmap = app.icon.toCachedImageBitmap(),
                                     contentDescription = app.name,
                                     modifier = Modifier.size(40.dp * state.iconScale)
@@ -422,7 +422,7 @@ fun NotificationsView(
                     contentAlignment = Alignment.Center
                 ) {
                     if (appIconBitmap != null) {
-                        Image(
+                        AppIconImage(
                             bitmap = appIconBitmap,
                             contentDescription = appName,
                             modifier = Modifier

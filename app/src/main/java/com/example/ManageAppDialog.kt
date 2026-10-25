@@ -281,7 +281,7 @@ fun ManageAppDialogHandler(
                             contentAlignment = Alignment.Center
                         ) {
                             if (drawable != null) {
-                                androidx.compose.foundation.Image(
+                                androidx.compose.foundation.AppIconImage(
                                     bitmap = drawable!!.toCachedImageBitmap(),
                                     contentDescription = drawableName,
                                     modifier = Modifier.size(48.dp)
@@ -356,7 +356,7 @@ fun ManageAppDialogHandler(
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            androidx.compose.foundation.Image(
+                            androidx.compose.foundation.AppIconImage(
                                 bitmap = pack.icon.toCachedImageBitmap(),
                                 contentDescription = null,
                                 modifier = Modifier.size(36.dp * state.iconScale)
@@ -396,7 +396,7 @@ fun ManageAppDialogHandler(
                     androidx.compose.foundation.layout.Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        androidx.compose.foundation.Image(
+                        androidx.compose.foundation.AppIconImage(
                             bitmap = selectedApp.icon.toCachedImageBitmap(),
                             contentDescription = null,
                             modifier = Modifier.size(24.dp)

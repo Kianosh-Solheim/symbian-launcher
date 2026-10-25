@@ -279,7 +279,7 @@ fun ExtremeBatterySaverScreen(
                             label = customApp1.name,
                             fontFamily = state.currentFont.toFontFamily(),
                             icon = {
-                                Image(
+                                AppIconImage(
                                     bitmap = customApp1.icon.toCachedImageBitmap(),
                                     contentDescription = customApp1.name,
                                     modifier = Modifier.size(46.dp)
@@ -313,7 +313,7 @@ fun ExtremeBatterySaverScreen(
                             label = customApp2.name,
                             fontFamily = state.currentFont.toFontFamily(),
                             icon = {
-                                Image(
+                                AppIconImage(
                                     bitmap = customApp2.icon.toCachedImageBitmap(),
                                     contentDescription = customApp2.name,
                                     modifier = Modifier.size(46.dp)
@@ -663,7 +663,7 @@ fun AppPickerDialog(
                                 .padding(horizontal = 8.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Image(
+                            AppIconImage(
                                 bitmap = app.icon.toCachedImageBitmap(),
                                 contentDescription = app.name,
                                 modifier = Modifier.size(38.dp)

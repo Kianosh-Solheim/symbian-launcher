@@ -872,7 +872,7 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
                                             .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { viewModel.launchApp(app) }
                                             .padding(4.dp)
                                     ) {
-                                        Image(
+                                        AppIconImage(
                                             bitmap = app.icon.toCachedImageBitmap(),
                                             contentDescription = app.name,
                                             modifier = Modifier.size(40.dp)

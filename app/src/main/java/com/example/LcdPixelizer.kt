@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 
 /**
  * Icons for the Classic Green LCD theme in old-phone 1-bit line art: solid pixel outlines, no shading.
@@ -93,5 +95,39 @@ object LcdPixelizer {
 @Composable
 fun LcdIcon(name: String, modifier: Modifier = Modifier) {
     val bmp = remember(name) { LcdPixelizer.builtIn(name) } ?: return
-    Image(bmp, contentDescription = null, modifier = modifier.size(32.dp), contentScale = ContentScale.Fit, filterQuality = FilterQuality.None)
+    Image(bmp, contentDescription = null, modifier = modifier.size(32.dp).lcdInvertOnSelection(), contentScale = ContentScale.Fit, filterQuality = FilterQuality.None)
+}
+
+/**
+ * An app icon. In the LCD theme the icon is drawn "XOR"-style against what's behind it, so its ink
+ * is dark on the green background and turns green inside the dark selection bar — just like text.
+ */
+@Composable
+fun AppIconImage(
+    bitmap: ImageBitmap,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    alignment: androidx.compose.ui.Alignment = androidx.compose.ui.Alignment.Center,
+    contentScale: ContentScale = ContentScale.Fit,
+    alpha: Float = 1f,
+    colorFilter: androidx.compose.ui.graphics.ColorFilter? = null,
+    filterQuality: FilterQuality = FilterQuality.Low
+) {
+    val lcd = LocalLcd.current
+    Image(
+        bitmap, contentDescription,
+        modifier = if (lcd) modifier.lcdInvertOnSelection() else modifier,
+        alignment = alignment, contentScale = contentScale, alpha = alpha, colorFilter = colorFilter,
+        filterQuality = if (lcd) FilterQuality.None else filterQuality
+    )
+}
+
+/** Draws the content with a "difference" blend: white ink on a dark background stays ink, on the white selection it flips. */
+fun Modifier.lcdInvertOnSelection(): Modifier = this.drawWithContent {
+    drawIntoCanvas { c ->
+        val p = androidx.compose.ui.graphics.Paint().apply { blendMode = androidx.compose.ui.graphics.BlendMode.Difference }
+        c.saveLayer(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), p)
+        drawContent()
+        c.restore()
+    }
 }

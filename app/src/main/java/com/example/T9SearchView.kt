@@ -200,7 +200,7 @@ fun T9SearchView(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (result.appInfo != null) {
-                            Image(
+                            AppIconImage(
                                 bitmap = result.appInfo.icon.toCachedImageBitmap(),
                                 contentDescription = result.name,
                                 modifier = Modifier.size(36.dp * state.iconScale)

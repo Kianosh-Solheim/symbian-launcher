@@ -1117,7 +1117,7 @@ fun UsageStatsScreen(
                                 }
                             }
                             if (bitmap != null) {
-                                Image(
+                                AppIconImage(
                                     bitmap = bitmap,
                                     contentDescription = null,
                                     modifier = Modifier
