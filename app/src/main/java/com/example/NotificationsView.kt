@@ -188,72 +188,20 @@ fun NotificationsView(
         if (pinnedApps != null && pinnedApps.isNotEmpty()) {
             item {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(if (state.showWallpaper) MaterialTheme.colorScheme.background.copy(alpha = 0.4f) else MaterialTheme.colorScheme.background)
-                            .background(if (state.showWallpaper) Color.Transparent else Color.White.copy(alpha = 0.12f))
-                            .padding(vertical = 6.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        itemsIndexed(pinnedApps, key = { _, app -> app.packageName }) { index, app ->
-                            val interactionSource = remember { MutableInteractionSource() }
-                            val isFocused by interactionSource.collectIsFocusedAsState()
-                            Box(
-                                modifier = Modifier
-                                    .then(if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier)
-                                    .symbianHighlight(isFocused)
-                                    .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        if (onAppClick != null) {
-                                            onAppClick(app)
-                                        } else {
-                                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                            intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            intent?.let { context.startActivity(it) }
-                                        }
-                                    }
-                                    .padding(4.dp)
-                            ) {
-                                AppIconImage(
-                                    bitmap = app.icon.toCachedImageBitmap(),
-                                    contentDescription = app.name,
-                                    modifier = Modifier.size(40.dp * state.iconScale)
-                                )
-                            }
-                        }
-                        if (onSettingsClick != null) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-                                        .clickable {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            onSettingsClick()
-                                        }
-                                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = "Manage shortcuts",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "Add",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            }
+                    PinnedAppsStrip(
+                        apps = pinnedApps,
+                        showWallpaper = state.showWallpaper,
+                        maxIconDp = 40f * state.iconScale,
+                        firstFocus = firstItemFocusRequester,
+                        onAdd = onSettingsClick?.let { cb -> { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); cb() } }
+                    ) { app ->
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        if (onAppClick != null) {
+                            onAppClick(app)
+                        } else {
+                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                            intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            intent?.let { context.startActivity(it) }
                         }
                     }
                     DashedDivider()

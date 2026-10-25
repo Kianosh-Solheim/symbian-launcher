@@ -1088,7 +1088,14 @@ var backStack by remember { mutableStateOf(listOf<Screen>()) }
 
 /** Pinned apps that always fit on screen: icons shrink as more apps are pinned, and wrap to more rows when they would get too small. */
 @Composable
-fun PinnedAppsStrip(apps: List<AppInfo>, showWallpaper: Boolean, onLaunch: (AppInfo) -> Unit) {
+fun PinnedAppsStrip(
+    apps: List<AppInfo>,
+    showWallpaper: Boolean,
+    maxIconDp: Float = 40f,
+    firstFocus: androidx.compose.ui.focus.FocusRequester? = null,
+    onAdd: (() -> Unit)? = null,
+    onLaunch: (AppInfo) -> Unit
+) {
     androidx.compose.foundation.layout.BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -1096,9 +1103,10 @@ fun PinnedAppsStrip(apps: List<AppInfo>, showWallpaper: Boolean, onLaunch: (AppI
             .background(if (showWallpaper) Color.Transparent else Color.White.copy(alpha = 0.12f))
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
-        val n = apps.size.coerceAtLeast(1)
+        val total = apps.size + (if (onAdd != null) 1 else 0)
+        val n = total.coerceAtLeast(1)
         val avail = maxWidth.value
-        val maxIcon = 40f; val minIcon = 26f; val pad = 4f
+        val maxIcon = maxIconDp; val minIcon = 26f; val pad = 4f
         // Pick the fewest rows that keep icons at least minIcon wide.
         var rows = 1; var cols = n; var gap = 12f; var icon = maxIcon
         while (true) {
@@ -1110,22 +1118,39 @@ fun PinnedAppsStrip(apps: List<AppInfo>, showWallpaper: Boolean, onLaunch: (AppI
         }
         icon = icon.coerceAtLeast(16f)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            apps.chunked(cols).forEach { rowApps ->
-                Row(horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
-                    rowApps.forEach { app ->
+            (0 until total).chunked(cols).forEach { rowIdx ->
+                Row(horizontalArrangement = Arrangement.spacedBy(gap.dp), verticalAlignment = Alignment.CenterVertically) {
+                    rowIdx.forEach { idx ->
                         val interactionSource = remember { MutableInteractionSource() }
                         val isFocused by interactionSource.collectIsFocusedAsState()
+                        val app = apps.getOrNull(idx)
                         Box(
                             modifier = Modifier
+                                .then(if (idx == 0 && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier)
                                 .symbianHighlight(isFocused)
-                                .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onLaunch(app) }
-                                .padding(pad.dp)
+                                .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {
+                                    if (app != null) onLaunch(app) else onAdd?.invoke()
+                                }
+                                .padding(pad.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            AppIconImage(
-                                bitmap = app.icon.toCachedImageBitmap(),
-                                contentDescription = app.name,
-                                modifier = Modifier.size(icon.dp)
-                            )
+                            if (app != null) {
+                                AppIconImage(
+                                    bitmap = app.icon.toCachedImageBitmap(),
+                                    contentDescription = app.name,
+                                    modifier = Modifier.size(icon.dp)
+                                )
+                            } else {
+                                Box(
+                                    Modifier.size(icon.dp)
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Manage shortcuts",
+                                        tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size((icon * 0.55f).dp))
+                                }
+                            }
                         }
                     }
                 }
