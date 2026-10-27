@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +44,7 @@ private enum class Phase { MENU, PLAYING, PAUSED, OVER }
  */
 class SnakeActivity : ComponentActivity() {
     private val game = Game()
+    private var look by mutableStateOf(GameLook())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,8 +55,10 @@ class SnakeActivity : ComponentActivity() {
         game.walls = prefs.getBoolean("walls", false)
         game.onSave = { prefs.edit().putInt("best", game.best).putInt("level", game.level).putBoolean("walls", game.walls).apply() }
         game.onBuzz = { ms -> buzz(ms) }
-        setContent { SnakeScreen(game) }
+        setContent { SnakeScreen(game, skinFor(look)) }
     }
+
+    override fun onResume() { super.onResume(); look = GameLook.load(this) }
 
     override fun onPause() { super.onPause(); if (game.phase == Phase.PLAYING) game.phase = Phase.PAUSED }
 
@@ -166,13 +170,15 @@ private class Game {
 }
 
 @Composable
-private fun SnakeScreen(g: Game) {
+private fun SnakeScreen(g: Game, skin: Skin) {
     LaunchedEffect(g.phase, g.level) {
         while (g.phase == Phase.PLAYING) { delay(g.stepMs); g.step() }
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
+    val win = skin.kind == SkinKind.WIN95
+    GameFrame(skin, "Snake for Symbian", listOf("Game", if (g.phase == Phase.PAUSED) "Resume" else "Pause", "Level", "?")) {
     Column(
-        Modifier.fillMaxSize().background(LcdBg).systemBarsPadding()
+        Modifier.fillMaxWidth().weight(1f)
             .pointerInput(Unit) {
                 detectDragGestures(onDragStart = { drag = Offset.Zero }, onDragEnd = {
                     if (drag.getDistance() > 30f) g.steer(if (kotlin.math.abs(drag.x) > kotlin.math.abs(drag.y)) (if (drag.x > 0) Dir.RIGHT else Dir.LEFT) else (if (drag.y > 0) Dir.DOWN else Dir.UP))
@@ -180,54 +186,76 @@ private fun SnakeScreen(g: Game) {
             }
             .pointerInput(Unit) { detectTapGestures { g.ok() } }
     ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
-            Text(g.score.toString().padStart(4, '0'), color = LcdInk, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.weight(1f))
-            if (g.bonus != null) Text("✱ ${g.bonusLeft}", color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 18.sp, modifier = Modifier.padding(end = 12.dp))
-            Text("HI ${g.best}", color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 18.sp)
+        if (win) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                Counter(skin, "Score", g.score, 5, big = false)
+                if (g.bonus != null) Counter(skin, "Bonus", g.bonusLeft, 2, big = false)
+                Counter(skin, "Best", g.best, 5, big = false)
+            }
+        } else {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
+                Text(g.score.toString().padStart(4, '0'), color = skin.text, fontFamily = skin.font, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.weight(1f))
+                if (g.bonus != null) Text("✱ ${g.bonusLeft}", color = skin.text, fontFamily = skin.font, fontSize = 18.sp, modifier = Modifier.padding(end = 12.dp))
+                Text("HI ${g.best}", color = skin.text, fontFamily = skin.font, fontSize = 18.sp)
+            }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
-            val cell = minOf(maxWidth / 20, maxHeight / 24)
+            val cell = minOf((maxWidth - 8.dp) / 20, (maxHeight - 8.dp) / 24)
             g.cols = 20
-            g.rows = (maxHeight / cell).toInt().coerceIn(12, 40)
-            Box(Modifier.size(cell * g.cols + 6.dp, cell * g.rows + 6.dp)) {
+            g.rows = ((maxHeight - 8.dp) / cell).toInt().coerceIn(12, 40)
+            FieldBox(skin, cell * g.cols, cell * g.rows) {
                 Canvas(Modifier.fillMaxSize()) {
-                    val c = (size.width - 6.dp.toPx()) / g.cols
-                    val o = 3.dp.toPx()
-                    drawRect(LcdInk, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()), topLeft = Offset(1f, 1f), size = Size(size.width - 2f, size.height - 2f))
-                    val gap = c * 0.12f
-                    fun block(p: P, color: Color = LcdInk) = drawRect(color, Offset(o + p.x * c + gap, o + p.y * c + gap), Size(c - 2 * gap, c - 2 * gap))
-                    g.snake.forEachIndexed { i, p -> block(p); if (i == 0) drawRect(LcdBg, Offset(o + p.x * c + c * 0.42f, o + p.y * c + c * 0.42f), Size(c * 0.16f, c * 0.16f)) }
-                    // Food: a small diamond of four dots.
-                    val f = g.food; val fx = o + f.x * c; val fy = o + f.y * c; val q = c / 3
-                    drawRect(LcdInk, Offset(fx + q, fy), Size(q, q)); drawRect(LcdInk, Offset(fx, fy + q), Size(q, q))
-                    drawRect(LcdInk, Offset(fx + 2 * q, fy + q), Size(q, q)); drawRect(LcdInk, Offset(fx + q, fy + 2 * q), Size(q, q))
-                    g.bonus?.let { b -> if (g.tick % 2 == 0 || g.bonusLeft > 8) { block(b); drawRect(LcdBg, Offset(o + b.x * c + c * 0.35f, o + b.y * c + c * 0.35f), Size(c * 0.3f, c * 0.3f)) } }
+                    val c = size.width / g.cols
+                    val gap = if (win) 0f else c * 0.1f
+                    if (skin.kind == SkinKind.S60) for (y in 0 until g.rows) for (x in 0 until g.cols) drawRect(skin.dim, Offset(x * c + c * 0.45f, y * c + c * 0.45f), Size(c * 0.1f, c * 0.1f))
+                    fun cell(p: P, col: Color) = skinCell(skin, p.x * c + gap, p.y * c + gap, c - 2 * gap, col)
+                    val body = if (skin.colored) skin.ink else skin.ink
+                    g.snake.forEachIndexed { i, p ->
+                        if (skin.kind == SkinKind.LCD) {
+                            drawRect(skin.ink, Offset(p.x * c + c * 0.12f, p.y * c + c * 0.12f), Size(c * 0.76f, c * 0.76f))
+                            if (i == 0) drawRect(skin.field, Offset(p.x * c + c * 0.42f, p.y * c + c * 0.42f), Size(c * 0.16f, c * 0.16f))
+                        } else {
+                            cell(p, if (i == 0) lerp(body, Color.White, 0.25f) else body)
+                            if (i == 0) drawRect(Color.Black, Offset(p.x * c + c * 0.4f, p.y * c + c * 0.4f), Size(c * 0.2f, c * 0.2f))
+                        }
+                    }
+                    val f = g.food
+                    if (skin.kind == SkinKind.LCD) {
+                        // Food: a small diamond of four dots.
+                        val fx = f.x * c; val fy = f.y * c; val q = c / 3
+                        drawRect(skin.ink, Offset(fx + q, fy), Size(q, q)); drawRect(skin.ink, Offset(fx, fy + q), Size(q, q))
+                        drawRect(skin.ink, Offset(fx + 2 * q, fy + q), Size(q, q)); drawRect(skin.ink, Offset(fx + q, fy + 2 * q), Size(q, q))
+                    } else cell(f, skin.food)
+                    g.bonus?.let { b -> if (g.tick % 2 == 0 || g.bonusLeft > 8) {
+                        if (skin.kind == SkinKind.LCD) {
+                            drawRect(skin.ink, Offset(b.x * c + c * 0.12f, b.y * c + c * 0.12f), Size(c * 0.76f, c * 0.76f))
+                            drawRect(skin.field, Offset(b.x * c + c * 0.35f, b.y * c + c * 0.35f), Size(c * 0.3f, c * 0.3f))
+                        } else cell(b, Color(0xFFFFC107))
+                    } }
                 }
                 if (g.phase != Phase.PLAYING) {
-                    Column(Modifier.fillMaxSize().background(LcdBg.copy(alpha = 0.88f)), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    Column(Modifier.fillMaxSize().background(skin.overlay), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         val title = when (g.phase) { Phase.MENU -> "SNAKE"; Phase.PAUSED -> "PAUSED"; else -> "GAME OVER" }
-                        Text(title, color = LcdInk, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 34.sp)
+                        SkinText(skin, title, 34.sp, bold = true)
                         Spacer(Modifier.height(10.dp))
-                        if (g.phase == Phase.OVER) Text("Score ${g.score}" + if (g.score >= g.best && g.score > 0) "  NEW BEST!" else "", color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 18.sp)
+                        if (g.phase == Phase.OVER) SkinText(skin, "Score ${g.score}" + if (g.score >= g.best && g.score > 0) "  NEW BEST!" else "", 18.sp)
                         if (g.phase != Phase.PAUSED) {
-                            Text("Level ${g.level}  ${"▮".repeat(g.level)}${"▯".repeat(9 - g.level)}", color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
-                            Text("Maze: ${if (g.walls) "walls" else "open"}", color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
+                            SkinText(skin, "Level ${g.level}  ${"▮".repeat(g.level)}${"▯".repeat(9 - g.level)}", 16.sp)
+                            SkinText(skin, "Maze: ${if (g.walls) "walls" else "open"}", 16.sp)
                         }
                         Spacer(Modifier.height(14.dp))
-                        Text(
+                        SkinText(skin,
                             when (g.phase) {
                                 Phase.PAUSED -> "OK to continue\nBack for menu"
                                 else -> "OK to start\n▲▼ or * # speed\n◀▶ walls on/off\nSteer: D-pad or 2 4 6 8"
-                            },
-                            color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 14.sp, textAlign = TextAlign.Center
-                        )
+                            }, 14.sp)
                     }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().background(LcdDim).padding(horizontal = 12.dp, vertical = 6.dp)) {
-            Text(if (g.phase == Phase.PLAYING) "Pause" else if (g.phase == Phase.PAUSED) "Resume" else "Slower", color = LcdInk, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
-            Text(if (g.phase == Phase.MENU || g.phase == Phase.OVER) "Faster" else "Back", color = LcdInk, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-        }
+        SoftKeys(skin,
+            if (g.phase == Phase.PLAYING) "Pause" else if (g.phase == Phase.PAUSED) "Resume" else "Slower",
+            if (g.phase == Phase.MENU || g.phase == Phase.OVER) "Faster" else "Back")
+    }
     }
 }

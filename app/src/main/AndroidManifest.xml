@@ -130,6 +130,11 @@
         </service>
 
         <provider
+            android:name=".LookProvider"
+            android:authorities="${applicationId}.look"
+            android:exported="true" />
+
+        <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.mmsfiles"
             android:exported="false"

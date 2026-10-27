@@ -70,6 +70,7 @@ private data class Piece(val kind: Int, val rot: Int, val x: Int, val y: Int) {
  */
 class BlocksActivity : ComponentActivity() {
     private val game = Game()
+    private var look by mutableStateOf(GameLook())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,8 +80,10 @@ class BlocksActivity : ComponentActivity() {
         game.startLevel = prefs.getInt("level", 1)
         game.onSave = { prefs.edit().putInt("best", game.best).putInt("level", game.startLevel).apply() }
         game.onBuzz = { ms -> buzz(ms) }
-        setContent { BlocksScreen(game) }
+        setContent { BlocksScreen(game, skinFor(look)) }
     }
+
+    override fun onResume() { super.onResume(); look = GameLook.load(this) }
 
     override fun onPause() { super.onPause(); if (game.phase == Phase.PLAYING) game.phase = Phase.PAUSED }
 
@@ -214,7 +217,7 @@ private class Game {
     private fun lock() {
         val p = piece ?: return
         val b = Array(H) { board[it].clone() }
-        for ((x, y) in p.cells()) { if (y < 0) { piece = null; board = b; over(); return }; b[y][x] = 1 }
+        for ((x, y) in p.cells()) { if (y < 0) { piece = null; board = b; over(); return }; b[y][x] = p.kind + 1 }
         board = b; piece = null
         val full = (0 until H).filter { y -> b[y].all { it != 0 } }.toSet()
         if (full.isNotEmpty()) { flash = full; onBuzz(if (full.size == 4) 120 else 40) } else { onBuzz(8); spawn() }
@@ -240,8 +243,11 @@ private class Game {
     }
 }
 
+/** Classic piece colours: I, O, T, S, Z, J, L. */
+private val PieceColors = listOf(0xFF00E5E5, 0xFFE5E500, 0xFFD000D0, 0xFF00C000, 0xFFE00000, 0xFF2040FF, 0xFFFF8C00).map { Color(it) }
+
 @Composable
-private fun BlocksScreen(g: Game) {
+private fun BlocksScreen(g: Game, skin: Skin) {
     LaunchedEffect(g.phase, g.level) {
         while (g.phase == Phase.PLAYING) { delay(g.stepMs); g.step() }
     }
@@ -250,8 +256,11 @@ private fun BlocksScreen(g: Game) {
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
     var stepped by remember { mutableIntStateOf(0) }
+    fun colorOf(kind: Int) = if (skin.colored) PieceColors[kind] else skin.ink
+    val menu = g.phase == Phase.MENU || g.phase == Phase.OVER
+    GameFrame(skin, "Blocks for Symbian", listOf("Game", if (g.phase == Phase.PAUSED) "Resume" else "Pause", "?")) {
     Column(
-        Modifier.fillMaxSize().background(LcdBg).systemBarsPadding()
+        Modifier.fillMaxWidth().weight(1f)
             .pointerInput(Unit) {
                 detectDragGestures(onDragStart = { drag = Offset.Zero; stepped = 0 }, onDragEnd = {
                     if (drag.y > 120f && abs(drag.y) > abs(drag.x) * 1.5f) g.hardDrop()
@@ -268,86 +277,70 @@ private fun BlocksScreen(g: Game) {
         Row(Modifier.fillMaxWidth().weight(1f).padding(8.dp)) {
             // Playfield
             BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                val cell = minOf((maxWidth - 6.dp) / W, (maxHeight - 6.dp) / H)
-                Box(Modifier.size(cell * W + 6.dp, cell * H + 6.dp)) {
+                val cell = minOf((maxWidth - 8.dp) / W, (maxHeight - 8.dp) / H)
+                FieldBox(skin, cell * W, cell * H) {
                     Canvas(Modifier.fillMaxSize()) {
-                        val c = (size.width - 6.dp.toPx()) / W
-                        val o = 3.dp.toPx()
-                        drawRect(LcdInk, style = Stroke(width = 2.dp.toPx()), topLeft = Offset(1f, 1f), size = Size(size.width - 2f, size.height - 2f))
-                        // Faint dot grid like an unlit LCD.
-                        for (y in 0 until H) for (x in 0 until W) drawRect(LcdDim, Offset(o + x * c + c * 0.45f, o + y * c + c * 0.45f), Size(c * 0.1f, c * 0.1f))
+                        val c = size.width / W
+                        if (!skin.colored || skin.kind == SkinKind.S60)
+                            for (y in 0 until H) for (x in 0 until W) drawRect(skin.dim, Offset(x * c + c * 0.45f, y * c + c * 0.45f), Size(c * 0.1f, c * 0.1f))
+                        val gap = if (skin.kind == SkinKind.WIN95) 0f else c * 0.06f
+                        fun cellAt(x: Int, y: Int, col: Color) = skinCell(skin, x * c + gap, y * c + gap, c - 2 * gap, col)
                         for (y in 0 until H) {
-                            if (y in g.flash) { drawRect(LcdInk, Offset(o, o + y * c + c * 0.4f), Size(c * W, c * 0.2f)); continue }
-                            for (x in 0 until W) if (g.board[y][x] != 0) block(o, c, x, y, LcdInk)
+                            if (y in g.flash) { drawRect(if (skin.colored) Color.White else skin.ink, Offset(0f, y * c + c * 0.3f), Size(c * W, c * 0.4f)); continue }
+                            for (x in 0 until W) { val v = g.board[y][x]; if (v != 0) cellAt(x, y, colorOf(v - 1)) }
                         }
-                        g.ghost()?.let { gp -> if (gp != g.piece) gp.cells().forEach { (x, y) -> if (y >= 0) outline(o, c, x, y) } }
-                        g.piece?.cells()?.forEach { (x, y) -> if (y >= 0) block(o, c, x, y, LcdInk) }
+                        g.ghost()?.let { gp -> if (gp != g.piece) gp.cells().forEach { (x, y) -> if (y >= 0) {
+                            val gg = c * 0.12f
+                            drawRect(if (skin.colored) colorOf(gp.kind).copy(alpha = 0.55f) else skin.dim, Offset(x * c + gg, y * c + gg), Size(c - 2 * gg, c - 2 * gg), style = Stroke(width = c * 0.1f))
+                        } } }
+                        g.piece?.let { p -> p.cells().forEach { (x, y) -> if (y >= 0) cellAt(x, y, colorOf(p.kind)) } }
                     }
-                    if (g.phase != Phase.PLAYING) Overlay(g)
+                    if (g.phase != Phase.PLAYING) Overlay(g, skin)
                 }
             }
             Spacer(Modifier.width(8.dp))
             // Side panel
-            Column(Modifier.width(92.dp)) {
-                Label("SCORE"); Value(g.score.toString())
-                Spacer(Modifier.height(8.dp))
-                Label("HI"); Value(g.best.toString())
-                Spacer(Modifier.height(8.dp))
-                Label("LINES"); Value(g.lines.toString())
-                Spacer(Modifier.height(8.dp))
-                Label("LEVEL"); Value((if (g.phase == Phase.MENU || g.phase == Phase.OVER) g.startLevel else g.level).toString())
-                Spacer(Modifier.height(12.dp))
-                Label("NEXT")
-                Canvas(Modifier.size(80.dp, 48.dp)) {
-                    if (g.phase == Phase.MENU) return@Canvas
-                    val cells = SHAPES[g.next][0]
-                    val c = size.height / 3f
-                    val minX = cells.minOf { it.first }; val maxX = cells.maxOf { it.first }
-                    val minY = cells.minOf { it.second }; val maxY = cells.maxOf { it.second }
-                    val ox = (size.width - (maxX - minX + 1) * c) / 2 - minX * c
-                    val oy = (size.height - (maxY - minY + 1) * c) / 2 - minY * c
-                    cells.forEach { (x, y) -> block(0f, c, x, y, LcdInk, ox, oy) }
+            Column(Modifier.width(100.dp).fillMaxHeight(), horizontalAlignment = if (skin.kind == SkinKind.WIN95) Alignment.CenterHorizontally else Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val win = skin.kind == SkinKind.WIN95
+                Counter(skin, if (win) "Current score" else "Score", g.score)
+                Counter(skin, if (win) "Best score" else "Hi", g.best)
+                Counter(skin, if (win) "Completed lines" else "Lines", g.lines, 4)
+                Counter(skin, "Level", if (menu) g.startLevel else g.level, 2, big = false)
+                Spacer(Modifier.height(4.dp))
+                if (win) SkinText(skin, "Next block", 13.sp, true, Win95Navy) else SkinText(skin, "NEXT", 12.sp, color = skin.text, center = false)
+                val nextMod = if (win) Modifier.win95Sunken().background(Color.Black) else Modifier
+                Box(nextMod.size(80.dp, 52.dp)) {
+                    Canvas(Modifier.fillMaxSize().padding(4.dp)) {
+                        if (g.phase == Phase.MENU) return@Canvas
+                        val cells = SHAPES[g.next][0]
+                        val c = size.height / 2.6f
+                        val minX = cells.minOf { it.first }; val maxX = cells.maxOf { it.first }
+                        val minY = cells.minOf { it.second }; val maxY = cells.maxOf { it.second }
+                        val ox = (size.width - (maxX - minX + 1) * c) / 2 - minX * c
+                        val oy = (size.height - (maxY - minY + 1) * c) / 2 - minY * c
+                        val gap = if (skin.kind == SkinKind.WIN95) 0f else c * 0.06f
+                        cells.forEach { (x, y) -> skinCell(skin, ox + x * c + gap, oy + y * c + gap, c - 2 * gap, colorOf(g.next)) }
+                    }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().background(LcdDim).padding(horizontal = 12.dp, vertical = 6.dp)) {
-            val menu = g.phase == Phase.MENU || g.phase == Phase.OVER
-            Text(when { menu -> "Level -"; g.phase == Phase.PAUSED -> "Resume"; else -> "Pause" }, color = LcdInk, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
-            Text(if (menu) "Level +" else "Drop", color = LcdInk, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-        }
+        SoftKeys(skin, when { menu -> "Level -"; g.phase == Phase.PAUSED -> "Resume"; else -> "Pause" }, if (menu) "Level +" else "Drop")
+    }
     }
 }
 
-private fun DrawScope.block(o: Float, c: Float, x: Int, y: Int, color: Color, ox: Float = o, oy: Float = o) {
-    val gap = c * 0.08f
-    val l = ox + x * c + gap; val t = oy + y * c + gap; val s = c - 2 * gap
-    drawRect(color, Offset(l, t), Size(s, s))
-    // Hollow centre gives the classic bevelled LCD brick.
-    drawRect(LcdBg, Offset(l + s * 0.22f, t + s * 0.22f), Size(s * 0.56f, s * 0.56f))
-    drawRect(color, Offset(l + s * 0.36f, t + s * 0.36f), Size(s * 0.28f, s * 0.28f))
-}
-
-private fun DrawScope.outline(o: Float, c: Float, x: Int, y: Int) {
-    val gap = c * 0.12f
-    drawRect(LcdGhost, Offset(o + x * c + gap, o + y * c + gap), Size(c - 2 * gap, c - 2 * gap), style = Stroke(width = c * 0.1f))
-}
-
-@Composable private fun Label(t: String) = Text(t, color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
-@Composable private fun Value(t: String) = Text(t, color = LcdInk, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-
 @Composable
-private fun Overlay(g: Game) {
-    Column(Modifier.fillMaxSize().background(LcdBg.copy(alpha = 0.9f)).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+private fun Overlay(g: Game, skin: Skin) {
+    Column(Modifier.fillMaxSize().background(skin.overlay).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         val title = when (g.phase) { Phase.MENU -> "BLOCKS"; Phase.PAUSED -> "PAUSED"; else -> "GAME\nOVER" }
-        Text(title, color = LcdInk, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 30.sp, textAlign = TextAlign.Center)
+        SkinText(skin, title, 30.sp, bold = true)
         Spacer(Modifier.height(10.dp))
-        if (g.phase == Phase.OVER) Text("Score ${g.score}" + if (g.score >= g.best && g.score > 0) "\nNEW BEST!" else "", color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 16.sp, textAlign = TextAlign.Center)
-        if (g.phase != Phase.PAUSED) Text("Start level ${g.startLevel}", color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 15.sp)
+        if (g.phase == Phase.OVER) SkinText(skin, "Score ${g.score}" + if (g.score >= g.best && g.score > 0) "\nNEW BEST!" else "", 16.sp)
+        if (g.phase != Phase.PAUSED) SkinText(skin, "Start level ${g.startLevel}", 15.sp)
         Spacer(Modifier.height(12.dp))
-        Text(
+        SkinText(skin,
             if (g.phase == Phase.PAUSED) "OK to continue\nBack for menu"
-            else "OK to start\n◀▶ level\n\n◀▶ move\n▲ / OK rotate\n▼ soft drop\n# hard drop\n* pause",
-            color = LcdInk, fontFamily = FontFamily.Monospace, fontSize = 13.sp, textAlign = TextAlign.Center
-        )
+            else "OK to start\n◀▶ level\n\n◀▶ move\n▲ / OK rotate\n▼ soft drop\n# hard drop\n* pause", 13.sp)
     }
 }

@@ -328,6 +328,7 @@ class MainActivity : ComponentActivity() {
                         "accent" to hex(cs.primary), "highlight" to hex(cs.secondary), "font" to state.currentFont.name,
                         "style" to when (state.currentTheme) { AppTheme.WIN95 -> "win95"; AppTheme.S60 -> "s60"; AppTheme.LCD -> "lcd"; else -> "symbian" }
                     )
+                    LookProvider.save(this@MainActivity, BridgeState.theme.value)
                 }
                 val currentDensity = androidx.compose.ui.platform.LocalDensity.current
                 androidx.compose.runtime.CompositionLocalProvider(
