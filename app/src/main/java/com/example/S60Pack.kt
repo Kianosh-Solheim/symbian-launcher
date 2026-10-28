@@ -28,7 +28,7 @@ object S60Pack {
         "com.android.calendar" to "calendar", "com.android.gallery3d" to "gallery", "com.android.fmradio" to "fm_radio",
         "org.lineageos.jelly" to "browser", "com.android.stk" to "sim", "com.android.providers.downloads.ui" to "downloads",
         "com.android.wallpaper" to "themes", "com.android.wallpaperpicker" to "themes", "com.android.soundrecorder" to "sound_recorder",
-        "no.kianosh.symbianclock" to "clock", "org.fossify.calendar" to "calendar", "org.fossify.gallery" to "gallery",
+        "no.kianosh.symbianclock" to "clock", "no.kianosh.symbianmusic" to "music", "org.fossify.calendar" to "calendar", "org.fossify.gallery" to "gallery",
         "org.fossify.filemanager" to "files", "org.fossify.notes" to "notepad", "org.fossify.musicplayer" to "music",
         "org.fossify.contacts" to "contacts", "org.fossify.phone" to "call_log", "org.fossify.messages" to "mms", "org.fossify.clock" to "clock",
         "org.fossify.voicerecorder" to "sound_recorder", "org.fossify.calculator" to "calculator"

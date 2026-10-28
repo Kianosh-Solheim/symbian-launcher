@@ -63,7 +63,8 @@ jobs:
           cp clock/build/outputs/apk/release/clock-release.apk symbian-clock.apk
           cp snake/build/outputs/apk/release/snake-release.apk symbian-snake.apk
           cp blocks/build/outputs/apk/release/blocks-release.apk symbian-blocks.apk
-          ls -l symbian-launcher.apk symbian-clock.apk symbian-snake.apk symbian-blocks.apk
+          cp music/build/outputs/apk/release/music-release.apk symbian-music.apk
+          ls -l symbian-launcher.apk symbian-clock.apk symbian-snake.apk symbian-blocks.apk symbian-music.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -73,6 +74,7 @@ jobs:
             symbian-clock.apk
             symbian-snake.apk
             symbian-blocks.apk
+            symbian-music.apk
 
       - name: Publish release
         if: env.KEYSTORE_PATH != ''
@@ -85,4 +87,5 @@ jobs:
             symbian-clock.apk
             symbian-snake.apk
             symbian-blocks.apk
+            symbian-music.apk
           generate_release_notes: true

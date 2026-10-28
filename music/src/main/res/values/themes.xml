@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="music_bg">#FF101820</color>
+    <color name="music_icon_bg">#FFF26B1D</color>
+    <style name="Theme.Music" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/music_bg</item>
+        <item name="android:statusBarColor">#FF000000</item>
+        <item name="android:navigationBarColor">#FF000000</item>
+    </style>
+</resources>
