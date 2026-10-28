@@ -1,0 +1,7 @@
+package com.example
+
+import android.app.Application
+
+class LauncherApp : Application() {
+    override fun onCreate() { super.onCreate(); S60Pack.init(this) }
+}

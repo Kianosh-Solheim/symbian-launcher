@@ -262,7 +262,7 @@ object S60Icons {
 
     @Composable
     fun Icon(name: String, modifier: Modifier = Modifier) {
-        val bmp = remember(name) { bitmap3d(name, 128)?.asImageBitmap() } ?: return
+        val bmp = remember(name) { (S60Pack.forName(name) ?: bitmap3d(name, 128))?.asImageBitmap() } ?: return
         androidx.compose.foundation.Image(bmp, contentDescription = null, modifier = modifier.size(36.dp),
             contentScale = androidx.compose.ui.layout.ContentScale.Fit)
     }

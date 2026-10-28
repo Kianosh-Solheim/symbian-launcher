@@ -148,7 +148,10 @@ object S60Styler {
     }
 
     fun convert(d: Drawable, pkg: String?): Bitmap {
-        if (pkg?.startsWith("custom:") != true) generic[pkg]?.let { name -> S60Icons.bitmap3d(name, OUT)?.let { return it } }
+        if (pkg?.startsWith("custom:") != true) {
+            S60Pack.forPackage(pkg)?.let { return it }
+            generic[pkg]?.let { name -> (S60Pack.forName(name) ?: S60Icons.bitmap3d(name, OUT))?.let { return it } }
+        }
         return Belle3D.render(shapeOnly(d), OUT)
     }
 }
