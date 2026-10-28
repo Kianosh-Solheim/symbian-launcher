@@ -33,6 +33,11 @@ object S60Styler {
         "com.android.contacts" to "person", "com.google.android.contacts" to "person",
         "com.android.settings" to "settings",
         "no.posten.sporing.controller" to "posten",
+        "org.lineageos.jelly" to "globe", "com.android.browser" to "globe",
+        "com.android.documentsui" to "folder", "com.google.android.documentsui" to "folder", "org.fossify.filemanager" to "folder",
+        "org.lineageos.glimpse" to "gallery", "com.android.gallery3d" to "gallery", "org.fossify.gallery" to "gallery",
+        "org.lineageos.eleven" to "music", "org.lineageos.twelve" to "music", "org.fossify.musicplayer" to "music",
+        "org.fossify.notes" to "notes", "com.android.notes" to "notes",
         "org.lineageos.aperture" to "camera", "com.android.camera2" to "camera", "com.android.camera" to "camera"
     )
 
@@ -143,39 +148,7 @@ object S60Styler {
     }
 
     fun convert(d: Drawable, pkg: String?): Bitmap {
-        if (pkg?.startsWith("custom:") != true) generic[pkg]?.let { name -> S60Icons.bitmap(name, OUT)?.let { return it } }
-        val inner = (OUT * 0.84f).toInt()
-        val off = (OUT - inner) / 2
-        val src = fit(shapeOnly(d), inner)
-        val out = Bitmap.createBitmap(OUT, OUT, Bitmap.Config.ARGB_8888)
-        val c = Canvas(out)
-
-        // Soft shadow below-right, from the icon's own outline.
-        val shadow = src.extractAlpha(Paint().apply { maskFilter = BlurMaskFilter(OUT * 0.03f, BlurMaskFilter.Blur.NORMAL) }, IntArray(2))
-        c.drawBitmap(shadow, off + OUT * 0.02f - 0f, off + OUT * 0.035f, Paint().apply { color = 0x55000000; isFilterBitmap = true })
-
-        // The icon itself, a little more saturated and contrasty like the old phone themes.
-        val boost = ColorMatrix().apply { setSaturation(1.25f) }
-        val contrast = ColorMatrix(floatArrayOf(1.08f, 0f, 0f, 0f, -8f, 0f, 1.08f, 0f, 0f, -8f, 0f, 0f, 1.08f, 0f, -8f, 0f, 0f, 0f, 1f, 0f))
-        boost.postConcat(contrast)
-        val layer = Bitmap.createBitmap(OUT, OUT, Bitmap.Config.ARGB_8888)
-        val lc = Canvas(layer)
-        lc.drawBitmap(src, off.toFloat(), off.toFloat(), Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = ColorMatrixColorFilter(boost) })
-
-        // Gloss: white fading out over the top half, curved at the bottom, clipped to the icon's pixels.
-        val gloss = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(0f, off.toFloat(), 0f, OUT * 0.55f, 0x8CFFFFFF.toInt(), 0x0DFFFFFF, Shader.TileMode.CLAMP)
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
-        }
-        lc.drawOval(RectF(-OUT * 0.25f, -OUT * 0.55f, OUT * 1.25f, OUT * 0.52f), gloss)
-        // Faint dark edge at the bottom for depth.
-        val shade = Paint().apply {
-            shader = LinearGradient(0f, OUT * 0.6f, 0f, (off + inner).toFloat(), 0x00000000, 0x30000000, Shader.TileMode.CLAMP)
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
-        }
-        lc.drawRect(0f, OUT * 0.6f, OUT.toFloat(), OUT.toFloat(), shade)
-
-        c.drawBitmap(layer, 0f, 0f, null)
-        return out
+        if (pkg?.startsWith("custom:") != true) generic[pkg]?.let { name -> S60Icons.bitmap3d(name, OUT)?.let { return it } }
+        return Belle3D.render(shapeOnly(d), OUT)
     }
 }

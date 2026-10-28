@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -34,6 +35,39 @@ private class L(val d: String, val fill: S60Fill?, val stroke: Color?, val strok
  */
 object S60Icons {
     private val icons: Map<String, List<L>> = mapOf(
+    "globe" to listOf(
+        L("M4,24A20,20 0 1 0 44,24A20,20 0 1 0 4,24Z", S60Fill.Vertical(Color(0xFF4FA8FF), Color(0xFF0B3FA8)), Color(0xFF062A73), 1.0f, 0f, 0f),
+        L("M10,13C13,10 17,9 20,10C21,12 19,14 17,14C16,16 18,18 16,20C14,22 15,25 13,27C11,26 9,23 8,20C8,17 9,15 10,13Z", S60Fill.Vertical(Color(0xFF7EE05A), Color(0xFF24902A)), Color(0xFF14601A), 0.6f, 0f, 0f),
+        L("M24,8C28,7 33,9 36,12C35,14 32,13 30,15C31,17 34,17 36,19C38,22 36,25 33,24C31,26 32,29 30,31C27,30 26,27 27,24C25,22 22,21 22,18C24,16 26,14 24,12C23,11 23,9 24,8Z", S60Fill.Vertical(Color(0xFF7EE05A), Color(0xFF24902A)), Color(0xFF14601A), 0.6f, 0f, 0f),
+        L("M17,30C20,29 23,31 24,34C24,37 22,40 19,41C17,39 16,36 17,33Z", S60Fill.Vertical(Color(0xFF7EE05A), Color(0xFF24902A)), Color(0xFF14601A), 0.6f, 0f, 0f),
+        L("M38,28C40,29 41,31 40,34C38,36 36,35 35,33C36,31 37,30 38,28Z", S60Fill.Vertical(Color(0xFF7EE05A), Color(0xFF24902A)), Color(0xFF14601A), 0.6f, 0f, 0f),
+        L("M8,17Q24,2 40,17Q24,12 8,17Z", S60Fill.Vertical(Color(0x99FFFFFF), Color(0x00FFFFFF)), null, 0f, 0f, 0f)
+    ),
+    "folder" to listOf(
+        L("M5,10H18L22,14H41A2,2 0 0 1 43,16V38A2,2 0 0 1 41,40H7A2,2 0 0 1 5,38Z", S60Fill.Vertical(Color(0xFFE8B030), Color(0xFFB07810)), Color(0xFF7A5000), 1.0f, 0f, 0f),
+        L("M8,17H40V30H8Z", S60Fill.Solid(Color(0xFFFFFFFF)), Color(0xFFCCCCCC), 0.5f, 0f, 0f),
+        L("M4,20H44L42,40H6Z", S60Fill.Vertical(Color(0xFFFFE27A), Color(0xFFF2B21C)), Color(0xFF8A5A00), 1.0f, 0f, 0f),
+        L("M5,21H43L42.6,25Q24,28 5.4,25Z", S60Fill.Vertical(Color(0x99FFFFFF), Color(0x00FFFFFF)), null, 0f, 0f, 0f)
+    ),
+    "gallery" to listOf(
+        L("M5,8H43A2,2 0 0 1 45,10V38A2,2 0 0 1 43,40H5A2,2 0 0 1 3,38V10A2,2 0 0 1 5,8Z", S60Fill.Vertical(Color(0xFFFFFFFF), Color(0xFFD6DAE0)), Color(0xFF8A9099), 1.0f, 0f, 0f),
+        L("M7,12H41V35H7Z", S60Fill.Vertical(Color(0xFF6EC3FF), Color(0xFFBFE6FF)), null, 0f, 0f, 0f),
+        L("M30,17A4,4 0 1 0 38,17A4,4 0 1 0 30,17Z", S60Fill.Vertical(Color(0xFFFFF07A), Color(0xFFF2B705)), Color(0xFFB07000), 0.6f, 0f, 0f),
+        L("M7,35L17,22L24,30L29,25L41,35Z", S60Fill.Vertical(Color(0xFF6FD24A), Color(0xFF1F7A22)), Color(0xFF14601A), 0.6f, 0f, 0f),
+        L("M7,12H41V17Q24,21 7,17Z", S60Fill.Vertical(Color(0x99FFFFFF), Color(0x00FFFFFF)), null, 0f, 0f, 0f)
+    ),
+    "music" to listOf(
+        L("M17,10L39,5V31A5.5,4.5 0 1 1 35,27V13L21,16.5V35A5.5,4.5 0 1 1 17,31Z", S60Fill.Vertical(Color(0xFFFF7A3A), Color(0xFFD0200E)), Color(0xFF7A1000), 1.0f, 0f, 0f),
+        L("M17,10L39,5V9L17,14Z", S60Fill.Vertical(Color(0x88FFFFFF), Color(0x22FFFFFF)), null, 0f, 0f, 0f)
+    ),
+    "notes" to listOf(
+        L("M9,8H35A2,2 0 0 1 37,10V42A2,2 0 0 1 35,44H9A2,2 0 0 1 7,42V10A2,2 0 0 1 9,8Z", S60Fill.Vertical(Color(0xFFFFFFFF), Color(0xFFE2E4E8)), Color(0xFF8A9099), 1.0f, 0f, 0f),
+        L("M11,18H33M11,23H33M11,28H33M11,33H27", null, Color(0xFF8FA4BF), 1.2f, 0f, 0f),
+        L("M12,5V11M18,5V11M24,5V11M30,5V11", null, Color(0xFF5A6068), 2.2f, 0f, 0f),
+        L("M22,38L38,18L43,22L27,42L21,44Z", S60Fill.Vertical(Color(0xFFFFD84A), Color(0xFFE09A10)), Color(0xFF8A5A00), 0.8f, 0f, 0f),
+        L("M21,44L22,38L27,42Z", S60Fill.Solid(Color(0xFF5A4A3A)), null, 0f, 0f, 0f),
+        L("M38,18L40.5,15A1.5,1.5 0 0 1 42.6,15.2L45,17.2A1.5,1.5 0 0 1 45.2,19.3L43,22Z", S60Fill.Vertical(Color(0xFFFF9AB0), Color(0xFFE0506E)), Color(0xFF8A2040), 0.6f, 0f, 0f)
+    ),
     "posten" to listOf(
         L("M2.5,24.5A21.5,21.5 0 1 0 45.5,24.5A21.5,21.5 0 1 0 2.5,24.5Z", S60Fill.Solid(Color(0x3F000000)), null, 0f, 1.2f, 1.6f),
         L("M2.5,24.5A21.5,21.5 0 1 0 45.5,24.5A21.5,21.5 0 1 0 2.5,24.5Z", S60Fill.Vertical(Color(0xFFFF4A3A), Color(0xFFC40F0F)), Color(0xFF7A0606), 1f, 0f, 0f),
@@ -188,8 +222,16 @@ object S60Icons {
     fun has(name: String) = name in icons
 
     /** Renders an icon into a bitmap (used to replace app icons for built-in phone functions). */
-    fun bitmap(name: String, px: Int): android.graphics.Bitmap? {
-        val layers = icons[name] ?: return null
+    private fun L.isShadow() = (fill as? S60Fill.Solid)?.c?.let { it.alpha < 0.35f && it.red < 0.1f } == true && (dx != 0f || dy != 0f)
+
+    private val cache3d = HashMap<String, android.graphics.Bitmap>()
+    /** The icon as a 3D object (see [Belle3D]). */
+    fun bitmap3d(name: String, px: Int): android.graphics.Bitmap? = synchronized(cache3d) {
+        cache3d.getOrPut("$name@$px") { Belle3D.render(bitmap(name, px * 2, flat = true) ?: return null, px) }
+    }
+
+    fun bitmap(name: String, px: Int, flat: Boolean = false): android.graphics.Bitmap? {
+        val layers = (icons[name] ?: return null).filter { !flat || !it.isShadow() }
         val bmp = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888)
         val c = android.graphics.Canvas(bmp)
         val k = px / 48f
@@ -220,26 +262,8 @@ object S60Icons {
 
     @Composable
     fun Icon(name: String, modifier: Modifier = Modifier) {
-        val layers = remember(name) { icons[name] } ?: return
-        Canvas(modifier.size(32.dp)) {
-            val k = minOf(size.width, size.height) / 48f
-            translate((size.width - 48f * k) / 2f, (size.height - 48f * k) / 2f) {
-                scale(k, k, pivot = androidx.compose.ui.geometry.Offset.Zero) {
-                    layers.forEach { l ->
-                        translate(l.dx, l.dy) {
-                            when (val f = l.fill) {
-                                is S60Fill.Solid -> drawPath(l.path, f.c)
-                                is S60Fill.Vertical -> {
-                                    val b = l.path.getBounds()
-                                    drawPath(l.path, Brush.verticalGradient(listOf(f.top, f.bottom), startY = b.top, endY = b.bottom))
-                                }
-                                null -> {}
-                            }
-                            l.stroke?.let { drawPath(l.path, it, style = Stroke(width = l.strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)) }
-                        }
-                    }
-                }
-            }
-        }
+        val bmp = remember(name) { bitmap3d(name, 128)?.asImageBitmap() } ?: return
+        androidx.compose.foundation.Image(bmp, contentDescription = null, modifier = modifier.size(36.dp),
+            contentScale = androidx.compose.ui.layout.ContentScale.Fit)
     }
 }
