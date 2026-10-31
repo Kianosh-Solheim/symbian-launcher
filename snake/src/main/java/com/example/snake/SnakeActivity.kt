@@ -34,9 +34,9 @@ private val LcdBg = Color(0xFF9CB86A)
 private val LcdInk = Color(0xFF26331A)
 private val LcdDim = Color(0xFF8AA55A)
 
-private enum class Dir(val dx: Int, val dy: Int) { UP(0, -1), DOWN(0, 1), LEFT(-1, 0), RIGHT(1, 0) }
-private data class P(val x: Int, val y: Int)
-private enum class Phase { MENU, PLAYING, PAUSED, OVER }
+internal enum class Dir(val dx: Int, val dy: Int) { UP(0, -1), DOWN(0, 1), LEFT(-1, 0), RIGHT(1, 0) }
+internal data class P(val x: Int, val y: Int)
+internal enum class Phase { MENU, PLAYING, PAUSED, OVER }
 
 /**
  * Snake in the style of the old mobile phone games: black-green LCD, blocky snake, bonus bugs.
@@ -53,9 +53,10 @@ class SnakeActivity : ComponentActivity() {
         game.best = prefs.getInt("best", 0)
         game.level = prefs.getInt("level", 5)
         game.walls = prefs.getBoolean("walls", false)
-        game.onSave = { prefs.edit().putInt("best", game.best).putInt("level", game.level).putBoolean("walls", game.walls).apply() }
+        game.tops = (prefs.getString("tops", "") ?: "").split(',').mapNotNull { it.toIntOrNull() }
+        game.onSave = { prefs.edit().putInt("best", game.best).putInt("level", game.level).putBoolean("walls", game.walls).putString("tops", game.tops.joinToString(",")).apply() }
         game.onBuzz = { ms -> buzz(ms) }
-        setContent { SnakeScreen(game, skinFor(look)) }
+        setContent { val sk = skinFor(look); if (sk.kind == SkinKind.S60) DeluxeSnake(game) else SnakeScreen(game, sk) }
     }
 
     override fun onResume() { super.onResume(); look = GameLook.load(this) }
@@ -68,6 +69,10 @@ class SnakeActivity : ComponentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (game.phase == Phase.MENU || game.phase == Phase.OVER) when (keyCode) {
+            KeyEvent.KEYCODE_1 -> { game.newGame(); return true }
+            KeyEvent.KEYCODE_3 -> { game.walls = !game.walls; game.onSave(); return true }
+        }
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_2 -> game.steer(Dir.UP)
             KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_8 -> game.steer(Dir.DOWN)
@@ -83,7 +88,7 @@ class SnakeActivity : ComponentActivity() {
     }
 }
 
-private class Game {
+internal class Game {
     var cols = 20; var rows = 24
     var phase by mutableStateOf(Phase.MENU)
     var snake by mutableStateOf(listOf<P>())
@@ -97,7 +102,9 @@ private class Game {
     var tick by mutableIntStateOf(0)
     private var dir = Dir.RIGHT
     private val queue = ArrayDeque<Dir>()
-    private var eaten = 0
+    var eaten by mutableIntStateOf(0)
+    var tops by mutableStateOf(listOf<Int>())
+    val dirNow: Dir get() = dir
     var onSave: () -> Unit = {}
     var onBuzz: (Long) -> Unit = {}
 
@@ -165,6 +172,7 @@ private class Game {
     private fun over() {
         phase = Phase.OVER; onBuzz(250)
         if (score > best) { best = score }
+        if (score > 0) tops = (tops + score).sortedDescending().take(5)
         onSave()
     }
 }
